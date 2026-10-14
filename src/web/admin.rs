@@ -10,11 +10,20 @@ use serde_json::{json, Value};
 use super::extract::{Form, Path, State};
 use super::*;
 use crate::{
-    auth::WebAdmin,
+    auth::{WebAdmin, WebAgent},
     rules::{self, Action, Conditions},
     service::{self, UserInput},
     sla::{self as sla_mod, SlaMetric},
 };
+
+/// „Meine Makros“: persönliche Makros eines Agenten, gleicher Editor wie in der Verwaltung.
+pub fn personal_router() -> Router<AppState> {
+    Router::new()
+        .route("/me/macros", get(my_macros).post(my_macro_create))
+        .route("/me/macros/new", get(my_macro_new))
+        .route("/me/macros/{id}", get(my_macro_edit).post(my_macro_update))
+        .route("/me/macros/{id}/delete", post(my_macro_delete))
+}
 
 pub fn router() -> Router<AppState> {
     Router::new()
@@ -631,12 +640,16 @@ struct RulesPage {
     singular: &'static str,
     help: &'static str,
     rules: Vec<RuleRow>,
+    personal: bool,
+    base: String,
 }
 
 async fn rules_index(State(st): State<AppState>, WebAdmin(me): WebAdmin, Path(key): Path<String>) -> WebResult<Html<String>> {
     let k = kind(&key)?;
+    // Persönliche Makros der Agenten erscheinen hier nicht.
+    let only_shared = if k.key == "macros" { "WHERE owner_id IS NULL" } else { "" };
     let rows: Vec<(i64, String, String, i32, bool)> = sqlx::query_as(&format!(
-        "SELECT id, title, description, position, active FROM {} ORDER BY position, id",
+        "SELECT id, title, description, position, active FROM {} {only_shared} ORDER BY position, id",
         k.table
     ))
     .fetch_all(&st.db)
@@ -651,6 +664,8 @@ async fn rules_index(State(st): State<AppState>, WebAdmin(me): WebAdmin, Path(ke
             .into_iter()
             .map(|(id, title, description, position, active)| RuleRow { id, title, description, position, active })
             .collect(),
+        personal: false,
+        base: format!("/admin/rules/{}", k.key),
     })
 }
 
@@ -677,6 +692,7 @@ struct RuleEditPage {
     a_builder: &'static str,
     b_builder: &'static str,
     meta_json: String,
+    personal: bool,
 }
 
 /// Welcher grafische Editor für Feld A/B eines Regeltyps zuständig ist.
@@ -851,6 +867,7 @@ fn edit_page(me: &User, k: &'static RuleKind, id: Option<i64>, form: RuleForm, e
         b_label: k.b_label,
         b_json: form.b.unwrap_or_default(),
         fields_help: fields_help(k),
+        personal: false,
     }
 }
 
@@ -1021,6 +1038,131 @@ async fn update_rule(
         }
         Err(e) => Ok(page(edit_page(&me, k, Some(id), form, e, rule_meta(&st.db).await?))?.into_response()),
     }
+}
+
+// ---------------------------------------------------------------------------
+// Persönliche Makros
+// ---------------------------------------------------------------------------
+
+const MY_MACROS_HELP: &str = "Persönliche Makros sind nur für dich sichtbar und erscheinen im Ticket unter „Makro anwenden“ nach den gemeinsamen. Platzhalter: {{ticket.id}}, {{ticket.subject}}, {{current_user.name}} …";
+
+fn personal_page(me: &User, id: Option<i64>, form: RuleForm, error: String, meta_json: String) -> AppResult<RuleEditPage> {
+    let mut p = edit_page(me, kind("macros")?, id, form, error, meta_json);
+    p.personal = true;
+    p.nav = Nav::new(me, "me");
+    p.help = MY_MACROS_HELP;
+    p.action = match id {
+        Some(id) => format!("/me/macros/{id}"),
+        None => "/me/macros".into(),
+    };
+    Ok(p)
+}
+
+async fn my_macros(State(st): State<AppState>, WebAgent(me): WebAgent) -> WebResult<Html<String>> {
+    let rows: Vec<(i64, String, String, i32, bool)> = sqlx::query_as(
+        "SELECT id, title, description, position, active FROM macros WHERE owner_id = $1 ORDER BY position, id",
+    )
+    .bind(me.id)
+    .fetch_all(&st.db)
+    .await?;
+    page(RulesPage {
+        nav: Nav::new(&me, "me"),
+        tab: "macros",
+        title: "Meine Makros",
+        singular: "Makro",
+        help: MY_MACROS_HELP,
+        rules: rows
+            .into_iter()
+            .map(|(id, title, description, position, active)| RuleRow { id, title, description, position, active })
+            .collect(),
+        personal: true,
+        base: "/me/macros".into(),
+    })
+}
+
+async fn my_macro_new(State(st): State<AppState>, WebAgent(me): WebAgent) -> WebResult<Html<String>> {
+    let k = kind("macros")?;
+    let form = RuleForm {
+        title: String::new(),
+        description: String::new(),
+        position: 0,
+        active: Some("on".into()),
+        a: k.a_default.into(),
+        b: None,
+    };
+    page(personal_page(&me, None, form, String::new(), rule_meta(&st.db).await?)?)
+}
+
+async fn my_macro_edit(State(st): State<AppState>, WebAgent(me): WebAgent, Path(id): Path<i64>) -> WebResult<Html<String>> {
+    let row: (String, String, i32, bool, Value) =
+        sqlx::query_as("SELECT title, description, position, active, actions FROM macros WHERE id = $1 AND owner_id = $2")
+            .bind(id)
+            .bind(me.id)
+            .fetch_optional(&st.db)
+            .await?
+            .ok_or(AppError::NotFound)?;
+    let form = RuleForm {
+        title: row.0,
+        description: row.1,
+        position: row.2,
+        active: row.3.then(|| "on".into()),
+        a: serde_json::to_string_pretty(&row.4).unwrap_or_default(),
+        b: None,
+    };
+    page(personal_page(&me, Some(id), form, String::new(), rule_meta(&st.db).await?)?)
+}
+
+async fn my_macro_create(State(st): State<AppState>, WebAgent(me): WebAgent, Form(form): Form<RuleForm>) -> WebResult<Response> {
+    match validate_rule(kind("macros")?, &form) {
+        Ok((actions, _)) => {
+            sqlx::query("INSERT INTO macros (title, description, position, active, actions, owner_id) VALUES ($1, $2, $3, $4, $5, $6)")
+                .bind(form.title.trim())
+                .bind(form.description.trim())
+                .bind(form.position)
+                .bind(form.active.is_some())
+                .bind(actions)
+                .bind(me.id)
+                .execute(&st.db)
+                .await?;
+            Ok(see_other("/me/macros"))
+        }
+        Err(e) => Ok(page(personal_page(&me, None, form, e, rule_meta(&st.db).await?)?)?.into_response()),
+    }
+}
+
+async fn my_macro_update(
+    State(st): State<AppState>,
+    WebAgent(me): WebAgent,
+    Path(id): Path<i64>,
+    Form(form): Form<RuleForm>,
+) -> WebResult<Response> {
+    match validate_rule(kind("macros")?, &form) {
+        Ok((actions, _)) => {
+            let done = sqlx::query(
+                "UPDATE macros SET title = $1, description = $2, position = $3, active = $4, actions = $5, updated_at = now()
+                 WHERE id = $6 AND owner_id = $7",
+            )
+            .bind(form.title.trim())
+            .bind(form.description.trim())
+            .bind(form.position)
+            .bind(form.active.is_some())
+            .bind(actions)
+            .bind(id)
+            .bind(me.id)
+            .execute(&st.db)
+            .await?;
+            if done.rows_affected() == 0 {
+                return Err(AppError::NotFound.into());
+            }
+            Ok(see_other("/me/macros"))
+        }
+        Err(e) => Ok(page(personal_page(&me, Some(id), form, e, rule_meta(&st.db).await?)?)?.into_response()),
+    }
+}
+
+async fn my_macro_delete(State(st): State<AppState>, WebAgent(me): WebAgent, Path(id): Path<i64>) -> WebResult<Response> {
+    sqlx::query("DELETE FROM macros WHERE id = $1 AND owner_id = $2").bind(id).bind(me.id).execute(&st.db).await?;
+    Ok(see_other("/me/macros"))
 }
 
 async fn delete_rule(

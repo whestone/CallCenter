@@ -15,7 +15,7 @@
     <div class="avatar small">{{ c.initials }}</div>
     <div class="comment-body">
       <header><strong>{{ c.author }}</strong>{% if c.from_support %} <span class="tag-support">Support</span>{% endif %} <span class="muted">{{ c.created }}</span></header>
-      <div class="text">{{ c.body }}</div>
+      <div class="text md">{{ c.body|safe }}</div>
       {% if !c.attachments.is_empty() %}
       <ul class="attachments">
         {% for a in c.attachments %}<li><a href="/portal/attachments/{{ a.id }}" target="_blank" rel="noopener" hx-boost="false">📎 {{ a.filename }}</a> <span class="muted small">{{ a.size }}</span></li>{% endfor %}

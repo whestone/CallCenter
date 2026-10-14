@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Benachrichtigungen{% endblock %}
+{% block content %}
+<div class="page narrow-page">
+  <div class="pane-head">
+    <h1>Benachrichtigungen</h1>
+    {% if unread > 0 %}
+    <form method="post" action="/notifications/read-all"><button class="btn">Alle als gelesen markieren</button></form>
+    {% endif %}
+  </div>
+  <p class="muted small">Du wirst benachrichtigt, wenn dich jemand mit @Name erwähnt, dir ein Ticket zuweist, ein Kunde auf dein Ticket antwortet oder ein SLA-Ziel bald abläuft. Erwähnungen und SLA-Meldungen kommen zusätzlich per E-Mail.</p>
+  {% if rows.is_empty() %}
+  <div class="empty">Keine Benachrichtigungen.</div>
+  {% else %}
+  <ul class="notification-list">
+    {% for r in rows %}
+    <li class="{% if r.unread %}unread{% endif %}">
+      <a href="/notifications/{{ r.id }}">
+        <span class="notif-kind notif-{{ r.kind_key }}">{{ r.kind }}</span>
+        <span class="notif-body">{{ r.body }}</span>
+        <span class="muted small nowrap">{{ r.created }}</span>
+      </a>
+    </li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+</div>
+{% endblock %}

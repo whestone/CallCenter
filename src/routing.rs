@@ -121,6 +121,10 @@ pub async fn process_queue(db: &PgPool) -> AppResult<usize> {
             .bind(sqlx::types::Json(&events))
             .execute(&mut *tx)
             .await?;
+        if let Some(agent) = t.assignee_id {
+            let text = format!("#{} „{}“ wurde dir automatisch zugewiesen", t.id, t.subject);
+            crate::notify::notify(&mut tx, agent, Some(&t), "assigned", &text, false).await?;
+        }
         tx.commit().await?;
         assigned += 1;
     }

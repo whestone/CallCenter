@@ -50,6 +50,8 @@ const TICKET_FORM = "form.ticket-layout";
 
 function fieldChanged(el) {
   if (el.type === "hidden" || el.type === "submit" || el.type === "button" || el.name === "public") return false;
+  // Die mitlaufende Zeiterfassung zählt nicht als Änderung.
+  if (el.matches("[data-timer]")) return false;
   if (el.type === "checkbox" || el.type === "radio") return el.checked !== el.defaultChecked;
   if (el.tagName === "SELECT") {
     const opts = [...el.options];
@@ -132,8 +134,10 @@ document.addEventListener("htmx:confirm", (event) => {
   const question = event.detail.question;
   const form = dirtyTicketForm();
   const source = event.detail.elt;
-  // Absenden des Ticketformulars selbst ist erlaubt.
-  const leavesDirtyTicket = form && source !== form && source.form !== form;
+  // Nur echte Navigation (Links, Formulare) verlässt das Ticket – Hintergrund-Abfragen
+  // wie Anruf-Banner, Glocke oder Anwesenheit nicht. Absenden des Ticketformulars ist erlaubt.
+  const navigates = source.matches("a[href], form, button, input[type=submit]");
+  const leavesDirtyTicket = form && navigates && source !== form && source.form !== form;
   if (!question && !leavesDirtyTicket) return;
   event.preventDefault();
   const message = question || "Ihre Änderungen am Ticket sind noch nicht gespeichert. Trotzdem fortfahren und verwerfen?";
@@ -188,3 +192,319 @@ document.addEventListener("keydown", (event) => {
     event.target.form.requestSubmit();
   }
 });
+
+// ---------------------------------------------------------------------------
+// Ticket: Problem-Auswahl nur bei Typ „Vorfall“
+// ---------------------------------------------------------------------------
+document.addEventListener("change", (event) => {
+  if (!event.target.matches("select[name=ticket_type]")) return;
+  document.querySelectorAll("[data-show-if-type]").forEach((el) => {
+    el.hidden = el.dataset.showIfType !== event.target.value;
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Kollisionserkennung: „schreibt gerade“ (wird von der Anwesenheitsabfrage gelesen)
+// ---------------------------------------------------------------------------
+let lastTyped = 0;
+document.addEventListener("input", (event) => {
+  if (event.target.matches("textarea[name=comment]")) lastTyped = Date.now();
+});
+window.ccComposing = () => (Date.now() - lastTyped < 10000 ? 1 : 0);
+
+// ---------------------------------------------------------------------------
+// Zeiterfassung: läuft mit, solange das Ticket sichtbar ist; manuell überschreibbar
+// ---------------------------------------------------------------------------
+function fmtTimer(total) {
+  const h = Math.floor(total / 3600);
+  const m = String(Math.floor((total % 3600) / 60)).padStart(2, "0");
+  const s = String(total % 60).padStart(2, "0");
+  return h ? `${h}:${m}:${s}` : `${m}:${s}`;
+}
+setInterval(() => {
+  const el = document.querySelector("[data-timer]");
+  if (!el || el.dataset.touched || document.hidden) return;
+  const elapsed = Number(el.dataset.elapsed || 0) + 1;
+  el.dataset.elapsed = elapsed;
+  el.value = fmtTimer(elapsed);
+}, 1000);
+document.addEventListener("input", (event) => {
+  if (event.target.matches("[data-timer]")) event.target.dataset.touched = "1";
+});
+
+// ---------------------------------------------------------------------------
+// Formatierleiste im Antwortfeld
+// ---------------------------------------------------------------------------
+function notifyInput(area) {
+  area.dispatchEvent(new Event("input", { bubbles: true }));
+}
+function wrapSelection(area, before, after, placeholder) {
+  const { selectionStart: s, selectionEnd: e, value: v } = area;
+  const sel = v.slice(s, e) || placeholder;
+  area.value = v.slice(0, s) + before + sel + after + v.slice(e);
+  area.focus();
+  area.setSelectionRange(s + before.length, s + before.length + sel.length);
+  notifyInput(area);
+}
+function prefixLines(area, prefix) {
+  const { selectionStart: s, selectionEnd: e, value: v } = area;
+  const start = v.lastIndexOf("\n", s - 1) + 1;
+  let end = v.indexOf("\n", e);
+  if (end < 0) end = v.length;
+  const text = v.slice(start, end).split("\n").map((line, i) => prefix(i) + line).join("\n");
+  area.value = v.slice(0, start) + text + v.slice(end);
+  area.focus();
+  area.setSelectionRange(start + text.length, start + text.length);
+  notifyInput(area);
+}
+function applyFormat(area, fmt) {
+  switch (fmt) {
+    case "bold": return wrapSelection(area, "**", "**", "fett");
+    case "italic": return wrapSelection(area, "*", "*", "kursiv");
+    case "code": return wrapSelection(area, "`", "`", "Code");
+    case "link": return wrapSelection(area, "[", "](https://)", "Linktext");
+    case "ul": return prefixLines(area, () => "- ");
+    case "ol": return prefixLines(area, (i) => `${i + 1}. `);
+  }
+}
+document.addEventListener("click", (event) => {
+  const btn = event.target.closest("[data-fmt]");
+  if (!btn) return;
+  const area = document.querySelector("textarea[name=comment]");
+  if (area) applyFormat(area, btn.dataset.fmt);
+});
+document.addEventListener("keydown", (event) => {
+  if (!(event.ctrlKey || event.metaKey) || !event.target.matches("textarea[name=comment]")) return;
+  const fmt = { b: "bold", i: "italic" }[event.key.toLowerCase()];
+  if (fmt) {
+    event.preventDefault();
+    applyFormat(event.target, fmt);
+  }
+});
+
+// ---------------------------------------------------------------------------
+// @-Erwähnungen: Vorschläge beim Tippen von „@Na…“
+// ---------------------------------------------------------------------------
+let mentionTimer;
+const MENTION_RE = /(^|\s)@([\p{L}\p{N}][\p{L}\p{N} .'-]{0,30})?$/u;
+function mentionList(area) {
+  return area.parentElement.querySelector(".mention-list");
+}
+function pickMention(area, name) {
+  const list = mentionList(area);
+  const at = Number(list.dataset.start);
+  const end = area.selectionStart;
+  area.value = area.value.slice(0, at) + "@" + name + " " + area.value.slice(end);
+  const pos = at + name.length + 2;
+  area.setSelectionRange(pos, pos);
+  list.hidden = true;
+  area.focus();
+  notifyInput(area);
+}
+document.addEventListener("input", (event) => {
+  const area = event.target;
+  if (!area.matches("textarea[data-mentions]")) return;
+  const list = mentionList(area);
+  const upto = area.value.slice(0, area.selectionStart);
+  const match = upto.match(MENTION_RE);
+  clearTimeout(mentionTimer);
+  if (!match) {
+    list.hidden = true;
+    return;
+  }
+  const term = match[2] || "";
+  mentionTimer = setTimeout(async () => {
+    const names = await fetch("/agents/mention?q=" + encodeURIComponent(term))
+      .then((r) => (r.ok ? r.json() : []))
+      .catch(() => []);
+    if (!names.length) {
+      list.hidden = true;
+      return;
+    }
+    list.replaceChildren(
+      ...names.map((name, i) => {
+        const li = document.createElement("li");
+        li.textContent = name;
+        li.setAttribute("role", "option");
+        li.dataset.name = name;
+        if (i === 0) li.classList.add("active");
+        return li;
+      }),
+    );
+    list.dataset.start = upto.length - term.length - 1;
+    list.hidden = false;
+  }, 150);
+});
+document.addEventListener("mousedown", (event) => {
+  const li = event.target.closest(".mention-list li");
+  if (!li) return;
+  event.preventDefault();
+  pickMention(li.closest(".mention-wrap").querySelector("textarea"), li.dataset.name);
+});
+document.addEventListener(
+  "keydown",
+  (event) => {
+    const area = event.target;
+    if (!area.matches("textarea[data-mentions]")) return;
+    const list = mentionList(area);
+    if (list.hidden) return;
+    const items = [...list.children];
+    let idx = items.findIndex((li) => li.classList.contains("active"));
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      event.preventDefault();
+      items[idx]?.classList.remove("active");
+      idx = (idx + (event.key === "ArrowDown" ? 1 : -1) + items.length) % items.length;
+      items[idx].classList.add("active");
+    } else if ((event.key === "Enter" || event.key === "Tab") && !event.ctrlKey && !event.metaKey) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      pickMention(area, items[Math.max(idx, 0)].dataset.name);
+    } else if (event.key === "Escape") {
+      list.hidden = true;
+    }
+  },
+  true,
+);
+document.addEventListener("focusout", (event) => {
+  if (event.target.matches?.("textarea[data-mentions]")) {
+    setTimeout(() => (mentionList(event.target).hidden = true), 150);
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Tastenkürzel (außerhalb von Eingabefeldern); „?“ zeigt die Übersicht
+// ---------------------------------------------------------------------------
+const SHORTCUTS = [
+  ["?", "Diese Übersicht"],
+  ["g dann t", "Tickets / Ansichten"],
+  ["g dann k", "Kunden"],
+  ["g dann w", "Wissensdatenbank"],
+  ["g dann b", "Benachrichtigungen"],
+  ["n", "Neues Ticket"],
+  ["a", "Anruf erfassen"],
+  ["/", "Suche"],
+  ["j / k", "Nächstes / vorheriges Ticket in der Liste"],
+  ["o oder Enter", "Markiertes Ticket öffnen"],
+  ["x", "Markiertes Ticket auswählen (Massenbearbeitung)"],
+  ["r", "Im Ticket: öffentliche Antwort schreiben"],
+  ["i", "Im Ticket: interne Notiz schreiben"],
+  ["Strg + Enter", "Antwort absenden"],
+  ["Strg + B / I", "Fett / kursiv"],
+  ["Esc", "Eingabefeld verlassen"],
+];
+
+function showShortcuts() {
+  let dlg = document.getElementById("cc-shortcuts");
+  if (!dlg) {
+    dlg = document.createElement("dialog");
+    dlg.id = "cc-shortcuts";
+    dlg.className = "confirm-dialog shortcuts-dialog";
+    const rows = SHORTCUTS.map(([k, d]) => `<tr><td><kbd>${k}</kbd></td><td>${d}</td></tr>`).join("");
+    dlg.innerHTML =
+      `<h3>Tastenkürzel</h3><table class="shortcuts">${rows}</table>` +
+      `<div class="confirm-actions"><button type="button" class="btn primary" data-close>Schließen</button></div>`;
+    dlg.querySelector("[data-close]").onclick = () => dlg.close();
+    document.body.append(dlg);
+  }
+  dlg.showModal();
+}
+
+function moveRow(step) {
+  const rows = [...document.querySelectorAll("table.selectable tbody tr")];
+  if (!rows.length) return false;
+  let idx = rows.findIndex((r) => r.classList.contains("kb-focus"));
+  rows[idx]?.classList.remove("kb-focus");
+  idx = idx < 0 ? 0 : Math.min(Math.max(idx + step, 0), rows.length - 1);
+  rows[idx].classList.add("kb-focus");
+  rows[idx].scrollIntoView({ block: "nearest" });
+  return true;
+}
+const focusedRow = () => document.querySelector("table.selectable tr.kb-focus");
+
+// Navigation über einen echten Link, damit hx-boost und die Warnung bei
+// ungespeicherten Änderungen greifen.
+function go(url) {
+  const link = document.createElement("a");
+  link.href = url;
+  document.body.append(link);
+  if (window.htmx) htmx.process(link);
+  link.click();
+  link.remove();
+}
+
+let gPending = false;
+document.addEventListener("keydown", (event) => {
+  if (event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey) return;
+  const t = event.target;
+  if (t.matches("input, textarea, select, [contenteditable]")) {
+    if (event.key === "Escape") t.blur();
+    return;
+  }
+  if (document.querySelector("dialog[open]")) return;
+  const key = event.key;
+  if (gPending) {
+    gPending = false;
+    const dest = { t: "/views", k: "/users", w: "/kb", b: "/notifications" }[key];
+    if (dest) {
+      event.preventDefault();
+      go(dest);
+    }
+    return;
+  }
+  let handled = true;
+  switch (key) {
+    case "g":
+      gPending = true;
+      setTimeout(() => (gPending = false), 1500);
+      break;
+    case "?":
+      showShortcuts();
+      break;
+    case "n":
+      go("/tickets/new?channel=web");
+      break;
+    case "a":
+      go("/tickets/new?channel=phone");
+      break;
+    case "/":
+      document.querySelector(".search input")?.focus();
+      break;
+    case "j":
+    case "k":
+      handled = moveRow(key === "j" ? 1 : -1);
+      break;
+    case "o":
+    case "Enter": {
+      const link = focusedRow()?.querySelector("a[href^='/tickets/']");
+      handled = !!link;
+      link?.click();
+      break;
+    }
+    case "x": {
+      const box = focusedRow()?.querySelector("input[type=checkbox]");
+      handled = !!box;
+      box?.click();
+      break;
+    }
+    case "r":
+    case "i": {
+      const area = document.querySelector("textarea[name=comment]");
+      handled = !!area;
+      if (area) {
+        const radio = document.querySelector(`.composer-tabs input[name=public][value="${key === "i" ? 0 : 1}"]`);
+        if (radio && !radio.checked) radio.click();
+        area.focus();
+      }
+      break;
+    }
+    default:
+      handled = false;
+  }
+  if (handled) event.preventDefault();
+});
+
+// Ticketlisten aktualisieren sich von selbst, solange man nichts auswählt oder tippt.
+window.ccListIdle = () =>
+  !document.querySelector("input[name=ticket_id]:checked, tr.kb-focus") &&
+  !document.activeElement?.matches("input, select, textarea") &&
+  !document.querySelector("dialog[open]");

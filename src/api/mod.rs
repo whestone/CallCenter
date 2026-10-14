@@ -144,6 +144,8 @@ struct TicketCreate {
     tags: Option<Vec<String>>,
     custom_fields: Option<Value>,
     due_at: Option<chrono::DateTime<Utc>>,
+    problem_id: Option<i64>,
+    cc_ids: Option<Vec<i64>>,
 }
 
 async fn create_ticket(
@@ -188,6 +190,9 @@ async fn create_ticket(
             tags: input.tags.unwrap_or_default(),
             custom_fields: input.custom_fields.unwrap_or_else(|| json!({})),
             due_at: input.due_at,
+            problem_id: input.problem_id,
+            followup_source_id: None,
+            cc_ids: input.cc_ids.unwrap_or_default(),
         },
         "api",
     )
@@ -430,8 +435,11 @@ async fn view_tickets(State(st): State<AppState>, ApiAgent(me): ApiAgent, Path(i
     Ok(Json(json!({ "tickets": tickets, "count": tickets.len() })))
 }
 
-async fn list_macros(State(st): State<AppState>, ApiAgent(_): ApiAgent) -> JsonResult {
-    let macros: Vec<Macro> = sqlx::query_as("SELECT * FROM macros ORDER BY position, id").fetch_all(&st.db).await?;
+async fn list_macros(State(st): State<AppState>, ApiAgent(me): ApiAgent) -> JsonResult {
+    let macros: Vec<Macro> = sqlx::query_as("SELECT * FROM macros WHERE owner_id IS NULL OR owner_id = $1 ORDER BY position, id")
+        .bind(me.id)
+        .fetch_all(&st.db)
+        .await?;
     Ok(Json(json!({ "macros": macros, "count": macros.len() })))
 }
 

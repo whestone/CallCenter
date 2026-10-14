@@ -2,7 +2,8 @@ use std::collections::HashMap;
 
 use askama::Template;
 use axum::{
-    response::{Html, Response},
+    http::StatusCode,
+    response::{Html, IntoResponse, Response},
     routing::{get, post},
     Router,
 };
@@ -25,6 +26,7 @@ pub fn router() -> Router<AppState> {
         .route("/tickets/{id}", get(show_ticket).post(update_ticket))
         .route("/tickets/{id}/macro", post(apply_macro))
         .route("/tickets/{id}/merge", post(merge_ticket))
+        .route("/tickets/{id}/presence", get(presence))
         .route("/requesters/lookup", get(requester_lookup))
 }
 
@@ -37,7 +39,8 @@ struct CommentView {
     initials: String,
     is_agent: bool,
     public: bool,
-    body: String,
+    /// Formatierter Text (HTML, sicher erzeugt von markdown::render).
+    html: String,
     created: String,
     via: String,
     attachments: Vec<super::files::AttachmentView>,
@@ -141,6 +144,53 @@ struct TicketPage {
     csat_comment: String,
     kb_hits: Vec<KbHit>,
     calls: Vec<super::telephony::CallView>,
+    ticket_type: String,
+    problem_opts: Vec<Opt>,
+    orig_problem_id: String,
+    incidents: Vec<MiniTicket>,
+    followup_source: i64,
+    followups: Vec<MiniTicket>,
+    cc: String,
+    time_total: String,
+    time_mine: String,
+    seen_audit: i64,
+    draft: String,
+    draft_internal: bool,
+    warning: String,
+}
+
+/// Nicht abgeschickter Text, der beim erneuten Anzeigen erhalten bleibt.
+#[derive(Default)]
+struct Draft {
+    comment: String,
+    internal: bool,
+    warning: String,
+}
+
+fn mini(t: &Ticket) -> MiniTicket {
+    MiniTicket { id: t.id, subject: t.subject.clone(), status: t.status.clone(), status_label: status_label(&t.status) }
+}
+
+/// Sekunden als „12 Min“ bzw. „1:05 h“.
+pub fn fmt_seconds(s: i64) -> String {
+    let minutes = (s + 30) / 60;
+    if minutes < 60 { format!("{minutes} Min") } else { format!("{}:{:02} h", minutes / 60, minutes % 60) }
+}
+
+/// Zeiteingabe „mm:ss“, „h:mm:ss“ oder Minuten („12“, „1,5“) in Sekunden.
+fn parse_duration(s: &str) -> Option<i64> {
+    let s = s.trim();
+    if s.is_empty() {
+        return None;
+    }
+    let parts: Vec<&str> = s.split(':').collect();
+    let secs = match parts.as_slice() {
+        [m] => (m.replace(',', ".").parse::<f64>().ok()? * 60.0) as i64,
+        [m, sec] => m.parse::<i64>().ok()? * 60 + sec.parse::<i64>().ok()?,
+        [h, m, sec] => h.parse::<i64>().ok()? * 3600 + m.parse::<i64>().ok()? * 60 + sec.parse::<i64>().ok()?,
+        _ => return None,
+    };
+    (secs > 0 && secs < 24 * 3600).then_some(secs)
 }
 
 struct KbHit {
@@ -163,6 +213,8 @@ fn field_label(field: &str) -> String {
         "custom_fields" => "Eigene Felder".into(),
         "sla_policy_id" => "SLA".into(),
         "due_at" => "Fällig".into(),
+        "problem_id" => "Problem".into(),
+        "cc_ids" => "CC".into(),
         other => other.into(),
     }
 }
@@ -203,6 +255,13 @@ fn describe_value(field: &str, v: &Value, names: &Names) -> String {
         ("status", Value::String(s)) => status_label(s).into(),
         ("priority", Value::String(s)) => priority_label(s).into(),
         ("type", Value::String(s)) => type_label(s).into(),
+        ("problem_id", Value::Number(n)) => format!("#{n}"),
+        ("cc_ids", Value::Array(items)) if !items.is_empty() => items
+            .iter()
+            .filter_map(Value::as_i64)
+            .map(|id| names.users.get(&id).cloned().unwrap_or_else(|| format!("#{id}")))
+            .collect::<Vec<_>>()
+            .join(", "),
         (f, Value::Number(n)) if f.ends_with("_id") => {
             let id = n.as_i64().unwrap_or_default();
             names.lookup(f, id).cloned().unwrap_or_else(|| format!("#{id} (gelöscht)"))
@@ -245,6 +304,12 @@ fn describe_event(ev: &AuditEvent, names: &Names) -> String {
 }
 
 async fn show_ticket(State(st): State<AppState>, WebAgent(me): WebAgent, Path(id): Path<i64>) -> WebResult<Html<String>> {
+    let html = render_ticket(&st, &me, id, Draft::default()).await?;
+    crate::notify::mark_ticket_read(&st.db, me.id, id).await?;
+    Ok(html)
+}
+
+async fn render_ticket(st: &AppState, me: &User, id: i64, draft: Draft) -> WebResult<Html<String>> {
     let db = &st.db;
     let t = service::get_ticket(db, id).await?;
     let now = Utc::now();
@@ -276,8 +341,46 @@ async fn show_ticket(State(st): State<AppState>, WebAgent(me): WebAgent, Path(id
         .map(|a| (a.id, if a.active { a.name.clone() } else { format!("{} (deaktiviert)", a.name) }))
         .collect();
     let groups: Vec<Group> = sqlx::query_as("SELECT * FROM agent_groups ORDER BY name").fetch_all(db).await?;
-    let macros: Vec<Macro> = sqlx::query_as("SELECT * FROM macros WHERE active ORDER BY position, id")
+    // Gemeinsame Makros zuerst, danach die persönlichen des Agenten.
+    let macros: Vec<Macro> = sqlx::query_as(
+        "SELECT * FROM macros WHERE active AND (owner_id IS NULL OR owner_id = $1)
+         ORDER BY owner_id IS NOT NULL, position, id",
+    )
+    .bind(me.id)
+    .fetch_all(db)
+    .await?;
+    let problems: Vec<(i64, String)> = sqlx::query_as(
+        "SELECT id, subject FROM tickets WHERE ticket_type = 'problem' AND id <> $1
+           AND (status <> 'closed' OR id = $2) ORDER BY id DESC LIMIT 200",
+    )
+    .bind(id)
+    .bind(t.problem_id)
+    .fetch_all(db)
+    .await?;
+    let incidents: Vec<Ticket> = sqlx::query_as("SELECT * FROM tickets WHERE problem_id = $1 ORDER BY id")
+        .bind(id)
         .fetch_all(db)
+        .await?;
+    let followups: Vec<Ticket> = sqlx::query_as("SELECT * FROM tickets WHERE followup_source_id = $1 ORDER BY id")
+        .bind(id)
+        .fetch_all(db)
+        .await?;
+    let cc_emails: Vec<String> =
+        sqlx::query_scalar("SELECT email FROM users WHERE id = ANY($1) AND email IS NOT NULL ORDER BY email")
+            .bind(&t.cc_ids)
+            .fetch_all(db)
+            .await?;
+    let (time_total, time_mine): (i64, i64) = sqlx::query_as(
+        "SELECT COALESCE(sum(seconds), 0)::bigint, COALESCE(sum(seconds) FILTER (WHERE user_id = $2), 0)::bigint
+         FROM time_entries WHERE ticket_id = $1",
+    )
+    .bind(id)
+    .bind(me.id)
+    .fetch_one(db)
+    .await?;
+    let seen_audit: i64 = sqlx::query_scalar("SELECT COALESCE(max(id), 0) FROM ticket_audits WHERE ticket_id = $1")
+        .bind(id)
+        .fetch_one(db)
         .await?;
     let others: Vec<Ticket> = sqlx::query_as(
         "SELECT * FROM tickets WHERE requester_id = $1 AND id <> $2 ORDER BY updated_at DESC LIMIT 8",
@@ -379,7 +482,28 @@ async fn show_ticket(State(st): State<AppState>, WebAgent(me): WebAgent, Path(id
         .unwrap_or_default();
 
     page(TicketPage {
-        nav: Nav::new(&me, "views"),
+        nav: Nav::new(me, "views"),
+        ticket_type: t.ticket_type.clone().unwrap_or_default(),
+        problem_opts: id_opts(problems.iter().map(|(pid, s)| (*pid, s.as_str())), t.problem_id, "– kein Problem –")
+            .into_iter()
+            .map(|mut o| {
+                if !o.value.is_empty() {
+                    o.label = format!("#{} {}", o.value, o.label);
+                }
+                o
+            })
+            .collect(),
+        orig_problem_id: t.problem_id.map(|p| p.to_string()).unwrap_or_default(),
+        incidents: incidents.iter().map(mini).collect(),
+        followup_source: t.followup_source_id.unwrap_or(0),
+        followups: followups.iter().map(mini).collect(),
+        cc: cc_emails.join(", "),
+        time_total: if time_total > 0 { fmt_seconds(time_total) } else { String::new() },
+        time_mine: if time_mine > 0 { fmt_seconds(time_mine) } else { String::new() },
+        seen_audit,
+        draft: draft.comment,
+        draft_internal: draft.internal,
+        warning: draft.warning,
         id: t.id,
         subject: t.subject.clone(),
         status: t.status.clone(),
@@ -415,7 +539,7 @@ async fn show_ticket(State(st): State<AppState>, WebAgent(me): WebAgent, Path(id
                     author,
                     is_agent: author_roles.get(&c.author_id).copied().unwrap_or(false),
                     public: c.public,
-                    body: c.body.clone(),
+                    html: crate::markdown::render(&c.body),
                     created: fmt_dt(c.created_at),
                     via: channel_label(&c.via).replace('?', &c.via),
                     attachments: attachments.get(&c.id).map(|l| l.iter().map(Into::into).collect()).unwrap_or_default(),
@@ -446,15 +570,7 @@ async fn show_ticket(State(st): State<AppState>, WebAgent(me): WebAgent, Path(id
         csat_comment: t.satisfaction_comment.clone().unwrap_or_default(),
         kb_hits,
         calls,
-        other_tickets: others
-            .iter()
-            .map(|o| MiniTicket {
-                id: o.id,
-                subject: o.subject.clone(),
-                status: o.status.clone(),
-                status_label: status_label(&o.status),
-            })
-            .collect(),
+        other_tickets: others.iter().map(mini).collect(),
     })
 }
 
@@ -480,6 +596,14 @@ struct TicketForm {
     orig_tags: Option<String>,
     comment: Option<String>,
     public: Option<String>,
+    problem_id: Option<String>,
+    orig_problem_id: Option<String>,
+    cc: Option<String>,
+    orig_cc: Option<String>,
+    /// Erfasste Bearbeitungszeit („mm:ss“ oder Minuten)
+    time_spent: Option<String>,
+    /// Letzter bekannter Audit-Eintrag beim Öffnen (Kollisionserkennung)
+    seen_audit: Option<i64>,
     /// Eigene Felder: cf_<key> und orig_cf_<key>
     #[serde(flatten)]
     extra: HashMap<String, String>,
@@ -496,12 +620,58 @@ fn tag_set(s: &Option<String>) -> Vec<String> {
     normalize_tags(s.as_deref().unwrap_or("").split_whitespace())
 }
 
+/// E-Mail-Adressen (Komma, Semikolon oder Leerzeichen getrennt) in Personen-IDs; Unbekannte werden angelegt.
+async fn cc_ids(db: &PgPool, text: &str) -> AppResult<Vec<i64>> {
+    let mut ids = Vec::new();
+    for addr in text.split([',', ';', ' ', '\n']).map(str::trim).filter(|a| !a.is_empty()) {
+        if !addr.contains('@') {
+            return Err(AppError::invalid(format!("CC: „{addr}“ ist keine E-Mail-Adresse")));
+        }
+        ids.push(service::find_or_create_requester(db, "", Some(addr), None).await?.id);
+    }
+    Ok(ids)
+}
+
+/// Öffentliche Antworten anderer seit dem Öffnen des Tickets (Namen der Autoren).
+async fn replies_since(db: &PgPool, id: i64, seen: i64, me: i64) -> AppResult<Vec<String>> {
+    // Kommentare einer Transaktion tragen denselben Zeitstempel wie ihr Audit-Eintrag.
+    Ok(sqlx::query_scalar(
+        "SELECT DISTINCT u.name FROM ticket_comments c JOIN users u ON u.id = c.author_id
+         WHERE c.ticket_id = $1 AND c.public AND c.author_id <> $3
+           AND c.created_at > COALESCE((SELECT created_at FROM ticket_audits WHERE id = $2), '-infinity')",
+    )
+    .bind(id)
+    .bind(seen)
+    .bind(me)
+    .fetch_all(db)
+    .await?)
+}
+
 async fn update_ticket(
     State(st): State<AppState>,
     WebAgent(me): WebAgent,
     Path(id): Path<i64>,
     Form(f): Form<TicketForm>,
 ) -> WebResult<Response> {
+    let comment = non_empty(&f.comment);
+    let public = f.public.as_deref() != Some("0");
+    // Kollision: Hat jemand anderes inzwischen öffentlich geantwortet, wird die eigene
+    // öffentliche Antwort nicht blind verschickt, sondern mit Hinweis wieder angezeigt.
+    if let (Some(body), true, Some(seen)) = (&comment, public, f.seen_audit) {
+        let others = replies_since(&st.db, id, seen, me.id).await?;
+        if !others.is_empty() {
+            let draft = Draft {
+                comment: body.clone(),
+                internal: false,
+                warning: format!(
+                    "{} hat inzwischen geantwortet (siehe unten). Deine Antwort wurde noch nicht gesendet – bitte prüfen und erneut absenden. Andere Feldänderungen bitte ebenfalls erneut setzen.",
+                    others.join(", ")
+                ),
+            };
+            let html = render_ticket(&st, &me, id, draft).await?;
+            return Ok((StatusCode::CONFLICT, html).into_response());
+        }
+    }
     let fields = service::ticket_fields(&st.db, true).await?;
     let custom_fields = service::custom_field_changes(&fields, &f.extra, true)?;
     let (new_tags, orig_tags) = (tag_set(&f.tags), tag_set(&f.orig_tags));
@@ -518,15 +688,87 @@ async fn update_ticket(
         custom_fields,
         additional_tags: (!added.is_empty()).then_some(added),
         remove_tags: (!removed.is_empty()).then_some(removed),
-        comment: non_empty(&f.comment).map(|body| CommentChange {
-            body,
-            public: f.public.as_deref() != Some("0"),
-            author_id: None,
-        }),
+        problem_id: changed(&f.problem_id, &f.orig_problem_id).map(|v| v.parse().ok()),
+        cc_ids: match changed(&f.cc, &f.orig_cc) {
+            Some(text) => Some(cc_ids(&st.db, &text).await?),
+            None => None,
+        },
+        comment: comment.map(|body| CommentChange { body, public, author_id: None }),
         ..Default::default()
     };
+    let time = match f.time_spent.as_deref().map(str::trim).filter(|s| !s.is_empty()) {
+        Some(raw) => Some(parse_duration(raw).ok_or_else(|| {
+            AppError::invalid(format!("Zeit „{raw}“ nicht erkannt – bitte z. B. 12 (Minuten) oder 1:30:00 angeben"))
+        })?),
+        None => None,
+    };
     service::update_ticket(&st.db, &me, id, changes, None, "web").await?;
+    if let Some(seconds) = time {
+        sqlx::query("INSERT INTO time_entries (ticket_id, user_id, seconds) VALUES ($1, $2, $3)")
+            .bind(id)
+            .bind(me.id)
+            .bind(seconds as i32)
+            .execute(&st.db)
+            .await?;
+    }
     Ok(see_other(&format!("/tickets/{id}")))
+}
+
+// ---------------------------------------------------------------------------
+// Kollisionserkennung: wer ist gerade im Ticket, gibt es neue Änderungen?
+// ---------------------------------------------------------------------------
+
+#[derive(Deserialize)]
+struct PresenceQuery {
+    seen: Option<i64>,
+    composing: Option<String>,
+}
+
+struct Viewer {
+    name: String,
+    composing: bool,
+}
+
+#[derive(Template)]
+#[template(path = "ticket_presence.html")]
+struct PresenceFragment {
+    id: i64,
+    viewers: Vec<Viewer>,
+    updated_by: String,
+    new_reply: bool,
+}
+
+async fn presence(
+    State(st): State<AppState>,
+    WebAgent(me): WebAgent,
+    Path(id): Path<i64>,
+    Query(q): Query<PresenceQuery>,
+) -> WebResult<Html<String>> {
+    let composing = matches!(q.composing.as_deref(), Some("1" | "true"));
+    let others = st.presence.touch(id, me.id, composing);
+    let names = user_names(&st.db, others.iter().map(|(uid, _)| *uid).collect()).await?;
+    let mut viewers: Vec<Viewer> = others
+        .into_iter()
+        .filter_map(|(uid, composing)| names.get(&uid).map(|name| Viewer { name: name.clone(), composing }))
+        .collect();
+    viewers.sort_by(|a, b| a.name.cmp(&b.name));
+    let (updated_by, new_reply) = match q.seen {
+        Some(seen) => {
+            let authors: Vec<String> = sqlx::query_scalar(
+                "SELECT DISTINCT COALESCE(u.name, 'System') FROM ticket_audits a LEFT JOIN users u ON u.id = a.author_id
+                 WHERE a.ticket_id = $1 AND a.id > $2 AND a.author_id IS DISTINCT FROM $3",
+            )
+            .bind(id)
+            .bind(seen)
+            .bind(me.id)
+            .fetch_all(&st.db)
+            .await?;
+            let replies = replies_since(&st.db, id, seen, me.id).await?;
+            (authors.join(", "), !replies.is_empty())
+        }
+        None => (String::new(), false),
+    };
+    page(PresenceFragment { id, viewers, updated_by, new_reply })
 }
 
 #[derive(Deserialize)]
@@ -586,6 +828,8 @@ struct NewTicketPage {
     cf_with_orig: bool,
     call_id: String,
     phone_prefill: String,
+    followup: String,
+    subject_prefill: String,
 }
 
 #[derive(Deserialize)]
@@ -593,6 +837,7 @@ struct NewTicketQuery {
     channel: Option<String>,
     requester_id: Option<i64>,
     call_id: Option<i64>,
+    followup: Option<i64>,
 }
 
 async fn new_ticket_page(
@@ -612,8 +857,17 @@ async fn new_ticket_page(
         Some(id) => Some(crate::telephony::get(&st.db, id).await?),
         None => None,
     };
+    // Folgeticket zu einem geschlossenen Ticket: Anfragender und Betreff übernehmen.
+    let source = match q.followup {
+        Some(id) => Some(service::get_ticket(&st.db, id).await?),
+        None => None,
+    };
     let requester: Option<User> = sqlx::query_as("SELECT * FROM users WHERE id = $1")
-        .bind(q.requester_id.or(call.as_ref().and_then(|c| c.customer_id)))
+        .bind(
+            q.requester_id
+                .or(call.as_ref().and_then(|c| c.customer_id))
+                .or(source.as_ref().map(|t| t.requester_id)),
+        )
         .fetch_optional(&st.db)
         .await?;
     page(NewTicketPage {
@@ -635,6 +889,8 @@ async fn new_ticket_page(
         cf_with_orig: false,
         call_id: call.as_ref().map(|c| c.id.to_string()).unwrap_or_default(),
         phone_prefill: call.as_ref().map(|c| c.remote_number().to_string()).unwrap_or_default(),
+        followup: source.as_ref().map(|t| t.id.to_string()).unwrap_or_default(),
+        subject_prefill: source.as_ref().map(|t| format!("Folgeanfrage zu #{}: {}", t.id, t.subject)).unwrap_or_default(),
     })
 }
 
@@ -660,6 +916,8 @@ struct NewTicketForm {
     group_id: Option<String>,
     tags: Option<String>,
     call_id: Option<String>,
+    followup_source_id: Option<String>,
+    cc: Option<String>,
     #[serde(flatten)]
     extra: HashMap<String, String>,
 }
@@ -699,7 +957,12 @@ async fn create_ticket(
             tags: f.tags.as_deref().map(|t| normalize_tags(t.split_whitespace())).unwrap_or_default(),
             custom_fields: service::custom_field_changes(&service::ticket_fields(&st.db, true).await?, &f.extra, false)?
                 .unwrap_or_else(|| json!({})),
-            due_at: None,
+            followup_source_id: parse_id(&f.followup_source_id),
+            cc_ids: match non_empty(&f.cc) {
+                Some(text) => cc_ids(&st.db, &text).await?,
+                None => Vec::new(),
+            },
+            ..Default::default()
         },
         "web",
     )

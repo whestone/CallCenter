@@ -38,6 +38,11 @@ pub fn spawn(state: AppState) {
                 Ok(_) => {}
                 Err(e) => tracing::error!("Automationen fehlgeschlagen: {}", e.public_message()),
             }
+            match crate::escalation::run(&state.db).await {
+                Ok(n) if n > 0 => tracing::info!("SLA-Eskalation: {n} Meldungen"),
+                Ok(_) => {}
+                Err(e) => tracing::error!("SLA-Eskalation fehlgeschlagen: {}", e.public_message()),
+            }
         }
     });
 }

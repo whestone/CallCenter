@@ -336,8 +336,11 @@ async fn view_show(
             .fetch_all(db)
             .await?;
     let groups: Vec<Group> = sqlx::query_as("SELECT * FROM agent_groups ORDER BY name").fetch_all(db).await?;
-    let macros: Vec<Macro> = sqlx::query_as("SELECT * FROM macros WHERE active ORDER BY position, id")
-        .fetch_all(db)
+    let macros: Vec<Macro> = sqlx::query_as(
+        "SELECT * FROM macros WHERE active AND (owner_id IS NULL OR owner_id = $1) ORDER BY owner_id IS NOT NULL, position, id",
+    )
+    .bind(me.id)
+    .fetch_all(db)
         .await?;
 
     let sel = |v: &Option<String>| ListParams::get(v).map(str::to_string);

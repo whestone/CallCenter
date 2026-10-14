@@ -99,12 +99,33 @@ pub async fn queue_ticket_mail(conn: &mut PgConnection, t: &Ticket, mail: Ticket
         .bind(t.requester_id)
         .fetch_optional(&mut *conn)
         .await?;
-    let Some((name, Some(to))) = requester else { return Ok(()) };
+    // Antworten gehen zusätzlich an alle Personen in CC.
+    let cc: Vec<(String, String)> = match mail {
+        TicketMail::Reply { .. } if !t.cc_ids.is_empty() => {
+            sqlx::query_as("SELECT name, email FROM users WHERE id = ANY($1) AND email IS NOT NULL AND active")
+                .bind(&t.cc_ids)
+                .fetch_all(&mut *conn)
+                .await?
+        }
+        _ => Vec::new(),
+    };
+    let mut recipients: Vec<(String, String)> = match requester {
+        Some((name, Some(to))) => vec![(name, to)],
+        _ => Vec::new(),
+    };
+    recipients.extend(cc);
+    for (name, to) in recipients {
+        queue_one(&mut *conn, t, &mail, name, &to).await?;
+    }
+    Ok(())
+}
+
+async fn queue_one(conn: &mut PgConnection, t: &Ticket, mail: &TicketMail<'_>, name: String, to: &str) -> AppResult<()> {
     let s = settings(&mut *conn).await?;
     let get = |k: &str| s.get(k).cloned().unwrap_or_default();
     let (template, comment) = match mail {
-        TicketMail::Reply { body } => (get("email.reply_body"), body),
-        TicketMail::Notification { body } => (get("email.notify_body"), body),
+        TicketMail::Reply { body } => (get("email.reply_body"), *body),
+        TicketMail::Notification { body } => (get("email.notify_body"), *body),
     };
     // Ohne echten Namen (nur E-Mail-Adresse bekannt) neutral anreden.
     let name = if name.contains('@') { String::new() } else { name };
@@ -121,7 +142,7 @@ pub async fn queue_ticket_mail(conn: &mut PgConnection, t: &Ticket, mail: Ticket
     ];
     let subject = fill(&get("email.reply_subject"), &vars);
     let body = fill(&template, &vars).replace(" ,\n", ",\n");
-    enqueue(&mut *conn, Some(t.id), &to, &subject, &body).await
+    enqueue(&mut *conn, Some(t.id), to, &subject, &body).await
 }
 
 #[derive(Debug, Clone)]
@@ -321,10 +342,16 @@ pub async fn handle_inbound(db: &PgPool, mail: InboundEmail) -> AppResult<Inboun
         .fetch_one(db)
         .await?;
 
+    let mut followup_source_id = None;
     if let Some(id) = ticket_ref(&mail.subject) {
         let existing: Option<Ticket> = sqlx::query_as("SELECT * FROM tickets WHERE id = $1").bind(id).fetch_optional(db).await?;
+        let own = existing.filter(|t| t.requester_id == sender.id);
+        // Antwort auf ein bereits geschlossenes Ticket → Folgeticket.
+        if own.as_ref().is_some_and(|t| t.status == "closed") {
+            followup_source_id = Some(id);
+        }
         // Nur der Anfragende darf per Mail auf sein offenes Ticket antworten.
-        if let Some(t) = existing.filter(|t| t.requester_id == sender.id && t.status != "closed") {
+        if let Some(t) = own.filter(|t| t.status != "closed") {
             let changes = TicketChanges {
                 comment: Some(CommentChange { body, public: true, author_id: Some(sender.id) }),
                 ..Default::default()
@@ -347,6 +374,7 @@ pub async fn handle_inbound(db: &PgPool, mail: InboundEmail) -> AppResult<Inboun
             requester_id: sender.id,
             channel: "email".into(),
             custom_fields: serde_json::json!({}),
+            followup_source_id,
             ..Default::default()
         },
         "email",

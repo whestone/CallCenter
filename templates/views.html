@@ -71,6 +71,8 @@
     </div>
     {% endif %}
 
+    {# Live-Aktualisierung alle 30 s, solange nichts ausgewählt/getippt wird #}
+    <div hidden hx-get="{{ return_to }}" hx-trigger="every 30s [ccListIdle()]" hx-select=".pane" hx-target="closest .pane" hx-swap="outerHTML"></div>
     {% if !pages.is_empty() %}
     <nav class="pagination" aria-label="Seiten">
       {% for p in pages %}<a href="{{ p.url }}" class="{% if p.current %}current{% endif %}">{{ p.label }}</a>{% endfor %}

@@ -173,6 +173,16 @@ pub struct Ticket {
     pub satisfaction_score: Option<String>,
     pub satisfaction_comment: Option<String>,
     pub satisfaction_at: Option<DateTime<Utc>>,
+    /// Vorfall → zugehöriges Problem-Ticket.
+    pub problem_id: Option<i64>,
+    /// Folgeticket zu diesem (geschlossenen) Ticket.
+    pub followup_source_id: Option<i64>,
+    /// Weitere Kunden in CC.
+    pub cc_ids: Vec<i64>,
+    #[serde(skip)]
+    pub sla_warn_key: Option<String>,
+    #[serde(skip)]
+    pub sla_breach_key: Option<String>,
 }
 
 pub const FIELD_TYPES: [&str; 5] = ["text", "number", "dropdown", "checkbox", "date"];
@@ -336,6 +346,8 @@ pub struct Macro {
     pub actions: Json<Vec<Action>>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
+    /// Persönliches Makro eines Agenten (sonst für alle).
+    pub owner_id: Option<i64>,
 }
 
 #[derive(Debug, Clone, Serialize, FromRow)]

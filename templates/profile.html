@@ -4,6 +4,11 @@
 <div class="page narrow-page">
   <h1>Mein Profil</h1>
   <p class="muted">{{ name }} · {{ email }} · {{ role_label }}</p>
+  <p class="profile-links">
+    <a class="btn" href="/me/macros">⚡ Meine Makros</a>
+    <a class="btn" href="/notifications">🔔 Benachrichtigungen</a>
+    <button type="button" class="btn" onclick="showShortcuts()">⌨ Tastenkürzel</button>
+  </p>
   {% if !notice.is_empty() %}<div class="alert info">{{ notice }}</div>{% endif %}
   {% if !error.is_empty() %}<div class="alert">{{ error }}</div>{% endif %}
 

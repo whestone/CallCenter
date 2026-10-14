@@ -2,8 +2,13 @@
 {% block title %}{{ singular }}{% endblock %}
 {% block content %}
 <div class="page">
+  {% if personal %}
+  <h1>Meine Makros</h1>
+  <p><a href="/me/macros">← Zurück zu meinen Makros</a></p>
+  {% else %}
   <h1>Verwaltung</h1>
   {% include "admin/tabs.html" %}
+  {% endif %}
   <form class="card rule-form" method="post" action="{{ action }}" data-rule-form>
     <h3>{% if is_new %}Neue(r) {{ singular }}{% else %}{{ singular }} bearbeiten{% endif %}</h3>
     {% if !error.is_empty() %}<div class="alert">{{ error }}</div>{% endif %}

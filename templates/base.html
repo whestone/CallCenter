@@ -44,6 +44,7 @@
             {% for o in nav.availability_opts %}<option value="{{ o.value }}"{% if o.selected %} selected{% endif %}>{{ o.label }}</option>{% endfor %}
           </select>
         </form>
+        <a class="bell" href="/notifications" title="Benachrichtigungen" hx-get="/notifications/badge" hx-trigger="load, every 30s" hx-swap="innerHTML"><span aria-hidden="true">🔔</span></a>
         <a class="avatar" href="/me" title="{{ nav.name }} – Mein Profil">{{ nav.initials }}</a>
         <form method="post" action="/logout" hx-boost="false"><button class="link">Abmelden</button></form>
       </div>

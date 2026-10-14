@@ -54,6 +54,9 @@ pub struct NewTicket {
     pub tags: Vec<String>,
     pub custom_fields: Value,
     pub due_at: Option<DateTime<Utc>>,
+    pub problem_id: Option<i64>,
+    pub followup_source_id: Option<i64>,
+    pub cc_ids: Vec<i64>,
 }
 
 #[derive(Debug, Clone, Default, Deserialize)]
@@ -75,6 +78,9 @@ pub struct TicketChanges {
     pub custom_fields: Option<Value>,
     #[serde(default, deserialize_with = "double_option")]
     pub due_at: Option<Option<DateTime<Utc>>>,
+    #[serde(default, deserialize_with = "double_option")]
+    pub problem_id: Option<Option<i64>>,
+    pub cc_ids: Option<Vec<i64>>,
     pub comment: Option<CommentChange>,
 }
 
@@ -121,6 +127,8 @@ fn snapshot(t: &Ticket) -> Vec<(&'static str, Value)> {
         ("tags", json!(t.tags)),
         ("sla_policy_id", json!(t.sla_policy_id)),
         ("due_at", json!(t.due_at)),
+        ("problem_id", json!(t.problem_id)),
+        ("cc_ids", json!(t.cc_ids)),
     ]
 }
 
@@ -260,6 +268,45 @@ async fn finalize(
         }
     }
 
+    // Nur Vorfälle hängen an einem Problem; das Problem muss existieren.
+    if t.ticket_type.as_deref() != Some("incident") {
+        t.problem_id = None;
+    }
+    if let Some(problem_id) = t.problem_id.filter(|p| before.is_none_or(|b| b.problem_id != Some(*p))) {
+        if problem_id == t.id {
+            return Err(AppError::invalid("Ein Ticket kann nicht sein eigenes Problem sein"));
+        }
+        let problem: Option<(Option<String>, String)> =
+            sqlx::query_as("SELECT ticket_type, status FROM tickets WHERE id = $1")
+                .bind(problem_id)
+                .fetch_optional(&mut *conn)
+                .await?;
+        match problem {
+            None => return Err(AppError::invalid(format!("Problem-Ticket #{problem_id} existiert nicht"))),
+            Some((ty, _)) if ty.as_deref() != Some("problem") => {
+                return Err(AppError::invalid(format!("Ticket #{problem_id} hat nicht den Typ „Problem“")))
+            }
+            Some((_, status)) if status == "closed" => {
+                return Err(AppError::invalid(format!("Problem-Ticket #{problem_id} ist bereits geschlossen")))
+            }
+            _ => {}
+        }
+    }
+
+    // CC: eindeutig, ohne den Anfragenden, nur existierende Personen mit E-Mail.
+    t.cc_ids.sort_unstable();
+    t.cc_ids.dedup();
+    t.cc_ids.retain(|id| *id != t.requester_id);
+    if !t.cc_ids.is_empty() {
+        let valid: Vec<i64> = sqlx::query_scalar("SELECT id FROM users WHERE id = ANY($1) AND email IS NOT NULL")
+            .bind(&t.cc_ids)
+            .fetch_all(&mut *conn)
+            .await?;
+        if valid.len() != t.cc_ids.len() {
+            return Err(AppError::invalid("CC: Person existiert nicht oder hat keine E-Mail-Adresse"));
+        }
+    }
+
     if before.is_none_or(|b| b.requester_id != t.requester_id) {
         t.organization_id = sqlx::query_scalar("SELECT organization_id FROM users WHERE id = $1")
             .bind(t.requester_id)
@@ -359,18 +406,37 @@ async fn write_effects(
 ) -> AppResult<()> {
     // Demodaten verschicken keine E-Mails.
     let send_mail = update_via != "seed";
+    let agents: Vec<(i64, String)> = if comments.is_empty() {
+        Vec::new()
+    } else {
+        sqlx::query_as("SELECT id, name FROM users WHERE role IN ('agent', 'admin') AND active AND email <> $1")
+            .bind(crate::automations::SYSTEM_EMAIL)
+            .fetch_all(&mut *conn)
+            .await?
+    };
     for (author_id, c, via) in comments {
         let body = render_placeholders(&c.body, t, Some(actor));
         let comment_id = insert_comment(conn, t.id, author_id, &body, c.public, &via).await?;
         events.push(AuditEvent::Comment { comment_id, public: c.public });
-        if send_mail && c.public && author_id != t.requester_id {
-            let role: Option<String> = sqlx::query_scalar("SELECT role FROM users WHERE id = $1")
-                .bind(author_id)
-                .fetch_optional(&mut *conn)
-                .await?;
-            if role.is_some_and(|r| r != "end-user") {
-                email::queue_ticket_mail(conn, t, email::TicketMail::Reply { body: &body }).await?;
+        let author: Option<(String, String)> = sqlx::query_as("SELECT name, role FROM users WHERE id = $1")
+            .bind(author_id)
+            .fetch_optional(&mut *conn)
+            .await?;
+        let (author_name, author_is_agent) = author.map(|(n, r)| (n, r != "end-user")).unwrap_or_default();
+        if send_mail && c.public && author_id != t.requester_id && author_is_agent {
+            email::queue_ticket_mail(conn, t, email::TicketMail::Reply { body: &body }).await?;
+        }
+        if !send_mail {
+            continue;
+        }
+        if author_is_agent {
+            for user_id in crate::notify::mentioned(&body, &agents).into_iter().filter(|id| *id != author_id) {
+                let text = format!("{author_name} hat dich in #{} „{}“ erwähnt", t.id, t.subject);
+                crate::notify::notify(conn, user_id, Some(t), "mention", &text, true).await?;
             }
+        } else if let Some(assignee) = t.assignee_id.filter(|_| c.public) {
+            let text = format!("{author_name} hat auf #{} „{}“ geantwortet", t.id, t.subject);
+            crate::notify::notify(conn, assignee, Some(t), "reply", &text, false).await?;
         }
     }
     for n in notifications {
@@ -426,6 +492,11 @@ pub async fn create_ticket(db: &PgPool, actor: &User, input: NewTicket, via: &st
         satisfaction_score: None,
         satisfaction_comment: None,
         satisfaction_at: None,
+        problem_id: input.problem_id,
+        followup_source_id: input.followup_source_id,
+        cc_ids: input.cc_ids,
+        sla_warn_key: None,
+        sla_breach_key: None,
     };
     validate_enums(&t)?;
     if t.status == "new" && t.assignee_id.is_some() {
@@ -448,8 +519,8 @@ pub async fn create_ticket(db: &PgPool, actor: &User, input: NewTicket, via: &st
     let t: Ticket = sqlx::query_as(
         "INSERT INTO tickets (subject, description, status, priority, ticket_type, channel, requester_id,
             submitter_id, assignee_id, group_id, organization_id, tags, custom_fields, sla_policy_id,
-            due_at, first_reply_at, solved_at, created_at, updated_at)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
+            due_at, first_reply_at, solved_at, created_at, updated_at, problem_id, followup_source_id, cc_ids)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22)
          RETURNING *",
     )
     .bind(&t.subject)
@@ -471,6 +542,9 @@ pub async fn create_ticket(db: &PgPool, actor: &User, input: NewTicket, via: &st
     .bind(t.solved_at)
     .bind(t.created_at)
     .bind(t.updated_at)
+    .bind(t.problem_id)
+    .bind(t.followup_source_id)
+    .bind(&t.cc_ids)
     .fetch_one(&mut *tx)
     .await?;
 
@@ -478,6 +552,11 @@ pub async fn create_ticket(db: &PgPool, actor: &User, input: NewTicket, via: &st
     let mut comments = vec![(first_author, first_comment, via.to_string())];
     comments.extend(fx.comments.into_iter().map(|c| (actor.id, c, "trigger".to_string())));
     events.extend(rule_events);
+    // Neu angelegtes Ticket, das (z. B. per Routing) jemand anderem zugewiesen wurde.
+    if let Some(assignee) = t.assignee_id.filter(|a| *a != actor.id && via != "seed") {
+        let text = format!("#{} „{}“ wurde dir zugewiesen", t.id, t.subject);
+        crate::notify::notify(&mut tx, assignee, Some(&t), "assigned", &text, false).await?;
+    }
     write_effects(&mut tx, &t, actor, comments, fx.notifications, &mut events, via).await?;
     insert_audit(&mut tx, t.id, Some(actor.id), via, &events).await?;
     webhooks::enqueue(&mut tx, "ticket.created", &t).await?;
@@ -503,8 +582,10 @@ pub async fn update_ticket(
 ) -> AppResult<Ticket> {
     let rule = match macro_id {
         Some(macro_id) => {
-            let m: Macro = sqlx::query_as("SELECT * FROM macros WHERE id = $1 AND active")
+            // Persönliche Makros darf nur ihr Besitzer anwenden.
+            let m: Macro = sqlx::query_as("SELECT * FROM macros WHERE id = $1 AND active AND (owner_id IS NULL OR owner_id = $2)")
                 .bind(macro_id)
+                .bind(actor.id)
                 .fetch_optional(db)
                 .await?
                 .ok_or(AppError::NotFound)?;
@@ -602,6 +683,12 @@ pub async fn update_ticket_with(
     if let Some(due) = changes.due_at {
         t.due_at = due;
     }
+    if let Some(problem) = changes.problem_id {
+        t.problem_id = problem;
+    }
+    if let Some(cc) = &changes.cc_ids {
+        t.cc_ids = cc.clone();
+    }
 
     // 2. Makro bzw. Automation anwenden
     if let Some(rule) = &rule {
@@ -660,7 +747,8 @@ pub async fn update_ticket_with(
     sqlx::query(
         "UPDATE tickets SET subject = $2, status = $3, priority = $4, ticket_type = $5, requester_id = $6,
             assignee_id = $7, group_id = $8, organization_id = $9, tags = $10, custom_fields = $11,
-            sla_policy_id = $12, due_at = $13, first_reply_at = $14, solved_at = $15, updated_at = $16
+            sla_policy_id = $12, due_at = $13, first_reply_at = $14, solved_at = $15, updated_at = $16,
+            problem_id = $17, cc_ids = $18
          WHERE id = $1",
     )
     .bind(t.id)
@@ -679,9 +767,17 @@ pub async fn update_ticket_with(
     .bind(t.first_reply_at)
     .bind(t.solved_at)
     .bind(t.updated_at)
+    .bind(t.problem_id)
+    .bind(&t.cc_ids)
     .execute(&mut *tx)
     .await?;
 
+    // Lösungstext eines Problems wird an alle Vorfälle weitergegeben.
+    let solve_note = comments.iter().find(|(_, c, _)| c.public).map(|(_, c, _)| c.body.clone());
+    if let Some(assignee) = t.assignee_id.filter(|a| t.assignee_id != before.assignee_id && *a != actor.id) {
+        let text = format!("{} hat dir #{} „{}“ zugewiesen", actor.name, t.id, t.subject);
+        crate::notify::notify(&mut tx, assignee, Some(&t), "assigned", &text, false).await?;
+    }
     write_effects(&mut tx, &t, actor, comments, std::mem::take(&mut fx.notifications), &mut events, via).await?;
     insert_audit(&mut tx, t.id, Some(actor.id), via, &events).await?;
     webhooks::enqueue(&mut tx, "ticket.updated", &t).await?;
@@ -689,7 +785,47 @@ pub async fn update_ticket_with(
         webhooks::enqueue(&mut tx, "ticket.solved", &t).await?;
     }
     tx.commit().await?;
+    if t.ticket_type.as_deref() == Some("problem") && t.status == "solved" && before.status != "solved" {
+        solve_incidents(db, actor, &t, solve_note).await?;
+    }
     Ok(t)
+}
+
+/// Löst alle offenen Vorfälle eines gelösten Problems (wie bei Zendesk) und
+/// informiert deren Anfragende mit dem Lösungstext des Problems.
+async fn solve_incidents(db: &PgPool, actor: &User, problem: &Ticket, note: Option<String>) -> AppResult<()> {
+    let incidents: Vec<i64> = sqlx::query_scalar(
+        "SELECT id FROM tickets WHERE problem_id = $1 AND status NOT IN ('solved', 'closed') ORDER BY id",
+    )
+    .bind(problem.id)
+    .fetch_all(db)
+    .await?;
+    let body = note.unwrap_or_else(|| "Das zugrunde liegende Problem wurde behoben. Ihre Anfrage ist damit gelöst.".into());
+    for id in incidents {
+        let changes = TicketChanges {
+            status: Some("solved".into()),
+            comment: Some(CommentChange { body: body.clone(), public: true, author_id: None }),
+            ..Default::default()
+        };
+        // Einzelne Vorfälle (z. B. fehlende Pflichtfelder) blockieren die anderen nicht.
+        if let Err(e) = Box::pin(update_ticket_with(db, actor, id, changes, None, "problem")).await {
+            tracing::warn!(ticket = id, problem = problem.id, "Vorfall nicht gelöst: {}", e.public_message());
+            let note = TicketChanges {
+                comment: Some(CommentChange {
+                    body: format!(
+                        "Problem #{} wurde gelöst, dieser Vorfall konnte nicht automatisch gelöst werden: {}",
+                        problem.id,
+                        e.public_message()
+                    ),
+                    public: false,
+                    author_id: None,
+                }),
+                ..Default::default()
+            };
+            Box::pin(update_ticket_with(db, actor, id, note, None, "problem")).await.ok();
+        }
+    }
+    Ok(())
 }
 
 /// Führt ein Ticket in ein anderes zusammen (wie bei Zendesk): Der Verlauf der

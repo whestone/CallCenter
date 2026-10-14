@@ -8,6 +8,7 @@
       <legend>{% if is_call %}Anrufer{% else %}Anfragender{% endif %}</legend>
       <input type="hidden" name="requester_id" id="requester_id" value="{{ requester_id }}">
       {% if !call_id.is_empty() %}<input type="hidden" name="call_id" value="{{ call_id }}">{% endif %}
+      {% if !followup.is_empty() %}<input type="hidden" name="followup_source_id" value="{{ followup }}">{% endif %}
       <div id="requester-picked" class="picked"{% if requester_id.is_empty() %} hidden{% endif %}>
         <span id="requester-picked-label">{{ requester_label }}</span>
         <button type="button" class="link" data-clear-requester>ändern</button>
@@ -34,7 +35,9 @@
 
     <fieldset class="card">
       <legend>Anliegen</legend>
-      <label>Betreff<input type="text" name="subject" required></label>
+      {% if !followup.is_empty() %}<p class="small">↪ Folgeticket zu <a href="/tickets/{{ followup }}">#{{ followup }}</a></p>{% endif %}
+      <label>Betreff<input type="text" name="subject" value="{{ subject_prefill }}" required></label>
+      <label>CC <span class="muted small">(optional, E-Mail-Adressen mit Komma getrennt)</span><input type="text" name="cc" autocomplete="off"></label>
       <label>{% if is_call %}Gesprächsnotiz{% else %}Beschreibung{% endif %}
         <textarea name="description" rows="7" required></textarea>
       </label>

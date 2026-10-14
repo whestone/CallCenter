@@ -3,8 +3,12 @@ mod auth;
 mod automations;
 mod email;
 mod error;
+mod escalation;
 mod kb;
+mod markdown;
 mod models;
+mod notify;
+mod presence;
 mod routing;
 mod rules;
 mod security;
@@ -26,6 +30,7 @@ use tower_http::{services::ServeDir, set_header::SetResponseHeaderLayer, trace::
 #[derive(Clone)]
 pub struct AppState {
     pub db: sqlx::PgPool,
+    pub presence: std::sync::Arc<presence::Presence>,
 }
 
 #[tokio::main]
@@ -44,7 +49,7 @@ async fn main() -> anyhow::Result<()> {
     sqlx::migrate!().run(&db).await?;
     seed::run(&db).await?;
 
-    let state = AppState { db };
+    let state = AppState { db, presence: Default::default() };
     automations::spawn(state.clone());
     email::spawn_sender(state.db.clone());
     webhooks::spawn(state.db.clone());

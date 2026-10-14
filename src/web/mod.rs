@@ -6,6 +6,7 @@ mod integrations;
 mod kb;
 mod lists;
 mod mail;
+mod notifications;
 mod people;
 mod portal;
 mod profile;
@@ -53,6 +54,8 @@ pub fn router() -> Router<AppState> {
         .merge(kb::router())
         .merge(integrations::router())
         .merge(telephony::router())
+        .merge(notifications::router())
+        .merge(admin::personal_router())
         .merge(admin::router())
 }
 

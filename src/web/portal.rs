@@ -307,7 +307,8 @@ async fn show(State(st): State<AppState>, PortalUser(me): PortalUser, Path(id): 
                 initials: initials(&author),
                 from_support: role != "end-user",
                 author,
-                body,
+                // Formatierter Text (HTML, sicher erzeugt).
+                body: crate::markdown::render(&body),
                 created: fmt_dt(created),
                 attachments: attachments.get(&cid).map(|l| l.iter().map(Into::into).collect()).unwrap_or_default(),
             })

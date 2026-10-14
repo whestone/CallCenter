@@ -14,12 +14,16 @@
     <input type="hidden" name="orig_assignee_id" value="{{ orig_assignee_id }}">
     <input type="hidden" name="orig_group_id" value="{{ orig_group_id }}">
     <input type="hidden" name="orig_tags" value="{{ tags }}">
+    <input type="hidden" name="orig_problem_id" value="{{ orig_problem_id }}">
+    <input type="hidden" name="orig_cc" value="{{ cc }}">
+    <input type="hidden" name="seen_audit" value="{{ seen_audit }}">
     <aside class="props">
       <h3>Ticket #{{ id }}</h3>
       <div class="meta">
         <span class="status-pill s-{{ status }}">{{ status_label }}</span>
         <span class="muted">{{ channel_label }} · {{ created }}</span>
       </div>
+      {% if followup_source != 0 %}<p class="small">↪ Folgeticket zu <a href="/tickets/{{ followup_source }}">#{{ followup_source }}</a></p>{% endif %}
 
       <label>Anfragender
         <a class="requester-link" href="/users/{{ requester_id }}">{{ requester_name }}</a>
@@ -41,6 +45,12 @@
           <select name="priority">{% for o in priority_opts %}<option value="{{ o.value }}"{% if o.selected %} selected{% endif %}>{{ o.label }}</option>{% endfor %}</select>
         </label>
       </div>
+      <label data-show-if-type="incident"{% if ticket_type != "incident" %} hidden{% endif %}>Problem (Ursache)
+        <select name="problem_id">{% for o in problem_opts %}<option value="{{ o.value }}"{% if o.selected %} selected{% endif %}>{{ o.label }}</option>{% endfor %}</select>
+      </label>
+      <label>CC
+        <input type="text" name="cc" value="{{ cc }}" placeholder="E-Mail-Adressen, mit Komma getrennt">
+      </label>
 
       {% if !cf_inputs.is_empty() %}
       <h4>Weitere Felder</h4>
@@ -73,6 +83,9 @@
         <input class="subject-input" type="text" name="subject" value="{{ subject }}" aria-label="Betreff">
         <span class="muted">aktualisiert {{ updated }}</span>
       </div>
+      <div id="presence" class="presence" aria-live="polite"
+           hx-get="/tickets/{{ id }}/presence" hx-trigger="load, every 5s"
+           hx-vals='js:{seen: {{ seen_audit }}, composing: window.ccComposing ? ccComposing() : 0}'></div>
 
       <div class="comments">
         {% for c in comments %}
@@ -84,7 +97,7 @@
               {% if !c.public %}<span class="tag-internal">Interne Notiz</span>{% endif %}
               <span class="muted">{{ c.created }} · via {{ c.via }}</span>
             </header>
-            <div class="text">{{ c.body }}</div>
+            <div class="text md">{{ c.html|safe }}</div>
             {% if !c.attachments.is_empty() %}
             <ul class="attachments">
               {% for a in c.attachments %}<li><a href="/attachments/{{ a.id }}" target="_blank" rel="noopener" hx-boost="false">📎 {{ a.filename }}</a> <span class="muted small">{{ a.size }}</span></li>{% endfor %}
@@ -96,12 +109,25 @@
       </div>
 
       {% if !closed %}
+      {% if !warning.is_empty() %}<div class="alert" role="alert">{{ warning }}</div>{% endif %}
       <div class="composer">
         <div class="composer-tabs">
-          <label><input type="radio" name="public" value="1" checked> Öffentliche Antwort</label>
-          <label><input type="radio" name="public" value="0"> Interne Notiz</label>
+          <label><input type="radio" name="public" value="1"{% if !draft_internal %} checked{% endif %}> Öffentliche Antwort</label>
+          <label><input type="radio" name="public" value="0"{% if draft_internal %} checked{% endif %}> Interne Notiz</label>
         </div>
-        <textarea name="comment" rows="5" placeholder="Antwort schreiben …"></textarea>
+        <div class="format-bar" role="toolbar" aria-label="Formatierung">
+          <button type="button" data-fmt="bold" title="Fett (Strg+B)"><b>B</b></button>
+          <button type="button" data-fmt="italic" title="Kursiv (Strg+I)"><i>I</i></button>
+          <button type="button" data-fmt="ul" title="Aufzählung">• Liste</button>
+          <button type="button" data-fmt="ol" title="Nummerierte Liste">1. Liste</button>
+          <button type="button" data-fmt="link" title="Link einfügen">🔗 Link</button>
+          <button type="button" data-fmt="code" title="Code">&lt;/&gt;</button>
+          <span class="muted small format-hint">@Name erwähnt Kollegen · Strg+Enter sendet</span>
+        </div>
+        <div class="mention-wrap">
+          <textarea name="comment" id="comment" rows="5" placeholder="Antwort schreiben …" data-mentions>{{ draft }}</textarea>
+          <ul class="mention-list" role="listbox" hidden></ul>
+        </div>
         <div class="composer-tools">
           <select class="macro-select" name="macro_id" form="macro-form" aria-label="Makro anwenden" data-auto-submit>
             <option value="" selected>⚡ Makro anwenden …</option>
@@ -115,6 +141,9 @@
         </div>
         <div class="composer-actions">
           <span class="unsaved-hint" role="status">● Ungespeicherte Änderungen</span>
+          <label class="time-field" title="Bearbeitungszeit – läuft automatisch mit, kann überschrieben oder geleert werden">⏱
+            <input type="text" name="time_spent" data-timer inputmode="numeric" aria-label="Bearbeitungszeit (mm:ss)" autocomplete="off">
+          </label>
           <input type="hidden" name="status" value="{{ status }}">
           <div class="split-submit">
             <button class="btn primary split-main" type="submit">Absenden als <strong>{{ status_label }}</strong></button>
@@ -130,7 +159,8 @@
         </div>
       </div>
       {% else %}
-      <div class="alert info">Dieses Ticket ist geschlossen und kann nicht mehr bearbeitet werden.</div>
+      <div class="alert info">Dieses Ticket ist geschlossen und kann nicht mehr bearbeitet werden.
+        <a class="btn" href="/tickets/new?channel=web&followup={{ id }}">↪ Folgeticket anlegen</a></div>
       {% endif %}
 
       <details class="audit-log">
@@ -160,6 +190,35 @@
       </dl>
       <a class="btn wide" href="/tickets/new?channel=phone&requester_id={{ requester_id }}">📞 Neues Anruf-Ticket</a>
     </div>
+    {% if ticket_type == "problem" %}
+    <div class="card">
+      <h4>Verknüpfte Vorfälle ({{ incidents.len() }})</h4>
+      <p class="muted small">Wird dieses Problem gelöst, werden alle offenen Vorfälle mitgelöst – die öffentliche Antwort geht an alle Betroffenen.</p>
+      <ul class="mini-list">
+        {% for o in incidents %}
+        <li><span class="status-badge s-{{ o.status }}" title="{{ o.status_label }}">{{ o.status_label }}</span>
+          <a href="/tickets/{{ o.id }}">#{{ o.id }} {{ o.subject }}</a></li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+    {% if !followups.is_empty() %}
+    <div class="card">
+      <h4>Folgetickets</h4>
+      <ul class="mini-list">
+        {% for o in followups %}
+        <li><span class="status-badge s-{{ o.status }}" title="{{ o.status_label }}">{{ o.status_label }}</span>
+          <a href="/tickets/{{ o.id }}">#{{ o.id }} {{ o.subject }}</a></li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+    {% if !time_total.is_empty() %}
+    <div class="card">
+      <h4>Zeiterfassung</h4>
+      <dl class="kv"><dt>Gesamt</dt><dd>{{ time_total }}</dd><dt>Davon du</dt><dd>{% if time_mine.is_empty() %}–{% else %}{{ time_mine }}{% endif %}</dd></dl>
+    </div>
+    {% endif %}
     {% if !calls.is_empty() %}
     <div class="card">
       <h4>Anrufe</h4>

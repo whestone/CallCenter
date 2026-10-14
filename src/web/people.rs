@@ -1,6 +1,6 @@
 use askama::Template;
 use axum::{
-    response::{Html, Response},
+    response::{Html, IntoResponse, Response},
     routing::get,
     Router,
 };
@@ -39,7 +39,6 @@ struct UserRow {
     name: String,
     email: String,
     phone: String,
-    role_label: &'static str,
     org: String,
 }
 
@@ -65,7 +64,6 @@ async fn user_rows(db: &PgPool, users: &[User]) -> AppResult<Vec<UserRow>> {
             name: u.name.clone(),
             email: u.email.clone().unwrap_or_default(),
             phone: u.phone.clone().unwrap_or_default(),
-            role_label: role_label(&u.role),
             org: u.organization_id.and_then(|id| orgs.get(&id).cloned()).unwrap_or_default(),
         })
         .collect())
@@ -79,11 +77,11 @@ async fn org_opts(db: &PgPool, selected: Option<i64>) -> AppResult<Vec<Opt>> {
 async fn users_index(State(st): State<AppState>, WebAgent(me): WebAgent, Query(q): Query<SearchQuery>) -> WebResult<Html<String>> {
     let query = q.q.unwrap_or_default();
     let users: Vec<User> = if query.trim().is_empty() {
-        sqlx::query_as("SELECT * FROM users ORDER BY role = 'end-user', updated_at DESC LIMIT 100")
+        sqlx::query_as("SELECT * FROM users WHERE role = 'end-user' ORDER BY updated_at DESC LIMIT 100")
             .fetch_all(&st.db)
             .await?
     } else {
-        service::search_users(&st.db, &query, 100).await?
+        service::search_users(&st.db, &query, 100, true).await?
     };
     page(UsersPage {
         nav: Nav::new(&me, "users"),
@@ -99,20 +97,22 @@ struct UserForm {
     email: Option<String>,
     phone: Option<String>,
     organization_id: Option<String>,
-    role: Option<String>,
+    /// Nur im Admin-Formular vorhanden: dann bedeutet ein fehlendes `active` "deaktiviert".
+    active_field: Option<String>,
     active: Option<String>,
     portal_password: Option<String>,
 }
 
 impl UserForm {
+    /// Kunden-Formular: Rollen werden hier nie geändert (Mitarbeitende → Verwaltung → Team).
     fn into_input(self, admin: bool) -> UserInput {
         UserInput {
             name: self.name,
             email: self.email,
             phone: self.phone,
             organization_id: Some(parse_id(&self.organization_id)),
-            role: if admin { non_empty(&self.role) } else { None },
-            active: if admin && self.role.is_some() { Some(self.active.is_some()) } else { None },
+            role: None,
+            active: if admin && self.active_field.is_some() { Some(self.active.is_some()) } else { None },
             password: self.portal_password,
             availability: None,
             capacity: None,
@@ -139,23 +139,25 @@ struct UserPage {
     initials: String,
     email: String,
     phone: String,
-    role_label: &'static str,
     is_end_user: bool,
     can_edit: bool,
     can_admin: bool,
     active: bool,
     created: String,
     org_opts: Vec<Opt>,
-    role_opts: Vec<Opt>,
     rows: Vec<TicketRow>,
 }
 
-async fn show_user(State(st): State<AppState>, WebAgent(me): WebAgent, Path(id): Path<i64>) -> WebResult<Html<String>> {
-    let u: User = sqlx::query_as("SELECT * FROM users WHERE id = $1")
-        .bind(id)
-        .fetch_optional(&st.db)
-        .await?
-        .ok_or(AppError::NotFound)?;
+async fn load_user(db: &PgPool, id: i64) -> AppResult<User> {
+    sqlx::query_as("SELECT * FROM users WHERE id = $1").bind(id).fetch_optional(db).await?.ok_or(AppError::NotFound)
+}
+
+async fn show_user(State(st): State<AppState>, WebAgent(me): WebAgent, Path(id): Path<i64>) -> WebResult<Response> {
+    let u = load_user(&st.db, id).await?;
+    // Mitarbeitende werden ausschließlich unter Verwaltung → Team gepflegt.
+    if u.is_agent() {
+        return if me.is_admin() { Ok(see_other(&format!("/admin/agents/{id}"))) } else { Err(AppError::NotFound.into()) };
+    }
     let tickets: Vec<Ticket> = sqlx::query_as(
         "SELECT * FROM tickets WHERE requester_id = $1 OR assignee_id = $1 ORDER BY updated_at DESC LIMIT 100",
     )
@@ -169,16 +171,15 @@ async fn show_user(State(st): State<AppState>, WebAgent(me): WebAgent, Path(id):
         name: u.name.clone(),
         email: u.email.clone().unwrap_or_default(),
         phone: u.phone.clone().unwrap_or_default(),
-        role_label: role_label(&u.role),
         is_end_user: !u.is_agent(),
         can_edit: me.is_admin() || !u.is_agent() || me.id == u.id,
         can_admin: me.is_admin(),
         active: u.active,
         created: fmt_dt(u.created_at),
         org_opts: org_opts(&st.db, u.organization_id).await?,
-        role_opts: enum_opts(&ROLES, role_label, Some(&u.role), None),
         rows: ticket_rows(&st.db, &tickets).await?,
     })
+    .map(IntoResponse::into_response)
 }
 
 async fn update_user(
@@ -187,6 +188,9 @@ async fn update_user(
     Path(id): Path<i64>,
     Form(f): Form<UserForm>,
 ) -> WebResult<Response> {
+    if load_user(&st.db, id).await?.is_agent() {
+        return Err(AppError::invalid("Mitarbeitende werden unter Verwaltung → Team bearbeitet").into());
+    }
     let admin = me.is_admin();
     service::update_user(&st.db, &me, id, f.into_input(admin)).await?;
     Ok(see_other(&format!("/users/{id}")))
@@ -332,7 +336,7 @@ async fn show_org(State(st): State<AppState>, WebAgent(me): WebAgent, Path(id): 
         .fetch_optional(&st.db)
         .await?
         .ok_or(AppError::NotFound)?;
-    let users: Vec<User> = sqlx::query_as("SELECT * FROM users WHERE organization_id = $1 ORDER BY name")
+    let users: Vec<User> = sqlx::query_as("SELECT * FROM users WHERE organization_id = $1 AND role = 'end-user' ORDER BY name")
         .bind(id)
         .fetch_all(&st.db)
         .await?;
@@ -385,7 +389,7 @@ async fn search(State(st): State<AppState>, WebAgent(me): WebAgent, Query(q): Qu
         (Vec::new(), Vec::new())
     } else {
         let has_filters = query.contains(':') || query.trim_start().starts_with('#');
-        let users = if has_filters { Vec::new() } else { service::search_users(&st.db, &query, 20).await? };
+        let users = if has_filters { Vec::new() } else { service::search_users(&st.db, &query, 20, true).await? };
         (service::search_tickets(&st.db, &query, &me).await?, users)
     };
     page(SearchPage {

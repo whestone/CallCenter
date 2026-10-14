@@ -1145,20 +1145,24 @@ pub async fn search_tickets(db: &PgPool, query: &str, me: &User) -> AppResult<Ve
     Ok(qb.build_query_as::<Ticket>().fetch_all(db).await?)
 }
 
-pub async fn search_users(db: &PgPool, query: &str, limit: i64) -> AppResult<Vec<User>> {
+/// Personensuche (Name, E-Mail, Telefon). `customers_only`: nur Endkunden, keine Mitarbeitenden.
+pub async fn search_users(db: &PgPool, query: &str, limit: i64, customers_only: bool) -> AppResult<Vec<User>> {
     let query = query.trim();
     // Telefon-Treffer erst ab 4 Ziffern, sonst passt z. B. "#5" auf jede Nummer mit einer 5.
     let phone = normalize_phone(query);
     let phone = if phone.chars().filter(char::is_ascii_digit).count() >= 4 { phone } else { String::new() };
     Ok(sqlx::query_as(
         "SELECT * FROM users
-         WHERE name ILIKE $1 OR email ILIKE $1 OR ($2 <> '' AND phone LIKE $3)
+         WHERE (name ILIKE $1 OR email ILIKE $1 OR ($2 <> '' AND phone LIKE $3))
+           AND (role = 'end-user' OR NOT $5)
+           AND email IS DISTINCT FROM 'system@automation.invalid'
          ORDER BY role <> 'end-user', name LIMIT $4",
     )
     .bind(like_pattern(query))
     .bind(&phone)
     .bind(format!("%{phone}%"))
     .bind(limit)
+    .bind(customers_only)
     .fetch_all(db)
     .await?)
 }

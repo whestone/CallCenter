@@ -723,7 +723,7 @@ async fn requester_lookup(
         .to_string();
     let mut hits = Vec::new();
     if !query.is_empty() {
-        let users = service::search_users(&st.db, &query, 6).await?;
+        let users = service::search_users(&st.db, &query, 6, true).await?;
         let counts: HashMap<i64, i64> = sqlx::query_as::<_, (i64, i64)>(
             "SELECT requester_id, count(*) FROM tickets
              WHERE requester_id = ANY($1) AND status IN ('new', 'open', 'pending', 'hold')

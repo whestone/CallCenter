@@ -7,7 +7,7 @@
       <div class="avatar">{{ initials }}</div>
       <div>
         <h1>{{ name }}</h1>
-        <span class="muted">{{ role_label }} · seit {{ created }}{% if !active %} · <strong>deaktiviert</strong>{% endif %}</span>
+        <span class="muted">Kunde seit {{ created }}{% if !active %} · <strong>deaktiviert</strong>{% endif %}</span>
       </div>
     </div>
     {% if is_end_user %}
@@ -34,10 +34,8 @@
         <p class="muted small">Damit kann sich der Kunde unter <a href="/portal">/portal</a> anmelden.</p>
         {% endif %}
         {% if can_admin %}
-        <label>Rolle
-          <select name="role">{% for o in role_opts %}<option value="{{ o.value }}"{% if o.selected %} selected{% endif %}>{{ o.label }}</option>{% endfor %}</select>
-        </label>
-        <label class="check"><input type="checkbox" name="active"{% if active %} checked{% endif %}> Aktiv</label>
+        <input type="hidden" name="active_field" value="1">
+        <label class="check"><input type="checkbox" name="active"{% if active %} checked{% endif %}> Aktiv (Portalzugang möglich)</label>
         {% endif %}
         <button class="btn primary wide" type="submit">Speichern</button>
       </fieldset>

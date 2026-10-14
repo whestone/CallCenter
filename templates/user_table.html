@@ -1,9 +1,9 @@
 {% if users.is_empty() %}
-<div class="empty">Keine Benutzer gefunden.</div>
+<div class="empty">Keine Kunden gefunden.</div>
 {% else %}
 <div class="table-wrap">
 <table class="tickets">
-  <thead><tr><th>Name</th><th>E-Mail</th><th>Telefon</th><th>Organisation</th><th>Rolle</th></tr></thead>
+  <thead><tr><th>Name</th><th>E-Mail</th><th>Telefon</th><th>Organisation</th></tr></thead>
   <tbody>
   {% for u in users %}
     <tr>
@@ -11,7 +11,6 @@
       <td>{{ u.email }}</td>
       <td class="nowrap">{{ u.phone }}</td>
       <td>{{ u.org }}</td>
-      <td class="muted">{{ u.role_label }}</td>
     </tr>
   {% endfor %}
   </tbody>

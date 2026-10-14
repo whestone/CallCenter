@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Agenten{% endblock %}
+{% block title %}Team{% endblock %}
 {% block content %}
 <div class="page">
   <h1>Verwaltung</h1>
@@ -24,7 +24,7 @@
     </table>
     </div>
     <form class="card" method="post" action="/admin/agents">
-      <h3>Neuer Agent</h3>
+      <h3>Neues Teammitglied</h3>
       <label>Name<input type="text" name="name" required></label>
       <label>E-Mail<input type="email" name="email" required></label>
       <label>Passwort<input type="password" name="password" minlength="8" required autocomplete="new-password"></label>

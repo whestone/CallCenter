@@ -305,7 +305,7 @@ struct SearchParams {
 }
 
 async fn search_users(State(st): State<AppState>, ApiAgent(_): ApiAgent, Query(q): Query<SearchParams>) -> JsonResult {
-    let users = service::search_users(&st.db, &q.query, 100).await?;
+    let users = service::search_users(&st.db, &q.query, 100, false).await?;
     Ok(Json(json!({ "users": users, "count": users.len() })))
 }
 

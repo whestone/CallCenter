@@ -57,6 +57,9 @@ Abgleich mit modernen Helpdesk-/Callcenter-Systemen (Zendesk Suite, Freshdesk, H
 | CSV-Export (Excel-kompatibel) | ✅ Phase 1 |
 | Benutzerdefinierte Berichte, geplante Berichte per E-Mail | 📋 |
 
+## Backlog: Kunden und Benutzer trennen
+Endkunden und Mitarbeitende (Agenten/Admins) liegen heute gemeinsam in `users` und erscheinen gemeinsam unter „Kunden & Benutzer“. Künftig getrennt: eigene Kundenverwaltung (Kontakte, Firmen, Portalzugang) und eigene Benutzerverwaltung für Mitarbeitende – in der Oberfläche und voraussichtlich auch im Datenmodell.
+
 ## Backlog: Mehrere Projekte (Mandanten)
 Ziel: getrennte Projekte, z. B. „Demo“ und „Service“. Entscheidungen bereits getroffen:
 

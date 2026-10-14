@@ -70,7 +70,24 @@ async fn main() -> anyhow::Result<()> {
         .unwrap_or_else(|_| "127.0.0.1:3000".into())
         .parse()?;
     let listener = tokio::net::TcpListener::bind(addr).await?;
-    tracing::info!("CallCenter läuft auf http://{addr}");
+    tracing::info!("CallCenter läuft auf http://{addr} (auch http://localhost:{})", addr.port());
+
+    // "localhost" wird unter Windows zuerst als IPv6 (::1) aufgelöst. Bei lokaler
+    // IPv4-Bindung zusätzlich auf ::1 lauschen, sonst laden manche Browser nicht.
+    if addr.ip() == std::net::Ipv4Addr::LOCALHOST {
+        let v6 = SocketAddr::from((std::net::Ipv6Addr::LOCALHOST, addr.port()));
+        match tokio::net::TcpListener::bind(v6).await {
+            Ok(listener_v6) => {
+                let app_v6 = app.clone();
+                tokio::spawn(async move {
+                    if let Err(e) = axum::serve(listener_v6, app_v6).await {
+                        tracing::warn!("IPv6-Listener beendet: {e}");
+                    }
+                });
+            }
+            Err(e) => tracing::warn!("IPv6 (::1) nicht verfügbar: {e}"),
+        }
+    }
     axum::serve(listener, app).await?;
     Ok(())
 }

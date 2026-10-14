@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Suche{% endblock %}
+{% block content %}
+<div class="page">
+  <div class="pane-head">
+    <h1>Suche</h1>
+    <form method="get" action="/search" class="inline-search">
+      <input type="search" name="q" value="{{ q }}" placeholder="z. B. drucker status:open tag:anruf assignee:me" autofocus>
+      <button class="btn">Suchen</button>
+    </form>
+  </div>
+  <p class="muted small">Filter: <code>status:</code> (new, open, pending, hold, solved, closed, unsolved) · <code>priority:</code> · <code>type:</code> · <code>channel:</code> · <code>tag:</code> · <code>assignee:me</code>/<code>none</code>/E-Mail · <code>requester:</code> E-Mail/Telefon/Name · <code>group:</code> · <code>organization:</code></p>
+  {% if !q.is_empty() %}
+  <h3>Tickets ({{ rows.len() }})</h3>
+  {% include "ticket_table.html" %}
+  {% if !users.is_empty() %}
+  <h3>Benutzer ({{ users.len() }})</h3>
+  {% include "user_table.html" %}
+  {% endif %}
+  {% endif %}
+</div>
+{% endblock %}

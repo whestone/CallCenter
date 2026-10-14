@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}{{ name }}{% endblock %}
+{% block content %}
+<div class="page">
+  <div class="pane-head"><h1>{{ name }}</h1><span class="muted">{{ domains }}</span></div>
+  <div class="two-col">
+    <section>
+      <h3>Tickets</h3>
+      {% include "ticket_table.html" %}
+      <h3>Benutzer</h3>
+      {% include "user_table.html" %}
+    </section>
+    <form class="card" method="post" action="/organizations/{{ id }}">
+      <h3>Details</h3>
+      <fieldset class="plain"{% if !can_admin %} disabled{% endif %}>
+        <label>Name<input type="text" name="name" value="{{ name }}" required></label>
+        <label>Domains<input type="text" name="domain_names" value="{{ domains }}"></label>
+        <label>Notizen<textarea name="notes" rows="5">{{ notes }}</textarea></label>
+        <button class="btn primary wide" type="submit">Speichern</button>
+      </fieldset>
+    </form>
+  </div>
+</div>
+{% endblock %}

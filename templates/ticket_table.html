@@ -1,0 +1,30 @@
+{% if rows.is_empty() %}
+<div class="empty">Keine Tickets gefunden.</div>
+{% else %}
+<div class="table-wrap">
+<table class="tickets">
+  <thead>
+    <tr>
+      <th class="narrow"></th><th class="narrow">ID</th><th>Betreff</th><th>Anfragender</th>
+      <th>Priorität</th><th>Bearbeiter</th><th>Gruppe</th><th>Kanal</th><th>SLA</th><th>Aktualisiert</th>
+    </tr>
+  </thead>
+  <tbody>
+  {% for r in rows %}
+    <tr>
+      <td><span class="status-badge s-{{ r.status }}" title="{{ r.status_label }}">{{ r.status_letter }}</span></td>
+      <td class="muted">#{{ r.id }}</td>
+      <td class="subject"><a href="/tickets/{{ r.id }}">{{ r.subject }}</a></td>
+      <td>{{ r.requester }}</td>
+      <td>{% if !r.priority.is_empty() %}<span class="prio p-{{ r.priority }}">{{ r.priority_label }}</span>{% endif %}</td>
+      <td>{{ r.assignee }}</td>
+      <td>{{ r.group }}</td>
+      <td>{{ r.channel_label }}</td>
+      <td>{% if !r.sla_text.is_empty() %}<span class="{{ r.sla_class }}">{{ r.sla_text }}</span>{% endif %}</td>
+      <td class="muted nowrap">{{ r.updated }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endif %}

@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block title %}Mein Profil{% endblock %}
+{% block content %}
+<div class="page narrow-page">
+  <h1>Mein Profil</h1>
+  <p class="muted">{{ name }} · {{ email }} · {{ role_label }}</p>
+  {% if !notice.is_empty() %}<div class="alert info">{{ notice }}</div>{% endif %}
+  {% if !error.is_empty() %}<div class="alert">{{ error }}</div>{% endif %}
+
+  <section class="card">
+    <h3>API-Tokens</h3>
+    <p class="muted small">Für Integrationen (z. B. Telefonanlage, Skripte). Ein Token handelt mit deinen Rechten. Verwendung:
+      <code>Authorization: Bearer &lt;token&gt;</code> oder HTTP Basic mit <code>{{ email }}/token</code> als Benutzer und dem Token als Passwort.</p>
+    {% if !new_token.is_empty() %}
+    <div class="alert info token-once">
+      <strong>Neuer Token – jetzt kopieren, er wird nur einmal angezeigt:</strong>
+      <div class="token-row"><code id="new-token">{{ new_token }}</code>
+        <button class="btn" type="button" onclick="navigator.clipboard.writeText(document.getElementById('new-token').textContent); this.textContent='Kopiert ✓'">Kopieren</button></div>
+    </div>
+    {% endif %}
+    {% if tokens.is_empty() %}
+    <p class="muted">Noch keine Tokens.</p>
+    {% else %}
+    <div class="table-wrap">
+    <table class="tickets">
+      <thead><tr><th>Name</th><th>Erstellt</th><th>Zuletzt benutzt</th><th></th></tr></thead>
+      <tbody>
+      {% for t in tokens %}
+      <tr>
+        <td class="subject">{{ t.name }}</td><td>{{ t.created }}</td><td>{{ t.last_used }}</td>
+        <td><form method="post" action="/me/tokens/{{ t.id }}/delete" hx-confirm="Token „{{ t.name }}“ widerrufen? Integrationen damit funktionieren danach nicht mehr."><button class="link danger">Widerrufen</button></form></td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    </div>
+    {% endif %}
+    <form method="post" action="/me/tokens" class="inline-form">
+      <input type="text" name="name" placeholder="Name, z. B. Telefonanlage" required aria-label="Token-Name">
+      <button class="btn primary" type="submit">Token erstellen</button>
+    </form>
+  </section>
+
+  <section class="card">
+    <h3>Zwei-Faktor-Anmeldung {% if twofa_enabled %}<span class="pill pill-ok">aktiv</span>{% else %}<span class="pill">aus</span>{% endif %}</h3>
+    {% if twofa_enabled %}
+    <p class="muted small">Bei der Anmeldung wird zusätzlich ein Code aus Ihrer Authenticator-App abgefragt. Die API akzeptiert dann nur noch API-Tokens, keine Passwörter.</p>
+    <form method="post" action="/me/2fa/disable" class="inline-form">
+      <input type="password" name="password" placeholder="Passwort zur Bestätigung" required autocomplete="current-password" aria-label="Passwort">
+      <button class="btn danger" type="submit">Ausschalten</button>
+    </form>
+    {% else if !setup_qr.is_empty() %}
+    <div class="twofa-setup">
+      <div class="qr">{{ setup_qr|safe }}</div>
+      <div>
+        <ol class="small">
+          <li>Authenticator-App öffnen (z. B. Google/Microsoft Authenticator, 1Password).</li>
+          <li>QR-Code scannen – oder den Schlüssel manuell eingeben:<br><code class="secret">{{ setup_secret }}</code></li>
+          <li>Den angezeigten 6-stelligen Code hier bestätigen.</li>
+        </ol>
+        <form method="post" action="/me/2fa/enable" class="inline-form">
+          <input type="text" name="code" inputmode="numeric" autocomplete="one-time-code" placeholder="123456" required class="code-input" aria-label="Code">
+          <button class="btn primary" type="submit">Aktivieren</button>
+        </form>
+        <form method="post" action="/me/2fa/cancel"><button class="link">Abbrechen</button></form>
+      </div>
+    </div>
+    {% else %}
+    <p class="muted small">Schützt Ihr Konto zusätzlich mit einem Code aus einer Authenticator-App auf dem Smartphone.</p>
+    <form method="post" action="/me/2fa/setup"><button class="btn primary" type="submit">Einrichten</button></form>
+    {% endif %}
+  </section>
+
+  <form class="card" method="post" action="/me/password">
+    <h3>Passwort ändern</h3>
+    <label>Aktuelles Passwort<input type="password" name="current" required autocomplete="current-password"></label>
+    <div class="row2">
+      <label>Neues Passwort<input type="password" name="new_password" minlength="8" required autocomplete="new-password"></label>
+      <label>Wiederholen<input type="password" name="repeat" minlength="8" required autocomplete="new-password"></label>
+    </div>
+    <button class="btn primary" type="submit">Passwort ändern</button>
+  </form>
+</div>
+{% endblock %}

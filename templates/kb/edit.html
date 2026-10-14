@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}{% if id == 0 %}Neuer Artikel{% else %}{{ title }}{% endif %}{% endblock %}
+{% block content %}
+<div class="page narrow-page">
+  <p><a href="/kb">← Wissensdatenbank</a></p>
+  <form class="card" method="post" action="{% if id == 0 %}/kb{% else %}/kb/{{ id }}{% endif %}">
+    <h3>{% if id == 0 %}Neuer Artikel{% else %}Artikel bearbeiten{% endif %}</h3>
+    <label>Titel<input type="text" name="title" value="{{ title }}" required placeholder="z. B. Router neu starten"></label>
+    <div class="row2">
+      <label>Kategorie
+        <select name="category_id">{% for o in category_opts %}<option value="{{ o.value }}"{% if o.selected %} selected{% endif %}>{{ o.label }}</option>{% endfor %}</select>
+      </label>
+      <label>Status
+        <select name="status">
+          <option value="draft"{% if !published %} selected{% endif %}>Entwurf (nur intern)</option>
+          <option value="published"{% if published %} selected{% endif %}>Veröffentlicht (Hilfe-Center)</option>
+        </select>
+      </label>
+    </div>
+    <label>Text<textarea name="body" rows="16" placeholder="Schritt-für-Schritt-Anleitung …">{{ body }}</textarea></label>
+    <p class="muted small">Absätze und Aufzählungen bleiben wie eingegeben erhalten.</p>
+    <div class="form-actions"><button class="btn primary" type="submit">Speichern</button></div>
+  </form>
+  {% if id != 0 %}
+  <div class="kb-meta">
+    <span class="muted small">{{ stats }}{% if published %} · <a href="{{ public_url }}" target="_blank">Im Hilfe-Center ansehen</a>{% endif %}</span>
+    <form method="post" action="/kb/{{ id }}/delete" hx-confirm="Artikel „{{ title }}“ löschen?"><button class="btn danger">Löschen</button></form>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

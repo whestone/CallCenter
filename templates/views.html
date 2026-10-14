@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}{{ current_title }}{% endblock %}
+{% block content %}
+<div class="split">
+  {% include "views_sidebar.html" %}
+  <section class="pane">
+    <div class="pane-head">
+      <h1>{{ current_title }}</h1>
+      <span class="muted">{% if filtered %}{{ total }} von {{ total_unfiltered }} Tickets{% else %}{{ total }} Tickets{% endif %}</span>
+    </div>
+
+    {% if !notice.is_empty() %}<div class="alert info">{{ notice }}</div>{% endif %}
+
+    <form class="filter-bar" method="get" action="/views/{{ current }}"
+          hx-get="/views/{{ current }}" hx-trigger="change, keyup changed delay:400ms from:input[name=q]"
+          hx-target="body" hx-push-url="true">
+      <input type="search" name="q" value="{{ q }}" placeholder="Betreff oder #Nr." aria-label="In Ansicht filtern">
+      <select name="status" aria-label="Status">{% for o in status_opts %}<option value="{{ o.value }}"{% if o.selected %} selected{% endif %}>{{ o.label }}</option>{% endfor %}</select>
+      <select name="priority" aria-label="Priorität">{% for o in priority_opts %}<option value="{{ o.value }}"{% if o.selected %} selected{% endif %}>{{ o.label }}</option>{% endfor %}</select>
+      <select name="assignee" aria-label="Bearbeiter">{% for o in assignee_opts %}<option value="{{ o.value }}"{% if o.selected %} selected{% endif %}>{{ o.label }}</option>{% endfor %}</select>
+      <select name="group" aria-label="Gruppe">{% for o in group_opts %}<option value="{{ o.value }}"{% if o.selected %} selected{% endif %}>{{ o.label }}</option>{% endfor %}</select>
+      <select name="channel" aria-label="Kanal">{% for o in channel_opts %}<option value="{{ o.value }}"{% if o.selected %} selected{% endif %}>{{ o.label }}</option>{% endfor %}</select>
+      {% if !sort.is_empty() %}<input type="hidden" name="sort" value="{{ sort }}"><input type="hidden" name="dir" value="{{ dir }}">{% endif %}
+      {% if filtered %}<a class="btn" href="/views/{{ current }}">Filter zurücksetzen</a>{% endif %}
+      <noscript><button class="btn">Filtern</button></noscript>
+    </form>
+
+    <form id="bulk-form" method="post" action="/tickets/bulk" class="bulk-bar">
+      <input type="hidden" name="return_to" value="{{ return_to }}">
+      <strong class="bulk-count" data-bulk-count>0 ausgewählt</strong>
+      <select name="status" aria-label="Status setzen">{% for o in bulk_status_opts %}<option value="{{ o.value }}">{{ o.label }}</option>{% endfor %}</select>
+      <select name="priority" aria-label="Priorität setzen">{% for o in bulk_priority_opts %}<option value="{{ o.value }}">{{ o.label }}</option>{% endfor %}</select>
+      <select name="assignee_id" aria-label="Bearbeiter setzen">{% for o in bulk_assignee_opts %}<option value="{{ o.value }}">{{ o.label }}</option>{% endfor %}</select>
+      <select name="group_id" aria-label="Gruppe setzen">{% for o in bulk_group_opts %}<option value="{{ o.value }}">{{ o.label }}</option>{% endfor %}</select>
+      <select name="macro_id" aria-label="Makro anwenden">{% for o in bulk_macro_opts %}<option value="{{ o.value }}">{{ o.label }}</option>{% endfor %}</select>
+      <button class="btn primary" type="submit">Anwenden</button>
+    </form>
+
+    {% if rows.is_empty() %}
+    <div class="empty">Keine Tickets gefunden.</div>
+    {% else %}
+    <div class="table-wrap">
+    <table class="tickets selectable">
+      <thead>
+        <tr>
+          <th class="narrow"><input type="checkbox" data-select-all aria-label="Alle auswählen"></th>
+          <th class="narrow"></th>
+          {% for h in headers %}
+          <th>{% if h.url.is_empty() %}{{ h.label }}{% else %}<a class="sort-link" href="{{ h.url }}">{{ h.label }}{{ h.arrow }}</a>{% endif %}</th>
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+      {% for r in rows %}
+        <tr>
+          <td><input type="checkbox" name="ticket_id" value="{{ r.id }}" form="bulk-form" aria-label="Ticket #{{ r.id }} auswählen"></td>
+          <td><span class="status-badge s-{{ r.status }}" title="{{ r.status_label }}">{{ r.status_letter }}</span></td>
+          <td class="muted">#{{ r.id }}</td>
+          <td class="subject"><a href="/tickets/{{ r.id }}">{{ r.subject }}</a></td>
+          <td>{{ r.requester }}</td>
+          <td>{% if !r.priority.is_empty() %}<span class="prio p-{{ r.priority }}">{{ r.priority_label }}</span>{% endif %}</td>
+          <td>{{ r.assignee }}</td>
+          <td>{{ r.group }}</td>
+          <td>{{ r.channel_label }}</td>
+          <td>{% if !r.sla_text.is_empty() %}<span class="{{ r.sla_class }}">{{ r.sla_text }}</span>{% endif %}</td>
+          <td class="muted nowrap">{{ r.updated }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    </div>
+    {% endif %}
+
+    {% if !pages.is_empty() %}
+    <nav class="pagination" aria-label="Seiten">
+      {% for p in pages %}<a href="{{ p.url }}" class="{% if p.current %}current{% endif %}">{{ p.label }}</a>{% endfor %}
+    </nav>
+    {% endif %}
+  </section>
+</div>
+{% endblock %}

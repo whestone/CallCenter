@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% block title %}Reports{% endblock %}
+{% block content %}
+<div class="page reports">
+  <div class="pane-head">
+    <h1>Reports</h1>
+    <div class="report-controls">
+      <form method="get" action="/reports">
+        <select name="days" aria-label="Zeitraum" onchange="this.form.requestSubmit()">
+          {% for o in range_opts %}<option value="{{ o.value }}"{% if o.selected %} selected{% endif %}>{{ o.label }}</option>{% endfor %}
+        </select>
+      </form>
+      <a class="btn" href="/reports/export.csv?days={{ days }}" hx-boost="false">⬇ CSV-Export</a>
+    </div>
+  </div>
+
+  <div class="tiles">
+    {% for t in tiles %}
+    <div class="tile">
+      <div class="tile-label">{{ t.label }}</div>
+      <div class="tile-value">{{ t.value }}</div>
+      <div class="tile-hint">{{ t.hint }}</div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <section class="card viz-root">
+    <div class="chart-head">
+      <h3>Neue und gelöste Tickets pro Tag</h3>
+      <div class="legend">
+        <span><i class="swatch series-1"></i>Neu</span>
+        <span><i class="swatch series-2"></i>Gelöst</span>
+      </div>
+    </div>
+    <div class="day-chart" role="img" aria-label="Säulendiagramm: neue und gelöste Tickets pro Tag, Maximum {{ max_per_day }} pro Tag">
+      <div class="y-max">{{ max_per_day }}</div>
+      {% for d in day_bars %}
+      <div class="day" data-tip="{{ d.tip }}" tabindex="0">
+        <div class="bars">
+          <div class="bar series-1" style="height: {{ d.created_pct }}%"></div>
+          <div class="bar series-2" style="height: {{ d.solved_pct }}%"></div>
+        </div>
+        <div class="x-label">{% if d.show_label %}{{ d.label }}{% endif %}</div>
+      </div>
+      {% endfor %}
+    </div>
+    <details class="table-view">
+      <summary>Als Tabelle anzeigen</summary>
+      <table class="tickets compact">
+        <thead><tr><th>Tag</th><th>Neu</th><th>Gelöst</th></tr></thead>
+        <tbody>{% for d in day_bars %}<tr><td>{{ d.label }}</td><td>{{ d.created }}</td><td>{{ d.solved }}</td></tr>{% endfor %}</tbody>
+      </table>
+    </details>
+  </section>
+
+  <div class="report-grid">
+    <section class="card viz-root">
+      <h3>Neue Tickets nach Kanal</h3>
+      {% if channels.is_empty() %}<p class="muted">Keine Tickets im Zeitraum.</p>{% endif %}
+      {% for b in channels %}
+      <div class="hbar"><span class="hbar-label">{{ b.label }}</span><span class="hbar-track"><span class="bar series-1" style="width: {{ b.pct }}%"></span></span><span class="hbar-value">{{ b.count }}</span></div>
+      {% endfor %}
+    </section>
+    <section class="card viz-root">
+      <h3>Neue Tickets nach Priorität</h3>
+      {% if priorities.is_empty() %}<p class="muted">Keine Tickets im Zeitraum.</p>{% endif %}
+      {% for b in priorities %}
+      <div class="hbar"><span class="hbar-label">{{ b.label }}</span><span class="hbar-track"><span class="bar series-1" style="width: {{ b.pct }}%"></span></span><span class="hbar-value">{{ b.count }}</span></div>
+      {% endfor %}
+    </section>
+  </div>
+
+  <section class="card">
+    <h3>Agenten</h3>
+    <div class="table-wrap">
+    <table class="tickets">
+      <thead><tr><th>Agent</th><th>Aktuell offen</th><th>Gelöst im Zeitraum</th><th>Ø Erstantwort</th></tr></thead>
+      <tbody>
+      {% for a in agents %}
+      <tr><td class="subject">{{ a.name }}</td><td>{{ a.open }}</td><td>{{ a.solved }}</td><td>{{ a.avg_first_reply }}</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    </div>
+  </section>
+</div>
+{% endblock %}

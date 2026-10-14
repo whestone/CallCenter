@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Kunden{% endblock %}
+{% block content %}
+<div class="page">
+  <div class="pane-head">
+    <h1>Kunden &amp; Benutzer</h1>
+    <form method="get" action="/users" class="inline-search">
+      <input type="search" name="q" value="{{ q }}" placeholder="Name, E-Mail oder Telefon">
+      <button class="btn">Suchen</button>
+    </form>
+  </div>
+  <div class="two-col">
+    <div>
+      {% include "user_table.html" %}
+    </div>
+    <form class="card" method="post" action="/users">
+      <h3>Neuer Kunde</h3>
+      <label>Name<input type="text" name="name" required></label>
+      <label>E-Mail<input type="email" name="email"></label>
+      <label>Telefon<input type="tel" name="phone"></label>
+      <label>Organisation
+        <select name="organization_id">{% for o in org_opts %}<option value="{{ o.value }}"{% if o.selected %} selected{% endif %}>{{ o.label }}</option>{% endfor %}</select>
+      </label>
+      <button class="btn primary wide" type="submit">Anlegen</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

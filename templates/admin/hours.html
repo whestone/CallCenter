@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Geschäftszeiten{% endblock %}
+{% block content %}
+<div class="page">
+  <h1>Verwaltung</h1>
+  {% include "admin/tabs.html" %}
+  {% if !notice.is_empty() %}<div class="alert info">{{ notice }}</div>{% endif %}
+  <p class="muted small">SLA-Zielzeiten können in Geschäftszeiten gerechnet werden (Einstellung je SLA-Richtlinie). Dann zählen Nächte, Wochenenden und Feiertage nicht mit: Ein Ticket von Freitag 17 Uhr mit 2 Stunden Ziel ist erst Montag 9 Uhr fällig.</p>
+  <div class="two-col">
+    <form class="card" method="post" action="/admin/hours">
+      <h3>Geschäftszeiten</h3>
+      <table class="tickets compact hours-table">
+        <thead><tr><th>Tag</th><th>Geöffnet</th><th>von</th><th>bis</th></tr></thead>
+        <tbody>
+        {% for d in days %}
+        <tr>
+          <td>{{ d.name }}</td>
+          <td><input type="checkbox" name="enabled_{{ d.weekday }}"{% if d.enabled %} checked{% endif %} aria-label="{{ d.name }} geöffnet"></td>
+          <td><input type="time" name="opens_{{ d.weekday }}" value="{{ d.opens }}" aria-label="{{ d.name }} von"></td>
+          <td><input type="time" name="closes_{{ d.weekday }}" value="{{ d.closes }}" aria-label="{{ d.name }} bis"></td>
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      <div class="form-actions"><button class="btn primary" type="submit">Speichern</button></div>
+    </form>
+    <div class="card">
+      <h3>Feiertage</h3>
+      <ul class="holiday-list">
+        {% for h in holidays %}
+        <li><span>{{ h.label }}</span><span>{{ h.name }}</span>
+          <form method="post" action="/admin/hours/holidays/{{ h.day }}/delete"><button class="link danger" title="Entfernen">✕</button></form></li>
+        {% endfor %}
+      </ul>
+      <form method="post" action="/admin/hours/holidays" class="row2 holiday-form">
+        <label>Datum<input type="date" name="day" required></label>
+        <label>Name<input type="text" name="name" required placeholder="z. B. Betriebsausflug"></label>
+        <button class="btn" type="submit">Hinzufügen</button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

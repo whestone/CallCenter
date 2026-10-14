@@ -1,0 +1,5 @@
+# Einheitlich LF – wichtig für SQL-Migrationen: sqlx prüft deren Prüfsummen,
+# eine Umwandlung in CRLF beim Auschecken würde bestehende Datenbanken blockieren.
+* text=auto eol=lf
+*.png binary
+*.ico binary

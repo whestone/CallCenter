@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Kundenportal{% endblock %} · Support</title>
+  <meta name="htmx-config" content='{"responseHandling":[{"code":"204","swap":false},{"code":"[23]..","swap":true},{"code":"[45]..","swap":true,"error":true}]}'>
+  <link rel="stylesheet" href="/static/app.css">
+  <script src="/static/htmx.min.js" defer></script>
+</head>
+<body class="portal" hx-boost="true">
+  <header class="portal-header">
+    <a class="portal-brand" href="/portal"><span class="logo">CC</span> Support</a>
+    <nav>
+      <a href="/portal/help">Hilfe-Center</a>
+      <a href="/portal">Meine Anfragen</a>
+      <a class="btn primary" href="/portal/tickets/new">Neue Anfrage</a>
+      {% if nav.name.is_empty() %}
+      <a href="/portal/login">Anmelden</a>
+      {% else %}
+      <span class="muted">{{ nav.name }}</span>
+      <form method="post" action="/portal/logout" hx-boost="false"><button class="link">Abmelden</button></form>
+      {% endif %}
+    </nav>
+  </header>
+  <main class="portal-main">
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

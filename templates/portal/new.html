@@ -1,0 +1,12 @@
+{% extends "portal/base.html" %}
+{% block title %}Neue Anfrage{% endblock %}
+{% block content %}
+<h1>Neue Anfrage</h1>
+<form class="card portal-form" method="post" action="/portal/tickets/new">
+  <label>Betreff<input type="text" name="subject" required maxlength="200" placeholder="Worum geht es?" autocomplete="off"
+    hx-get="/portal/help/suggest" hx-trigger="input changed delay:400ms" hx-target="#kb-suggest" hx-swap="innerHTML"></label>
+  <div id="kb-suggest"></div>
+  <label>Beschreibung<textarea name="description" rows="8" required placeholder="Beschreiben Sie Ihr Anliegen möglichst genau."></textarea></label>
+  <div class="form-actions"><button class="btn primary" type="submit">Anfrage senden</button></div>
+</form>
+{% endblock %}

@@ -1,0 +1,14 @@
+{% if hits.is_empty() %}
+{% if !query.is_empty() %}<div class="lookup-empty">Kein bekannter Kunde zu „{{ query }}“, er wird beim Speichern neu angelegt.</div>{% endif %}
+{% else %}
+<ul class="lookup">
+  {% for h in hits %}
+  <li>
+    <button type="button" class="lookup-hit" data-pick-requester="{{ h.id }}" data-label="{{ h.label }}">
+      <strong>{{ h.name }}</strong> <span class="muted">{{ h.detail }}</span>
+      {% if h.open_tickets > 0 %}<span class="badge">{{ h.open_tickets }} offen</span>{% endif %}
+    </button>
+  </li>
+  {% endfor %}
+</ul>
+{% endif %}

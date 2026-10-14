@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}{{ title }}{% endblock %}
+{% block content %}
+<div class="page">
+  <h1>Verwaltung</h1>
+  {% include "admin/tabs.html" %}
+  <div class="pane-head">
+    <p class="muted">{{ help }}</p>
+    <a class="btn primary" href="/admin/rules/{{ tab }}/new">+ {{ singular }}</a>
+  </div>
+  {% if rules.is_empty() %}
+  <div class="empty">Noch keine Einträge.</div>
+  {% else %}
+  <div class="table-wrap">
+  <table class="tickets">
+    <thead><tr><th class="narrow">Pos.</th><th>Titel</th><th>Beschreibung</th><th>Status</th></tr></thead>
+    <tbody>
+    {% for r in rules %}
+      <tr>
+        <td class="muted">{{ r.position }}</td>
+        <td class="subject"><a href="/admin/rules/{{ tab }}/{{ r.id }}">{{ r.title }}</a></td>
+        <td class="muted">{{ r.description }}</td>
+        <td>{% if r.active %}aktiv{% else %}<span class="muted">inaktiv</span>{% endif %}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

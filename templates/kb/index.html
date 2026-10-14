@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}Wissensdatenbank{% endblock %}
+{% block content %}
+<div class="page">
+  <div class="pane-head">
+    <h1>Wissensdatenbank</h1>
+    <div class="topbar-actions">
+      <form method="get" action="/kb" class="inline-search">
+        <input type="search" name="q" value="{{ q }}" placeholder="Artikel suchen">
+        <button class="btn">Suchen</button>
+      </form>
+      <a class="btn primary" href="/kb/new">+ Artikel</a>
+    </div>
+  </div>
+  <div class="two-col">
+    <section>
+      {% if rows.is_empty() %}
+      <div class="empty">{% if q.is_empty() %}Noch keine Artikel. Häufige Fragen als Artikel sparen Anrufe: Kunden finden die Antwort im Hilfe-Center selbst.{% else %}Keine Treffer für „{{ q }}“.{% endif %}</div>
+      {% endif %}
+      {% for a in rows %}
+      <a class="card kb-row" href="/kb/{{ a.id }}">
+        <div class="kb-row-head">
+          <strong>{{ a.title }}</strong>
+          {% if a.published %}<span class="pill pill-ok">veröffentlicht</span>{% else %}<span class="pill">Entwurf</span>{% endif %}
+          {% if !a.category.is_empty() %}<span class="muted small">{{ a.category }}</span>{% endif %}
+        </div>
+        <div class="muted small">{{ a.excerpt }}</div>
+        <div class="muted small">{{ a.stats }}</div>
+      </a>
+      {% endfor %}
+    </section>
+    <div>
+      <div class="card">
+        <h3>Kategorien</h3>
+        <ul class="mini-list">{% for c in categories %}<li>{{ c.label }}</li>{% endfor %}</ul>
+        <form method="post" action="/kb/categories" class="inline-form">
+          <input type="text" name="name" placeholder="Neue Kategorie" required aria-label="Neue Kategorie">
+          <button class="btn" type="submit">Anlegen</button>
+        </form>
+      </div>
+      <div class="card">
+        <h3>Hilfe-Center</h3>
+        <p class="muted small">Veröffentlichte Artikel sind öffentlich im Kundenportal unter <a href="/portal/help" target="_blank">/portal/help</a> sichtbar und werden Kunden beim Stellen einer Anfrage vorgeschlagen.</p>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

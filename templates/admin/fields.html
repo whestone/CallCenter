@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Ticketfelder{% endblock %}
+{% block content %}
+<div class="page">
+  <h1>Verwaltung</h1>
+  {% include "admin/tabs.html" %}
+  <div class="two-col">
+    <div>
+      {% if fields.is_empty() %}
+      <div class="empty">Noch keine eigenen Felder. Legen Sie rechts z. B. „Vertragsnummer“ oder „Produkt“ an.</div>
+      {% endif %}
+      {% for f in fields %}
+      <form class="card field-card" method="post" action="/admin/fields/{{ f.id }}">
+        <div class="field-head">
+          <strong>{{ f.label }}</strong>
+          <span class="muted small"><code>{{ f.key }}</code> · {{ f.type_label }}{% if !f.active %} · inaktiv{% endif %}</span>
+        </div>
+        <div class="row3">
+          <label>Bezeichnung<input type="text" name="label" value="{{ f.label }}" required></label>
+          <label>Position<input type="number" name="position" value="{{ f.position }}"></label>
+          {% if f.is_dropdown %}<label>Optionen (kommagetrennt)<input type="text" name="options" value="{{ f.options }}"></label>{% endif %}
+        </div>
+        <div class="field-actions">
+          <label class="check"><input type="checkbox" name="required_on_solve"{% if f.required %} checked{% endif %}> Pflichtfeld beim Lösen</label>
+          <label class="check"><input type="checkbox" name="active"{% if f.active %} checked{% endif %}> Aktiv</label>
+          <button class="btn" type="submit">Speichern</button>
+          <button class="link danger" type="submit" formaction="/admin/fields/{{ f.id }}/delete" hx-confirm="Feld „{{ f.label }}“ löschen? Gespeicherte Werte bleiben in den Tickets als Zusatzdaten erhalten.">Löschen</button>
+        </div>
+      </form>
+      {% endfor %}
+    </div>
+    <form class="card" method="post" action="/admin/fields">
+      <h3>Neues Feld</h3>
+      <label>Bezeichnung<input type="text" name="label" required placeholder="z. B. Vertragsnummer"></label>
+      <label>Schlüssel<input type="text" name="key" required pattern="[a-z][a-z0-9_]{0,39}" placeholder="z. B. vertragsnummer"></label>
+      <label>Typ
+        <select name="field_type">{% for o in type_opts %}<option value="{{ o.value }}"{% if o.selected %} selected{% endif %}>{{ o.label }}</option>{% endfor %}</select>
+      </label>
+      <label>Optionen (nur Auswahlliste, kommagetrennt)<input type="text" name="options" placeholder="Basis, Business, Premium"></label>
+      <label class="check"><input type="checkbox" name="required_on_solve"> Pflichtfeld beim Lösen</label>
+      <p class="muted small">Schlüssel und Typ sind später nicht änderbar. Felder stehen auch in Ansichten, Triggern, Makros und Automationen zur Verfügung.</p>
+      <button class="btn primary wide" type="submit">Anlegen</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

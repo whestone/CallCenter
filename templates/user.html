@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}{{ name }}{% endblock %}
+{% block content %}
+<div class="page">
+  <div class="pane-head">
+    <div class="person">
+      <div class="avatar">{{ initials }}</div>
+      <div>
+        <h1>{{ name }}</h1>
+        <span class="muted">{{ role_label }} · seit {{ created }}{% if !active %} · <strong>deaktiviert</strong>{% endif %}</span>
+      </div>
+    </div>
+    {% if is_end_user %}
+    <a class="btn primary" href="/tickets/new?channel=phone&requester_id={{ id }}">📞 Neues Anruf-Ticket</a>
+    {% endif %}
+  </div>
+  <div class="two-col">
+    <section>
+      <h3>Tickets</h3>
+      {% include "ticket_table.html" %}
+    </section>
+    <div>
+    <form class="card" method="post" action="/users/{{ id }}">
+      <h3>Profil</h3>
+      <fieldset class="plain"{% if !can_edit %} disabled{% endif %}>
+        <label>Name<input type="text" name="name" value="{{ name }}" required></label>
+        <label>E-Mail<input type="email" name="email" value="{{ email }}"></label>
+        <label>Telefon<input type="tel" name="phone" value="{{ phone }}"></label>
+        <label>Organisation
+          <select name="organization_id">{% for o in org_opts %}<option value="{{ o.value }}"{% if o.selected %} selected{% endif %}>{{ o.label }}</option>{% endfor %}</select>
+        </label>
+        {% if is_end_user %}
+        <label>Portal-Passwort setzen<input type="password" name="portal_password" minlength="8" placeholder="leer lassen = unverändert" autocomplete="new-password"></label>
+        <p class="muted small">Damit kann sich der Kunde unter <a href="/portal">/portal</a> anmelden.</p>
+        {% endif %}
+        {% if can_admin %}
+        <label>Rolle
+          <select name="role">{% for o in role_opts %}<option value="{{ o.value }}"{% if o.selected %} selected{% endif %}>{{ o.label }}</option>{% endfor %}</select>
+        </label>
+        <label class="check"><input type="checkbox" name="active"{% if active %} checked{% endif %}> Aktiv</label>
+        {% endif %}
+        <button class="btn primary wide" type="submit">Speichern</button>
+      </fieldset>
+    </form>
+    {% if is_end_user %}
+    <form class="card merge-card" method="post" action="/users/{{ id }}/merge" hx-confirm="{{ name }} wirklich in den anderen Kunden überführen? Dieser Datensatz wird danach gelöscht.">
+      <h3>Doppelt angelegt?</h3>
+      <p class="muted small">Tickets und Kontaktdaten von {{ name }} werden auf den Zielkunden übertragen, dieser Eintrag wird gelöscht.</p>
+      <label>Zielkunde (ID, E-Mail oder Telefon)<input type="text" name="target" required></label>
+      <button class="btn wide" type="submit">Zusammenführen</button>
+    </form>
+    {% if can_admin && active %}
+    <div class="card">
+      <h3>Datenschutz (DSGVO)</h3>
+      <p class="muted small">Auskunft: alle gespeicherten Daten als Datei. Löschen: Name, Kontaktdaten, Nachrichten und Anhänge des Kunden werden entfernt; die Tickets bleiben anonym für Statistiken erhalten.</p>
+      <a class="btn wide" href="/users/{{ id }}/export.json" hx-boost="false">⬇ Datenauskunft herunterladen</a>
+      <form method="post" action="/users/{{ id }}/anonymize" hx-confirm="Alle personenbezogenen Daten von {{ name }} unwiderruflich löschen?">
+        <button class="btn danger wide" type="submit">Kundendaten löschen (anonymisieren)</button>
+      </form>
+    </div>
+    {% endif %}
+    {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

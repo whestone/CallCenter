@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Agenten{% endblock %}
+{% block content %}
+<div class="page">
+  <h1>Verwaltung</h1>
+  {% include "admin/tabs.html" %}
+  <div class="two-col">
+    <div class="table-wrap">
+    <table class="tickets">
+      <thead><tr><th>Name</th><th>E-Mail</th><th>Rolle</th><th>Gruppen</th><th>Erreichbarkeit</th><th>Offen / Kapazität</th><th>Konto</th></tr></thead>
+      <tbody>
+      {% for a in agents %}
+        <tr>
+          <td class="subject"><a href="/admin/agents/{{ a.id }}">{{ a.name }}</a></td>
+          <td>{{ a.email }}</td>
+          <td>{{ a.role_label }}</td>
+          <td class="muted">{{ a.groups }}</td>
+          <td class="nowrap"><span class="dot dot-{{ a.availability }}"></span> {{ a.availability_label }}</td>
+          <td>{{ a.load }}</td>
+          <td>{% if a.active %}aktiv{% else %}<span class="muted">deaktiviert</span>{% endif %}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    </div>
+    <form class="card" method="post" action="/admin/agents">
+      <h3>Neuer Agent</h3>
+      <label>Name<input type="text" name="name" required></label>
+      <label>E-Mail<input type="email" name="email" required></label>
+      <label>Passwort<input type="password" name="password" minlength="8" required autocomplete="new-password"></label>
+      <label>Rolle
+        <select name="role"><option value="agent">Agent</option><option value="admin">Administrator</option></select>
+      </label>
+      <div class="checks">
+        <span>Gruppen</span>
+        {% for g in groups %}<label class="check"><input type="checkbox" name="group_id" value="{{ g.id }}"> {{ g.name }}</label>{% endfor %}
+      </div>
+      <button class="btn primary wide" type="submit">Anlegen</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,6 @@
+{% if !rows.is_empty() %}
+<div class="suggest-box">
+  <strong>Vielleicht hilft Ihnen das sofort weiter:</strong>
+  <ul>{% for a in rows %}<li><a href="/portal/help/{{ a.id }}" target="_blank">{{ a.title }}</a> <span class="muted small">{{ a.excerpt }}</span></li>{% endfor %}</ul>
+</div>
+{% endif %}

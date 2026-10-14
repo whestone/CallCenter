@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}E-Mail{% endblock %}
+{% block content %}
+<div class="page">
+  <h1>Verwaltung</h1>
+  {% include "admin/tabs.html" %}
+  {% if !notice.is_empty() %}<div class="alert info">{{ notice }}</div>{% endif %}
+
+  <div class="tiles">
+    <div class="tile">
+      <div class="tile-label">Versand (SMTP)</div>
+      <div class="tile-value small-value">{% if smtp_ok %}✓ aktiv{% else %}✗ aus{% endif %}</div>
+      <div class="tile-hint">{{ smtp }}</div>
+    </div>
+    <div class="tile">
+      <div class="tile-label">Eingang (Webhook)</div>
+      <div class="tile-value small-value">{% if inbound_enabled %}✓ aktiv{% else %}✗ aus{% endif %}</div>
+      <div class="tile-hint">{% if inbound_enabled %}{{ inbound_url }}{% else %}INBOUND_EMAIL_SECRET setzen (mind. 16 Zeichen){% endif %}</div>
+    </div>
+  </div>
+  <p class="muted small">Konfiguration über <code>.env</code>: <code>SMTP_HOST</code>, <code>SMTP_PORT</code>, <code>SMTP_USER</code>, <code>SMTP_PASSWORD</code>, <code>SMTP_FROM</code>, <code>SMTP_SECURITY</code> (starttls / tls / none), <code>PUBLIC_URL</code>, <code>INBOUND_EMAIL_SECRET</code>.</p>
+
+  <div class="two-col">
+    <section>
+      <div class="pane-head"><h3>Postausgang</h3>
+        <form method="post" action="/admin/email/test"><button class="btn">Test-E-Mail an mich</button></form>
+      </div>
+      {% if outbox.is_empty() %}
+      <div class="empty">Noch keine E-Mails.</div>
+      {% else %}
+      <div class="table-wrap">
+      <table class="tickets">
+        <thead><tr><th>Empfänger</th><th>Betreff</th><th>Status</th><th>Erstellt</th></tr></thead>
+        <tbody>
+        {% for m in outbox %}
+        <tr>
+          <td>{{ m.to }}</td>
+          <td>{% if m.ticket_id != 0 %}<a href="/tickets/{{ m.ticket_id }}">{{ m.subject }}</a>{% else %}{{ m.subject }}{% endif %}</td>
+          <td><span class="mail-status mail-{{ m.status }}" title="{{ m.error }}">{{ m.status_label }}</span></td>
+          <td class="muted nowrap">{{ m.created }}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      </div>
+      {% endif %}
+    </section>
+
+    <form class="card" method="post" action="/admin/email">
+      <h3>Vorlagen</h3>
+      <p class="muted small">Platzhalter: <code>{{ "{{" }}ticket.id}}</code>, <code>{{ "{{" }}ticket.subject}}</code>, <code>{{ "{{" }}requester.name}}</code>, <code>{{ "{{" }}comment}}</code>, <code>{{ "{{" }}portal_link}}</code>, <code>{{ "{{" }}signature}}</code>. Die Ticketnummer im Betreff ordnet Antworten der Kunden zu.</p>
+      {% for t in templates %}
+      <label>{{ t.label }}
+        {% if t.multiline %}<textarea name="{{ t.key }}" rows="5">{{ t.value }}</textarea>{% else %}<input type="text" name="{{ t.key }}" value="{{ t.value }}">{% endif %}
+      </label>
+      {% endfor %}
+      <button class="btn primary wide" type="submit">Vorlagen speichern</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

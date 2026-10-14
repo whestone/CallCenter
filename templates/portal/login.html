@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kundenportal · Support</title>
+  <link rel="stylesheet" href="/static/app.css">
+</head>
+<body class="login-body portal-login">
+  <div class="login-card">
+    <div class="logo big">CC</div>
+    <h1>Kundenportal</h1>
+    <p class="muted">Anfragen stellen und den Bearbeitungsstand verfolgen</p>
+    {% if !error.is_empty() %}<div class="alert">{{ error }}</div>{% endif %}
+
+    <details class="auth-switch"{% if mode == "login" %} open{% endif %}>
+      <summary>Anmelden</summary>
+      <form method="post" action="/portal/login">
+        <label>E-Mail<input type="email" name="email" value="{{ email }}" required{% if mode == "login" %} autofocus{% endif %}></label>
+        <label>Passwort<input type="password" name="password" required></label>
+        <button class="btn primary wide" type="submit">Anmelden</button>
+        <p class="small"><a href="/password/forgot?portal=1">Passwort vergessen?</a></p>
+      </form>
+    </details>
+
+    <details class="auth-switch"{% if mode == "register" %} open{% endif %}>
+      <summary>Neu hier? Zugang erstellen</summary>
+      <form method="post" action="/portal/register">
+        <label>Name<input type="text" name="name" value="{{ name }}" required></label>
+        <label>E-Mail<input type="email" name="email" value="{{ email }}" required></label>
+        <label>Passwort<input type="password" name="password" minlength="8" required autocomplete="new-password"></label>
+        <button class="btn primary wide" type="submit">Zugang erstellen</button>
+      </form>
+    </details>
+    {% if demo %}
+    <form method="post" action="/portal/login/demo" class="demo-login">
+      <span class="muted small">Demo-Zugang</span>
+      <button class="btn wide" type="submit">Als Demokunde (Max Mustermann)</button>
+    </form>
+    {% endif %}
+    <p class="muted small"><a href="/login">Anmeldung für Mitarbeiter</a></p>
+  </div>
+</body>
+</html>

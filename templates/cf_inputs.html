@@ -1,0 +1,14 @@
+{% for f in cf_inputs %}
+<label>{{ f.label }}{% if f.required %} <span class="req" title="Pflichtfeld beim Lösen">*</span>{% endif %}
+  {% if f.ftype == "dropdown" || f.ftype == "checkbox" %}
+  <select name="cf_{{ f.key }}">{% for o in f.opts %}<option value="{{ o.value }}"{% if o.selected %} selected{% endif %}>{{ o.label }}</option>{% endfor %}</select>
+  {% else if f.ftype == "number" %}
+  <input type="text" inputmode="decimal" name="cf_{{ f.key }}" value="{{ f.value }}">
+  {% else if f.ftype == "date" %}
+  <input type="date" name="cf_{{ f.key }}" value="{{ f.value }}">
+  {% else %}
+  <input type="text" name="cf_{{ f.key }}" value="{{ f.value }}">
+  {% endif %}
+  {% if cf_with_orig %}<input type="hidden" name="orig_cf_{{ f.key }}" value="{{ f.value }}">{% endif %}
+</label>
+{% endfor %}

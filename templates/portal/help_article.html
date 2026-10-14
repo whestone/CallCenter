@@ -1,0 +1,22 @@
+{% extends "portal/base.html" %}
+{% block title %}{{ title }}{% endblock %}
+{% block content %}
+<p><a href="/portal/help">← Hilfe-Center</a>{% if !category.is_empty() %} · <span class="muted">{{ category }}</span>{% endif %}</p>
+<article class="card help-article">
+  <h1>{{ title }}</h1>
+  <p class="muted small">Aktualisiert am {{ updated }}</p>
+  <div class="text">{{ body }}</div>
+</article>
+<div class="card help-vote">
+  {% if voted %}
+  <strong>Danke für Ihr Feedback!</strong>
+  {% else %}
+  <form method="post" action="/portal/help/{{ id }}/vote">
+    <strong>War dieser Artikel hilfreich?</strong>
+    <button class="btn" name="helpful" value="yes">👍 Ja</button>
+    <button class="btn" name="helpful" value="no">👎 Nein</button>
+  </form>
+  {% endif %}
+  <span class="muted small">Weiterhin Fragen? <a href="/portal/tickets/new">Anfrage stellen</a></span>
+</div>
+{% endblock %}

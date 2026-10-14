@@ -1,0 +1,66 @@
+{% extends "portal/base.html" %}
+{% block title %}#{{ id }} {{ subject }}{% endblock %}
+{% block content %}
+<div class="pane-head">
+  <div>
+    <h1>{{ subject }}</h1>
+    <span class="muted">Anfrage #{{ id }} · erstellt {{ created }}</span>
+  </div>
+  <span class="status-pill s-{{ status }}">{{ status_label }}</span>
+</div>
+
+<div class="comments">
+  {% for c in comments %}
+  <article class="comment{% if c.from_support %} by-agent{% endif %}">
+    <div class="avatar small">{{ c.initials }}</div>
+    <div class="comment-body">
+      <header><strong>{{ c.author }}</strong>{% if c.from_support %} <span class="tag-support">Support</span>{% endif %} <span class="muted">{{ c.created }}</span></header>
+      <div class="text">{{ c.body }}</div>
+      {% if !c.attachments.is_empty() %}
+      <ul class="attachments">
+        {% for a in c.attachments %}<li><a href="/portal/attachments/{{ a.id }}" target="_blank" rel="noopener" hx-boost="false">📎 {{ a.filename }}</a> <span class="muted small">{{ a.size }}</span></li>{% endfor %}
+      </ul>
+      {% endif %}
+    </div>
+  </article>
+  {% endfor %}
+</div>
+
+{% if can_reply %}
+<form class="composer" method="post" action="/portal/tickets/{{ id }}">
+  <textarea name="comment" rows="5" required placeholder="Ihre Antwort …"></textarea>
+  <div class="composer-actions">
+    <span class="muted small">{% if status == "solved" %}Mit einer Antwort wird die Anfrage wieder geöffnet.{% endif %}</span>
+    <button class="btn primary" type="submit">Antwort senden</button>
+  </div>
+</form>
+{% else %}
+<div class="alert info">Diese Anfrage ist abgeschlossen. Für ein neues Anliegen stellen Sie bitte eine <a href="/portal/tickets/new">neue Anfrage</a>.</div>
+{% endif %}
+
+{% if can_reply %}
+<form class="upload-box" method="post" action="/portal/tickets/{{ id }}/attachments" enctype="multipart/form-data">
+  <input type="file" name="files" multiple required aria-label="Dateien anhängen">
+  <button class="btn" type="submit">📎 Datei senden</button>
+  <span class="muted small">max. 5 Dateien à 10 MB</span>
+</form>
+{% endif %}
+
+{% if can_rate %}
+<form class="card csat-form" method="post" action="/portal/tickets/{{ id }}/rate">
+  <h3>{% if rating.is_empty() %}Wie zufrieden sind Sie mit der Lösung?{% else %}Danke für Ihre Bewertung!{% endif %}</h3>
+  <div class="csat-choice">
+    <label><input type="radio" name="score" value="good" required{% if rating == "good" %} checked{% endif %}> 👍 Gut</label>
+    <label><input type="radio" name="score" value="bad"{% if rating == "bad" %} checked{% endif %}> 👎 Nicht gut</label>
+  </div>
+  <label>Kommentar (optional)<textarea name="comment" rows="2">{{ rating_comment }}</textarea></label>
+  <div class="form-actions"><button class="btn primary" type="submit">{% if rating.is_empty() %}Bewertung senden{% else %}Bewertung ändern{% endif %}</button></div>
+</form>
+{% endif %}
+
+{% if can_solve %}
+<form method="post" action="/portal/tickets/{{ id }}/solve" class="solve-form">
+  <button class="btn success" type="submit">✓ Mein Anliegen ist gelöst</button>
+</form>
+{% endif %}
+{% endblock %}

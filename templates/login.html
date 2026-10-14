@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Anmelden · CallCenter</title>
+  <link rel="stylesheet" href="/static/app.css">
+</head>
+<body class="login-body">
+  {% if !challenge.is_empty() %}
+  <form class="login-card" method="post" action="/login/2fa">
+    <div class="logo big">CC</div>
+    <h1>Bestätigungscode</h1>
+    <p class="muted">Geben Sie den 6-stelligen Code aus Ihrer Authenticator-App ein.</p>
+    {% if !error.is_empty() %}<div class="alert">{{ error }}</div>{% endif %}
+    <input type="hidden" name="challenge" value="{{ challenge }}">
+    <label>Code<input type="text" name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9 ]{6,7}" maxlength="7" required autofocus class="code-input"></label>
+    <button class="btn primary wide" type="submit">Bestätigen</button>
+    <p class="small"><a href="/login">Abbrechen</a></p>
+  </form>
+  {% else %}
+  <form class="login-card" method="post" action="/login">
+    <div class="logo big">CC</div>
+    <h1>CallCenter</h1>
+    <p class="muted">Anmeldung für Agenten</p>
+    {% if !error.is_empty() %}<div class="alert">{{ error }}</div>{% endif %}
+    <label>E-Mail<input type="email" name="email" value="{{ email }}" required autofocus></label>
+    <label>Passwort<input type="password" name="password" required></label>
+    <button class="btn primary wide" type="submit">Anmelden</button>
+    <p class="small"><a href="/password/forgot">Passwort vergessen?</a></p>
+    {% if demo %}
+    <div class="demo-login">
+      <span class="muted small">Demo-Zugang</span>
+      <div class="demo-buttons">
+        <button class="btn" type="submit" formaction="/login/demo" formnovalidate name="role" value="admin">Als Admin</button>
+        <button class="btn" type="submit" formaction="/login/demo" formnovalidate name="role" value="agent">Als Agentin</button>
+      </div>
+      <a class="small" href="/portal/login">Als Kunde ins Kundenportal →</a>
+    </div>
+    {% endif %}
+  </form>
+  {% endif %}
+</body>
+</html>

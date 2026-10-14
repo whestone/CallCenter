@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Organisationen{% endblock %}
+{% block content %}
+<div class="page">
+  <div class="pane-head"><h1>Organisationen</h1></div>
+  <div class="two-col">
+    <div class="table-wrap">
+      {% if orgs.is_empty() %}
+      <div class="empty">Noch keine Organisationen.</div>
+      {% else %}
+      <table class="tickets">
+        <thead><tr><th>Name</th><th>Domains</th><th>Benutzer</th><th>Offene Tickets</th></tr></thead>
+        <tbody>
+        {% for o in orgs %}
+          <tr>
+            <td class="subject"><a href="/organizations/{{ o.id }}">{{ o.name }}</a></td>
+            <td class="muted">{{ o.domains }}</td>
+            <td>{{ o.users }}</td>
+            <td>{{ o.open_tickets }}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      {% endif %}
+    </div>
+    {% if can_admin %}
+    <form class="card" method="post" action="/organizations">
+      <h3>Neue Organisation</h3>
+      <label>Name<input type="text" name="name" required></label>
+      <label>Domains<input type="text" name="domain_names" placeholder="firma.de, firma.com"></label>
+      <p class="muted small">Kunden mit diesen E-Mail-Domains werden automatisch zugeordnet.</p>
+      <label>Notizen<textarea name="notes" rows="3"></textarea></label>
+      <button class="btn primary wide" type="submit">Anlegen</button>
+    </form>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

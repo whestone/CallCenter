@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}{% if is_call %}Anruf erfassen{% else %}Neues Ticket{% endif %}{% endblock %}
+{% block content %}
+<div class="page narrow-page">
+  <h1>{% if is_call %}📞 Anruf erfassen{% else %}Neues Ticket{% endif %}</h1>
+  <form method="post" action="/tickets" class="form-grid">
+    <fieldset class="card">
+      <legend>{% if is_call %}Anrufer{% else %}Anfragender{% endif %}</legend>
+      <input type="hidden" name="requester_id" id="requester_id" value="{{ requester_id }}">
+      <div id="requester-picked" class="picked"{% if requester_id.is_empty() %} hidden{% endif %}>
+        <span id="requester-picked-label">{{ requester_label }}</span>
+        <button type="button" class="link" data-clear-requester>ändern</button>
+      </div>
+      <div id="requester-fields"{% if !requester_id.is_empty() %} hidden{% endif %}>
+        <div class="row3">
+          <label>Telefon
+            <input type="tel" name="requester_phone" placeholder="+49 …" autocomplete="off"{% if is_call %} autofocus{% endif %}
+                   hx-get="/requesters/lookup" hx-trigger="input changed delay:300ms" hx-target="#requester-results" hx-swap="innerHTML">
+          </label>
+          <label>E-Mail
+            <input type="email" name="requester_email" autocomplete="off"
+                   hx-get="/requesters/lookup" hx-trigger="input changed delay:300ms" hx-target="#requester-results" hx-swap="innerHTML">
+          </label>
+          <label>Name
+            <input type="text" name="requester_name" autocomplete="off"
+                   hx-get="/requesters/lookup" hx-trigger="input changed delay:300ms" hx-target="#requester-results" hx-swap="innerHTML">
+          </label>
+        </div>
+        <div id="requester-results"></div>
+        <p class="muted small">Bekannte Kunden werden beim Tippen vorgeschlagen. Unbekannte werden beim Speichern neu angelegt.</p>
+      </div>
+    </fieldset>
+
+    <fieldset class="card">
+      <legend>Anliegen</legend>
+      <label>Betreff<input type="text" name="subject" required></label>
+      <label>{% if is_call %}Gesprächsnotiz{% else %}Beschreibung{% endif %}
+        <textarea name="description" rows="7" required></textarea>
+      </label>
+      <div class="composer-tabs">
+        <label><input type="radio" name="public" value="1"{% if !is_call %} checked{% endif %}> Für den Kunden sichtbar</label>
+        <label><input type="radio" name="public" value="0"{% if is_call %} checked{% endif %}> Interne Notiz</label>
+      </div>
+    </fieldset>
+
+    <fieldset class="card">
+      <legend>Eigenschaften</legend>
+      <div class="row3">
+        <label>Kanal
+          <select name="channel">{% for o in channel_opts %}<option value="{{ o.value }}"{% if o.selected %} selected{% endif %}>{{ o.label }}</option>{% endfor %}</select>
+        </label>
+        <label>Typ
+          <select name="ticket_type">{% for o in type_opts %}<option value="{{ o.value }}"{% if o.selected %} selected{% endif %}>{{ o.label }}</option>{% endfor %}</select>
+        </label>
+        <label>Priorität
+          <select name="priority">{% for o in priority_opts %}<option value="{{ o.value }}"{% if o.selected %} selected{% endif %}>{{ o.label }}</option>{% endfor %}</select>
+        </label>
+        <label>Gruppe
+          <select name="group_id">{% for o in group_opts %}<option value="{{ o.value }}"{% if o.selected %} selected{% endif %}>{{ o.label }}</option>{% endfor %}</select>
+        </label>
+        <label>Bearbeiter
+          <select name="assignee_id">{% for o in assignee_opts %}<option value="{{ o.value }}"{% if o.selected %} selected{% endif %}>{{ o.label }}</option>{% endfor %}</select>
+        </label>
+        <label>Speichern als
+          <select name="status">{% for o in status_opts %}<option value="{{ o.value }}"{% if o.selected %} selected{% endif %}>{{ o.label }}</option>{% endfor %}</select>
+        </label>
+      </div>
+      <label>Tags<input type="text" name="tags" placeholder="mit Leerzeichen getrennt"></label>
+      {% if !cf_inputs.is_empty() %}<div class="row3">{% include "cf_inputs.html" %}</div>{% endif %}
+    </fieldset>
+
+    <div class="form-actions">
+      <button class="btn primary" type="submit">Ticket anlegen</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

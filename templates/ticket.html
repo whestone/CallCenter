@@ -1,0 +1,196 @@
+{% extends "base.html" %}
+{% block title %}#{{ id }} {{ subject }}{% endblock %}
+{% block content %}
+<form id="macro-form" method="post" action="/tickets/{{ id }}/macro"></form>
+<form id="upload-form" method="post" action="/tickets/{{ id }}/attachments" enctype="multipart/form-data"></form>
+<form id="merge-form" method="post" action="/tickets/{{ id }}/merge" hx-confirm="Ticket #{{ id }} wirklich zusammenführen und schließen?"></form>
+
+<form class="ticket-layout" method="post" action="/tickets/{{ id }}">
+  <fieldset class="ticket-fields"{% if closed %} disabled{% endif %}>
+    <input type="hidden" name="orig_subject" value="{{ subject }}">
+    <input type="hidden" name="orig_status" value="{{ status }}">
+    <input type="hidden" name="orig_priority" value="{{ orig_priority }}">
+    <input type="hidden" name="orig_ticket_type" value="{{ orig_ticket_type }}">
+    <input type="hidden" name="orig_assignee_id" value="{{ orig_assignee_id }}">
+    <input type="hidden" name="orig_group_id" value="{{ orig_group_id }}">
+    <input type="hidden" name="orig_tags" value="{{ tags }}">
+    <aside class="props">
+      <h3>Ticket #{{ id }}</h3>
+      <div class="meta">
+        <span class="status-pill s-{{ status }}">{{ status_label }}</span>
+        <span class="muted">{{ channel_label }} · {{ created }}</span>
+      </div>
+
+      <label>Anfragender
+        <a class="requester-link" href="/users/{{ requester_id }}">{{ requester_name }}</a>
+      </label>
+      <label>Gruppe
+        <select name="group_id">{% for o in group_opts %}<option value="{{ o.value }}"{% if o.selected %} selected{% endif %}>{{ o.label }}</option>{% endfor %}</select>
+      </label>
+      <label>Bearbeiter
+        <select name="assignee_id">{% for o in assignee_opts %}<option value="{{ o.value }}"{% if o.selected %} selected{% endif %}>{{ o.label }}</option>{% endfor %}</select>
+      </label>
+      <label>Tags
+        <input type="text" name="tags" value="{{ tags }}" placeholder="mit Leerzeichen getrennt">
+      </label>
+      <div class="row2">
+        <label>Typ
+          <select name="ticket_type">{% for o in type_opts %}<option value="{{ o.value }}"{% if o.selected %} selected{% endif %}>{{ o.label }}</option>{% endfor %}</select>
+        </label>
+        <label>Priorität
+          <select name="priority">{% for o in priority_opts %}<option value="{{ o.value }}"{% if o.selected %} selected{% endif %}>{{ o.label }}</option>{% endfor %}</select>
+        </label>
+      </div>
+
+      {% if !cf_inputs.is_empty() %}
+      <h4>Weitere Felder</h4>
+      {% include "cf_inputs.html" %}
+      {% endif %}
+
+      {% if !custom_fields.is_empty() %}
+      <h4>Zusatzdaten</h4>
+      <dl class="kv">{% for f in custom_fields %}<dt>{{ f.key }}</dt><dd>{{ f.value }}</dd>{% endfor %}</dl>
+      {% endif %}
+
+      {% if !csat.is_empty() %}
+      <h4>Kundenbewertung</h4>
+      <div class="csat {% if csat_good %}csat-good{% else %}csat-bad{% endif %}">
+        <strong>{{ csat }}</strong>
+        {% if !csat_comment.is_empty() %}<div class="small">„{{ csat_comment }}“</div>{% endif %}
+      </div>
+      {% endif %}
+
+      {% if !sla.is_empty() %}
+      <h4>SLA</h4>
+      <ul class="sla-list">
+        {% for s in sla %}<li><span>{{ s.label }}</span><span class="{{ s.class }}">{{ s.text }}</span></li>{% endfor %}
+      </ul>
+      {% endif %}
+    </aside>
+
+    <section class="conversation">
+      <div class="conv-head">
+        <input class="subject-input" type="text" name="subject" value="{{ subject }}" aria-label="Betreff">
+        <span class="muted">aktualisiert {{ updated }}</span>
+      </div>
+
+      <div class="comments">
+        {% for c in comments %}
+        <article class="comment{% if !c.public %} internal{% endif %}{% if c.is_agent %} by-agent{% endif %}">
+          <div class="avatar small">{{ c.initials }}</div>
+          <div class="comment-body">
+            <header>
+              <strong>{{ c.author }}</strong>
+              {% if !c.public %}<span class="tag-internal">Interne Notiz</span>{% endif %}
+              <span class="muted">{{ c.created }} · via {{ c.via }}</span>
+            </header>
+            <div class="text">{{ c.body }}</div>
+            {% if !c.attachments.is_empty() %}
+            <ul class="attachments">
+              {% for a in c.attachments %}<li><a href="/attachments/{{ a.id }}" target="_blank" rel="noopener" hx-boost="false">📎 {{ a.filename }}</a> <span class="muted small">{{ a.size }}</span></li>{% endfor %}
+            </ul>
+            {% endif %}
+          </div>
+        </article>
+        {% endfor %}
+      </div>
+
+      {% if !closed %}
+      <div class="composer">
+        <div class="composer-tabs">
+          <label><input type="radio" name="public" value="1" checked> Öffentliche Antwort</label>
+          <label><input type="radio" name="public" value="0"> Interne Notiz</label>
+        </div>
+        <textarea name="comment" rows="5" placeholder="Antwort schreiben …"></textarea>
+        <div class="composer-tools">
+          <select class="macro-select" name="macro_id" form="macro-form" aria-label="Makro anwenden" data-auto-submit>
+            <option value="" selected>⚡ Makro anwenden …</option>
+            {% for m in macros %}<option value="{{ m.value }}">{{ m.label }}</option>{% endfor %}
+          </select>
+          <label class="btn attach-btn">📎 Datei anhängen
+            <input type="file" name="files" multiple form="upload-form" data-auto-upload hidden>
+          </label>
+          <input type="hidden" name="public" value="1" form="upload-form" data-upload-public>
+          <noscript><button class="btn" type="submit" form="macro-form">Makro</button><button class="btn" type="submit" form="upload-form">Hochladen</button></noscript>
+        </div>
+        <div class="composer-actions">
+          <span class="unsaved-hint" role="status">● Ungespeicherte Änderungen</span>
+          <input type="hidden" name="status" value="{{ status }}">
+          <div class="split-submit">
+            <button class="btn primary split-main" type="submit">Absenden als <strong>{{ status_label }}</strong></button>
+            <details class="split-menu">
+              <summary class="btn primary" aria-label="Mit anderem Status absenden" title="Mit anderem Status absenden">▾</summary>
+              <div class="split-options">
+                {% for o in status_opts %}{% if o.value != "new" %}
+                <button type="submit" name="submit_as" value="{{ o.value }}"><span class="dot s-{{ o.value }}"></span>als {{ o.label }}</button>
+                {% endif %}{% endfor %}
+              </div>
+            </details>
+          </div>
+        </div>
+      </div>
+      {% else %}
+      <div class="alert info">Dieses Ticket ist geschlossen und kann nicht mehr bearbeitet werden.</div>
+      {% endif %}
+
+      <details class="audit-log">
+        <summary>Ereignisprotokoll ({{ audits.len() }})</summary>
+        {% for a in audits %}
+        <div class="audit">
+          <div class="muted">{{ a.created }} · {{ a.author }}</div>
+          <ul>{% for l in a.lines %}<li>{{ l }}</li>{% endfor %}</ul>
+        </div>
+        {% endfor %}
+      </details>
+    </section>
+  </fieldset>
+
+  <aside class="context">
+    <div class="card">
+      <div class="person">
+        <div class="avatar">{{ requester_initials }}</div>
+        <div>
+          <a href="/users/{{ requester_id }}"><strong>{{ requester_name }}</strong></a>
+          {% if org_id != 0 %}<div><a class="muted" href="/organizations/{{ org_id }}">{{ org_name }}</a></div>{% endif %}
+        </div>
+      </div>
+      <dl class="kv">
+        <dt>E-Mail</dt><dd>{% if requester_email.is_empty() %}–{% else %}<a href="mailto:{{ requester_email }}">{{ requester_email }}</a>{% endif %}</dd>
+        <dt>Telefon</dt><dd>{% if requester_phone.is_empty() %}–{% else %}<a href="tel:{{ requester_phone }}">{{ requester_phone }}</a>{% endif %}</dd>
+      </dl>
+      <a class="btn wide" href="/tickets/new?channel=phone&requester_id={{ requester_id }}">📞 Neues Anruf-Ticket</a>
+    </div>
+    {% if !kb_hits.is_empty() %}
+    <div class="card">
+      <h4>Passende Hilfe-Artikel</h4>
+      <ul class="kb-hits">
+        {% for k in kb_hits %}
+        <li><a href="{{ k.url }}" target="_blank" rel="noopener">{{ k.title }}</a>
+          {% if !closed %}<button type="button" class="link" data-insert="{{ k.insert }}" title="Link in die Antwort einfügen">einfügen</button>{% endif %}</li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+    {% if !closed %}
+    <div class="card">
+      <h4>Zusammenführen</h4>
+      <p class="muted small">Doppelte Anfrage? Dieses Ticket wird geschlossen, sein Verlauf als interne Notiz ins Ziel übernommen.</p>
+      <div class="inline-merge">
+        <input type="text" name="target" form="merge-form" placeholder="Ziel-Ticket, z. B. 12" aria-label="Zielticket" inputmode="numeric">
+        <button class="btn" type="submit" form="merge-form">Zusammenführen</button>
+      </div>
+    </div>
+    {% endif %}
+    <div class="card">
+      <h4>Weitere Tickets</h4>
+      {% if other_tickets.is_empty() %}<p class="muted">Keine weiteren Tickets.</p>{% endif %}
+      <ul class="mini-list">
+        {% for o in other_tickets %}
+        <li><span class="status-badge s-{{ o.status }}" title="{{ o.status_label }}">{{ o.status_label }}</span>
+          <a href="/tickets/{{ o.id }}">#{{ o.id }} {{ o.subject }}</a></li>
+        {% endfor %}
+      </ul>
+    </div>
+  </aside>
+</form>
+{% endblock %}

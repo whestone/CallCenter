@@ -467,3 +467,17 @@ tr.kb-focus td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
 .shortcuts td { padding: 4px 10px 4px 0; vertical-align: top; }
 kbd { display: inline-block; padding: 1px 6px; border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 4px; background: var(--bg); font: 12px/1.5 ui-monospace, monospace; }
 .profile-links { display: flex; flex-wrap: wrap; gap: 8px; }
+
+/* Live-Chat (Agentenseite) */
+.rail-link { position: relative; }
+.rail-badge { position: absolute; top: 2px; right: 6px; min-width: 18px; height: 18px; padding: 0 4px; border-radius: 9px; background: var(--danger); color: #fff; font-size: 11px; font-weight: 700; line-height: 18px; text-align: center; }
+.chat-status { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 12px; background: #eef0f2; }
+.chat-waiting { background: #fff4e5; color: var(--warn); }
+.chat-active { background: #e6f4ee; color: var(--success); }
+tr.needs-reply td { background: #fffaf0; }
+tr.needs-reply td:first-child { box-shadow: inset 3px 0 0 var(--warn); }
+.chat-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 8px 12px; margin: 0 0 8px; border-radius: var(--radius); background: #e6f4ee; border: 1px solid #b7dfc9; }
+.chat-bar span { flex: 1; min-width: 200px; }
+.chat-bar.chat-waiting { background: #fff4e5; border-color: #f3c58a; }
+.chat-bar.chat-ended { background: #eef0f2; border-color: var(--border); }
+.code-snippet { background: #f3f4f6; border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 12px; overflow-x: auto; font: 13px/1.5 ui-monospace, monospace; }

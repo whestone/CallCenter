@@ -75,6 +75,40 @@ Alternativ per Docker: `docker compose up -d` (siehe `docker-compose.yml`).
   Asterisk o. ä.: `{"event":"ringing|answered|ended","call_id":"…","from":"…","agent":"…","duration":42}`)
 - **Simulator** in der Verwaltung: Testanrufe klingeln lassen, annehmen und auflegen – ohne Anbieter
 
+### Zusammenarbeit im Team
+- **Kollisionserkennung**: Im Ticket sieht man, wer es gerade geöffnet hat oder schreibt; neue Antworten
+  und Änderungen anderer werden live angezeigt. Hat ein Kollege inzwischen öffentlich geantwortet, wird
+  die eigene Antwort nicht verschickt, sondern mit erhaltenem Text und Hinweis wieder angezeigt
+- Ticketlisten aktualisieren sich alle 30 Sekunden selbst (nicht, solange man auswählt oder tippt)
+- **Benachrichtigungen** (Glocke oben rechts, `/notifications`): @Erwähnung (auch per E-Mail),
+  Zuweisung, Kundenantwort auf eigene Tickets, SLA-Warnung/-Verletzung (auch per E-Mail)
+- **@Erwähnungen** mit Vorschlagsliste beim Tippen von „@“
+- **Problem ↔ Vorfälle**: Vorfälle (Typ „Vorfall“) mit einem Problem-Ticket verknüpfen; wird das
+  Problem gelöst, werden alle offenen Vorfälle mitgelöst und erhalten die Lösungsantwort
+- **Folgetickets** zu geschlossenen Tickets (Button im Ticket; Antwort-Mails auf geschlossene
+  Tickets werden automatisch zu Folgetickets)
+- **CC**: weitere Personen erhalten öffentliche Antworten per E-Mail
+- **SLA-Eskalation**: Warnung `SLA_WARN_MINUTES` (Standard 30) vor Ablauf und Meldung bei Verletzung an
+  Bearbeiter, sonst Gruppe, sonst Administratoren – je SLA-Ziel nur einmal
+
+### Arbeitsplatz-Komfort
+- **Formatierung** in Antworten: fett, kursiv, Listen, Links, Code (Leiste über dem Antwortfeld,
+  Strg+B / Strg+I); HTML wird nie übernommen
+- **Tastenkürzel** – `?` zeigt die Übersicht: `j`/`k` durch Listen, `o` öffnen, `x` auswählen,
+  `r` antworten, `i` interne Notiz, `n` neues Ticket, `a` Anruf, `/` Suche, `g t`/`g k`/`g w`/`g b`
+- **Persönliche Makros** (`/me/macros`, Profil → Meine Makros): nur für einen selbst sichtbar
+- **Zeiterfassung**: Timer läuft im Ticket mit (pausiert im Hintergrund-Tab), Wert überschreibbar;
+  Summe je Ticket und eigener Anteil in der Seitenleiste
+
+### Live-Chat (`/chats`)
+- Widget für die eigene Webseite: `<script src="https://IHR-SERVER/static/chat-widget.js" async></script>`
+  (Demo: `/chat/demo`). Besucher geben Name, E-Mail und Frage ein – daraus wird ein Ticket (Kanal „Chat“)
+- Agenten sehen wartende Chats mit Zähler in der Seitenleiste, nehmen sie an und antworten im normalen
+  Ticket; der Besucher sieht Antworten sofort, beide Seiten sehen „schreibt gerade“
+- Solange der Besucher im Chat ist, gehen keine zusätzlichen E-Mails raus; verlässt er ihn oder wird
+  der Chat beendet, laufen Antworten per E-Mail weiter. Ist niemand online, wird die Nachricht zur
+  normalen Anfrage (Tag `chat_offline`). Verlassene Chats schließen sich nach 30 Minuten
+
 ### Business-Regeln
 Gemeinsame Regel-Engine (`src/rules.rs`) im Zendesk-Format:
 
@@ -127,6 +161,13 @@ Verlauf pro Tag, Verteilung nach Kanal/Priorität, Agenten-Statistik, CSV-Export
   (z. B. von Mailgun/Postmark weitergeleitet). Antworten mit `[#123]` vom Anfragenden werden dem Ticket
   zugeordnet, Zitate abgeschnitten; alles andere wird ein neues Ticket. Secret: `INBOUND_EMAIL_SECRET`
 - „Passwort vergessen?“ für Agenten und Kunden (Einmal-Link, 1 Stunde gültig); `PUBLIC_URL` für Links
+
+### E-Mail-Eingang per IMAP
+- Ungelesene Mails im Postfach werden jede Minute abgeholt (`IMAP_HOST`, `IMAP_PORT` (993),
+  `IMAP_USER`, `IMAP_PASSWORD`, `IMAP_FOLDER` (INBOX), `IMAP_POLL_SECONDS`) und danach als gelesen
+  markiert: neue Anfrage → Ticket, Antwort mit `[#123]` im Betreff → Kommentar, Anhänge werden übernommen
+- Abwesenheitsnotizen (`Auto-Submitted`), Massenmails und eigene Mails werden ignoriert
+- Status des letzten Abrufs unter Admin → E-Mail
 
 ### Geschäftszeiten (Admin → Geschäftszeiten)
 SLA-Richtlinien können in Geschäftszeiten rechnen (Häkchen im SLA-Editor): Nächte, Wochenenden und
@@ -195,5 +236,5 @@ static/          CSS, JS, htmx
 
 ## Nächste Schritte
 
-Siehe [ROADMAP.md](ROADMAP.md) – u. a. mehrere Projekte (Mandanten), IMAP-Eingang, SLA-Eskalationen,
-SSO, Live-Chat und Telefonie-Warteschlangen.
+Siehe [ROADMAP.md](ROADMAP.md) – u. a. mehrere Projekte (Mandanten), SSO, Mehrsprachigkeit,
+skill-basiertes Routing, eigene/geplante Berichte und Telefonie-Warteschlangen.

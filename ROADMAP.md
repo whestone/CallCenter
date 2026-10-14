@@ -17,10 +17,11 @@ Abgleich mit modernen Helpdesk-/Callcenter-Systemen (Zendesk Suite, Freshdesk, H
 | Tickets zusammenführen | ✅ Phase 2 |
 | Dateianhänge (Agenten & Kunden, sichere Auslieferung) | ✅ Phase 2 |
 | Eigene Ticketfelder (Text, Zahl, Auswahl, Ja/Nein, Datum; Pflicht beim Lösen) | ✅ Phase 2 |
-| Verknüpfte Tickets (Problem ↔ Vorfälle), Folgeticket zu geschlossenem Ticket | 📋 |
-| Kollisionserkennung („Anna bearbeitet gerade“), Echtzeit-Updates | 📋 |
-| Tastaturkürzel, persönliche Makros, Rich-Text, @Erwähnungen, CC | 📋 |
-| Zeiterfassung pro Ticket | 📋 |
+| Verknüpfte Tickets (Problem ↔ Vorfälle, gemeinsames Lösen), Folgeticket zu geschlossenem Ticket | ✅ Phase 5 |
+| Kollisionserkennung („Anna schreibt gerade“), Schutz vor doppelten Antworten, Live-Aktualisierung der Listen | ✅ Phase 5 |
+| Benachrichtigungen (Glocke + E-Mail): Erwähnung, Zuweisung, Kundenantwort, SLA | ✅ Phase 5 |
+| Tastaturkürzel, persönliche Makros, Formatierung (fett, Listen, Links), @Erwähnungen, CC | ✅ Phase 5 |
+| Zeiterfassung pro Ticket (mitlaufender Timer) | ✅ Phase 5 |
 
 ## Routing & Automatisierung
 | Funktion | Status |
@@ -31,7 +32,7 @@ Abgleich mit modernen Helpdesk-/Callcenter-Systemen (Zendesk Suite, Freshdesk, H
 | Automatische Zuweisung je Gruppe (Round Robin / geringste Auslastung, Kapazität, Warteschlange) | ✅ Phase 1 |
 | Zeitgesteuerte Automationen (konfigurierbar, z. B. Erinnerung, Auto-Schließen) | ✅ Phase 2 |
 | Geschäftszeiten & Feiertage für SLAs | ✅ Phase 3 |
-| SLA-Eskalationen (Benachrichtigung vor Ablauf) | 📋 |
+| SLA-Eskalationen (Warnung vor Ablauf, Meldung bei Verletzung) | ✅ Phase 5 |
 | Skill-basiertes Routing (Sprache, Produkt) | 📋 |
 | Webhooks (signiert, mit Wiederholung und Zustellprotokoll) | ✅ Phase 3 |
 
@@ -43,10 +44,10 @@ Abgleich mit modernen Helpdesk-/Callcenter-Systemen (Zendesk Suite, Freshdesk, H
 | Kundenzufriedenheit (CSAT-Bewertung nach Lösung, Quote in Reports) | ✅ Phase 2 |
 | Kunden zusammenführen (Dubletten) | ✅ Phase 2 |
 | E-Mail: Versand per SMTP, Eingang per Webhook, Vorlagen, Postausgang | ✅ Phase 3 |
-| E-Mail-Eingang direkt per IMAP-Abruf | 📋 |
+| E-Mail-Eingang direkt per IMAP-Abruf (inkl. Anhänge, Schutz vor Mail-Schleifen) | ✅ Phase 5 |
 | Passwort zurücksetzen per E-Mail (Agenten & Kunden) | ✅ Phase 3 |
 | Wissensdatenbank & öffentliches Hilfe-Center, Vorschläge für Kunden und Agenten | ✅ Phase 3 |
-| Web-Widget / Live-Chat | 📋 |
+| Live-Chat-Widget für die eigene Webseite (Chat = Ticket, Tippanzeige, Offline-Modus) | ✅ Phase 5 |
 | Telefonie: Anruf-Banner, Anrufprotokoll im Ticket, Rückruf-Tickets, Click-to-Call, Aufzeichnungs-Link (sipgate, Twilio, allgemeiner Webhook, Simulator) | ✅ |
 | Telefonie: Warteschlangen/IVR, Weiterleiten, Softphone im Browser (WebRTC) | 📋 Backlog |
 

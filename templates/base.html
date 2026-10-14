@@ -17,6 +17,8 @@
       <svg viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h10"/></svg><span>Tickets</span></a>
     <a href="/tickets/new?channel=phone" class="rail-link{% if nav.section == "new" %} active{% endif %}" title="Anruf erfassen">
       <svg viewBox="0 0 24 24"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2"/></svg><span>Anruf</span></a>
+    <a href="/chats" class="rail-link{% if nav.section == "chats" %} active{% endif %}" title="Live-Chats">
+      <svg viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/></svg><span>Chats</span><span class="rail-badge-slot" hx-get="/chats/badge" hx-trigger="load, every 10s" hx-swap="innerHTML"></span></a>
     <a href="/users" class="rail-link{% if nav.section == "users" %} active{% endif %}" title="Kunden">
       <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg><span>Kunden</span></a>
     <a href="/organizations" class="rail-link{% if nav.section == "orgs" %} active{% endif %}" title="Organisationen">

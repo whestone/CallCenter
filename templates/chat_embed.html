@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kundenservice-Chat</title>
+  <link rel="stylesheet" href="/static/chat.css">
+</head>
+<body class="chat-embed">
+  <header class="chat-head">
+    <div>
+      <strong>Kundenservice</strong>
+      <div class="chat-sub" id="chat-sub">Verbinde …</div>
+    </div>
+    <button type="button" id="chat-close" class="chat-icon-btn" aria-label="Chat schließen">✕</button>
+  </header>
+
+  <form id="chat-start" class="chat-start" hidden>
+    <p id="chat-intro"></p>
+    <label>Name<input name="name" autocomplete="name" maxlength="100"></label>
+    <label>E-Mail *<input name="email" type="email" required autocomplete="email" maxlength="200"></label>
+    <label>Ihre Frage *<textarea name="message" rows="4" required maxlength="5000"></textarea></label>
+    <p class="chat-error" id="start-error" role="alert"></p>
+    <button type="submit" class="chat-primary">Chat starten</button>
+    <p class="chat-privacy">Name, E-Mail und Nachricht werden zur Bearbeitung Ihrer Anfrage gespeichert.</p>
+  </form>
+
+  <section id="chat-conv" class="chat-conv" hidden>
+    <div id="chat-messages" class="chat-messages" aria-live="polite"></div>
+    <div id="chat-typing" class="chat-typing" hidden></div>
+    <div id="chat-ended" class="chat-ended" hidden>
+      <p>Der Chat ist beendet. Weitere Antworten erhalten Sie per E-Mail.</p>
+      <button type="button" id="chat-new" class="chat-primary">Neuen Chat starten</button>
+    </div>
+    <form id="chat-send" class="chat-send">
+      <textarea name="body" rows="2" placeholder="Nachricht schreiben …" maxlength="5000" required aria-label="Nachricht"></textarea>
+      <button type="submit" class="chat-primary" aria-label="Senden">➤</button>
+    </form>
+    <p class="chat-error" id="send-error" role="alert"></p>
+    <button type="button" id="chat-end" class="chat-link">Chat beenden</button>
+  </section>
+  <script src="/static/chat-embed.js"></script>
+</body>
+</html>

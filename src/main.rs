@@ -1,9 +1,11 @@
 mod api;
 mod auth;
 mod automations;
+mod chat;
 mod email;
 mod error;
 mod escalation;
+mod imap;
 mod kb;
 mod markdown;
 mod models;
@@ -52,6 +54,7 @@ async fn main() -> anyhow::Result<()> {
     let state = AppState { db, presence: Default::default() };
     automations::spawn(state.clone());
     email::spawn_sender(state.db.clone());
+    imap::spawn(state.db.clone());
     webhooks::spawn(state.db.clone());
 
     let app = axum::Router::new()

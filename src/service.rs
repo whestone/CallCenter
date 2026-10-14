@@ -395,6 +395,7 @@ async fn insert_audit(
 }
 
 /// Speichert ausstehende Kommentare und Benachrichtigungen eines Updates.
+#[allow(clippy::too_many_arguments)]
 async fn write_effects(
     conn: &mut PgConnection,
     t: &Ticket,
@@ -403,6 +404,7 @@ async fn write_effects(
     notifications: Vec<String>,
     events: &mut Vec<AuditEvent>,
     update_via: &str,
+    created: bool,
 ) -> AppResult<()> {
     // Demodaten verschicken keine E-Mails.
     let send_mail = update_via != "seed";
@@ -424,7 +426,11 @@ async fn write_effects(
             .await?;
         let (author_name, author_is_agent) = author.map(|(n, r)| (n, r != "end-user")).unwrap_or_default();
         if send_mail && c.public && author_id != t.requester_id && author_is_agent {
-            email::queue_ticket_mail(conn, t, email::TicketMail::Reply { body: &body }).await?;
+            // Im laufenden Live-Chat liest der Kunde direkt mit – keine zusätzliche E-Mail.
+            let live_chat = t.channel == "chat" && crate::chat::on_agent_reply(conn, t.id, author_id).await?;
+            if !live_chat {
+                email::queue_ticket_mail(conn, t, email::TicketMail::Reply { body: &body }).await?;
+            }
         }
         if !send_mail {
             continue;
@@ -434,7 +440,7 @@ async fn write_effects(
                 let text = format!("{author_name} hat dich in #{} „{}“ erwähnt", t.id, t.subject);
                 crate::notify::notify(conn, user_id, Some(t), "mention", &text, true).await?;
             }
-        } else if let Some(assignee) = t.assignee_id.filter(|_| c.public) {
+        } else if let Some(assignee) = t.assignee_id.filter(|_| c.public && !created && t.channel != "chat") {
             let text = format!("{author_name} hat auf #{} „{}“ geantwortet", t.id, t.subject);
             crate::notify::notify(conn, assignee, Some(t), "reply", &text, false).await?;
         }
@@ -557,7 +563,7 @@ pub async fn create_ticket(db: &PgPool, actor: &User, input: NewTicket, via: &st
         let text = format!("#{} „{}“ wurde dir zugewiesen", t.id, t.subject);
         crate::notify::notify(&mut tx, assignee, Some(&t), "assigned", &text, false).await?;
     }
-    write_effects(&mut tx, &t, actor, comments, fx.notifications, &mut events, via).await?;
+    write_effects(&mut tx, &t, actor, comments, fx.notifications, &mut events, via, true).await?;
     insert_audit(&mut tx, t.id, Some(actor.id), via, &events).await?;
     webhooks::enqueue(&mut tx, "ticket.created", &t).await?;
     tx.commit().await?;
@@ -778,7 +784,7 @@ pub async fn update_ticket_with(
         let text = format!("{} hat dir #{} „{}“ zugewiesen", actor.name, t.id, t.subject);
         crate::notify::notify(&mut tx, assignee, Some(&t), "assigned", &text, false).await?;
     }
-    write_effects(&mut tx, &t, actor, comments, std::mem::take(&mut fx.notifications), &mut events, via).await?;
+    write_effects(&mut tx, &t, actor, comments, std::mem::take(&mut fx.notifications), &mut events, via, false).await?;
     insert_audit(&mut tx, t.id, Some(actor.id), via, &events).await?;
     webhooks::enqueue(&mut tx, "ticket.updated", &t).await?;
     if t.status == "solved" && before.status != "solved" {

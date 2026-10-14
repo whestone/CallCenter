@@ -1,2 +1,3 @@
+{% if !visitor_typing.is_empty() %}<span class="presence-chip composing">✍ {{ visitor_typing }} (Kunde) schreibt gerade …</span>{% endif %}
 {% for v in viewers %}<span class="presence-chip{% if v.composing %} composing{% endif %}">{% if v.composing %}✍ {{ v.name }} schreibt gerade …{% else %}👁 {{ v.name }} sieht sich das Ticket an{% endif %}</span>{% endfor %}
 {% if !updated_by.is_empty() %}<span class="presence-update{% if new_reply %} reply{% endif %}">{% if new_reply %}💬 Neue Antwort{% else %}↻ Geändert{% endif %} von {{ updated_by }} – <a href="/tickets/{{ id }}" data-reload-ticket>neu laden</a></span>{% endif %}

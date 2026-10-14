@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Chats{% endblock %}
+{% block content %}
+<div class="page">
+  <div class="pane-head">
+    <h1>Live-Chats</h1>
+    <span class="muted">{{ rows.len() }} offen bzw. in der letzten Stunde</span>
+  </div>
+  {% if !online %}<div class="notice">Du bist nicht „Online“. Besucher können nur chatten, wenn mindestens ein Agent online ist – sonst wird ihre Nachricht zur normalen Anfrage mit Antwort per E-Mail.</div>{% endif %}
+
+  <div hidden hx-get="/chats" hx-trigger="every 5s [ccListIdle()]" hx-select=".chat-list-wrap" hx-target=".chat-list-wrap" hx-swap="outerHTML"></div>
+  <div class="chat-list-wrap">
+  {% if rows.is_empty() %}
+  <div class="empty">Gerade keine Chats.</div>
+  {% else %}
+  <div class="table-wrap">
+  <table class="tickets">
+    <thead><tr><th>Besucher</th><th>Anliegen</th><th>Status</th><th>Agent</th><th>Seit</th><th></th></tr></thead>
+    <tbody>
+    {% for r in rows %}
+    <tr class="{% if r.last_from_visitor && r.status != "ended" %}needs-reply{% endif %}">
+      <td><strong>{{ r.visitor }}</strong>{% if r.present %} <span class="dot dot-online" title="ist im Chat"></span>{% endif %}<br><span class="muted small">{{ r.email }}</span></td>
+      <td class="subject"><a href="/tickets/{{ r.ticket_id }}">#{{ r.ticket_id }} {{ r.subject }}</a>
+        {% if !r.last.is_empty() %}<div class="muted small">{% if r.last_from_visitor %}💬 {% else %}↩ {% endif %}{{ r.last }}</div>{% endif %}
+        {% if !r.page_url.is_empty() %}<div class="muted small">Seite: {{ r.page_url }}</div>{% endif %}</td>
+      <td><span class="chat-status chat-{{ r.status }}">{{ r.status_label }}</span></td>
+      <td>{% if r.mine %}<strong>du</strong>{% else %}{{ r.agent }}{% endif %}</td>
+      <td class="muted nowrap">{{ r.since }}</td>
+      <td class="nowrap">
+        {% if r.status == "waiting" %}
+        <form method="post" action="/chats/{{ r.id }}/accept" class="inline"><button class="btn primary">Annehmen</button></form>
+        {% else %}
+        <a class="btn" href="/tickets/{{ r.ticket_id }}">Öffnen</a>
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% endif %}
+  </div>
+
+  <section class="card">
+    <h3>Chat auf der eigenen Webseite einbinden</h3>
+    <p class="muted small">Diese Zeile vor <code>&lt;/body&gt;</code> einfügen. Es erscheint unten rechts eine Chat-Schaltfläche. Besucher geben Name, E-Mail und ihre Frage ein; daraus entsteht ein Ticket (Kanal „Chat“). Antworten im Ticket sieht der Besucher sofort im Chatfenster. Verlässt er den Chat, gehen weitere Antworten per E-Mail raus.</p>
+    <pre class="code-snippet">{{ snippet }}</pre>
+    <p><a class="btn" href="{{ demo_url }}" target="_blank" rel="noopener" hx-boost="false">Demo-Webseite mit Chat öffnen ↗</a></p>
+  </section>
+</div>
+{% endblock %}

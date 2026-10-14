@@ -1,6 +1,7 @@
 //! Agenten-Oberfläche: serverseitig gerendert (askama) mit htmx.
 
 mod admin;
+mod chat;
 mod files;
 mod integrations;
 mod kb;
@@ -55,6 +56,7 @@ pub fn router() -> Router<AppState> {
         .merge(integrations::router())
         .merge(telephony::router())
         .merge(notifications::router())
+        .merge(chat::router())
         .merge(admin::personal_router())
         .merge(admin::router())
 }

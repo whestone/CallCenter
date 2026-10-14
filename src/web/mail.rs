@@ -159,6 +159,10 @@ struct EmailPage {
     smtp_ok: bool,
     inbound_url: String,
     inbound_enabled: bool,
+    imap_ok: bool,
+    imap: String,
+    imap_status: String,
+    imap_status_ok: bool,
     templates: Vec<TemplateField>,
     outbox: Vec<OutboxRow>,
     notice: String,
@@ -181,6 +185,14 @@ async fn admin_page(State(st): State<AppState>, WebAdmin(me): WebAdmin, Query(q)
             .map(|c| format!("{}:{} ({}), Absender {}", c.host, c.port, c.security, c.from))
             .unwrap_or_else(|| "nicht konfiguriert – Mails werden nur im Postausgang angezeigt".into()),
         inbound_enabled: inbound_secret().is_some(),
+        imap_ok: crate::imap::config().is_some(),
+        imap: crate::imap::config()
+            .map(|c| format!("{}@{}:{} ({}), Ordner {}, alle {} s", c.user, c.host, c.port, c.security, c.folder, c.interval))
+            .unwrap_or_else(|| "IMAP_HOST, IMAP_USER und IMAP_PASSWORD setzen".into()),
+        imap_status: crate::imap::last_status()
+            .map(|s| format!("Letzter Abruf {}: {}", fmt_rel(s.at, chrono::Utc::now()), s.message))
+            .unwrap_or_default(),
+        imap_status_ok: crate::imap::last_status().is_none_or(|s| s.ok),
         inbound_url: format!("{}/api/v2/inbound/email?secret=…", email::public_url()),
         templates: email::TEMPLATE_KEYS
             .iter()

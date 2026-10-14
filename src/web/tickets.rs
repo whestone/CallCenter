@@ -157,6 +157,10 @@ struct TicketPage {
     draft: String,
     draft_internal: bool,
     warning: String,
+    chat_id: i64,
+    chat_status: String,
+    chat_status_label: &'static str,
+    chat_present: bool,
 }
 
 /// Nicht abgeschickter Text, der beim erneuten Anzeigen erhalten bleibt.
@@ -173,6 +177,9 @@ fn mini(t: &Ticket) -> MiniTicket {
 
 /// Sekunden als „12 Min“ bzw. „1:05 h“.
 pub fn fmt_seconds(s: i64) -> String {
+    if s < 60 {
+        return "< 1 Min".into();
+    }
     let minutes = (s + 30) / 60;
     if minutes < 60 { format!("{minutes} Min") } else { format!("{}:{:02} h", minutes / 60, minutes % 60) }
 }
@@ -382,6 +389,7 @@ async fn render_ticket(st: &AppState, me: &User, id: i64, draft: Draft) -> WebRe
         .bind(id)
         .fetch_one(db)
         .await?;
+    let chat = crate::chat::for_ticket(db, id).await?;
     let others: Vec<Ticket> = sqlx::query_as(
         "SELECT * FROM tickets WHERE requester_id = $1 AND id <> $2 ORDER BY updated_at DESC LIMIT 8",
     )
@@ -504,6 +512,10 @@ async fn render_ticket(st: &AppState, me: &User, id: i64, draft: Draft) -> WebRe
         draft: draft.comment,
         draft_internal: draft.internal,
         warning: draft.warning,
+        chat_id: chat.as_ref().map(|c| c.id).unwrap_or(0),
+        chat_status: chat.as_ref().map(|c| c.status.clone()).unwrap_or_default(),
+        chat_status_label: chat.as_ref().map(|c| crate::chat::status_label(&c.status)).unwrap_or(""),
+        chat_present: chat.as_ref().is_some_and(|c| crate::chat::visitor_present(c, now)),
         id: t.id,
         subject: t.subject.clone(),
         status: t.status.clone(),
@@ -632,17 +644,19 @@ async fn cc_ids(db: &PgPool, text: &str) -> AppResult<Vec<i64>> {
     Ok(ids)
 }
 
-/// Öffentliche Antworten anderer seit dem Öffnen des Tickets (Namen der Autoren).
-async fn replies_since(db: &PgPool, id: i64, seen: i64, me: i64) -> AppResult<Vec<String>> {
+/// Öffentliche Antworten anderer seit dem Öffnen des Tickets (Namen der Autoren);
+/// mit `agents_only` nur Antworten von Kollegen (Gefahr doppelter Antworten).
+async fn replies_since(db: &PgPool, id: i64, seen: i64, me: i64, agents_only: bool) -> AppResult<Vec<String>> {
     // Kommentare einer Transaktion tragen denselben Zeitstempel wie ihr Audit-Eintrag.
     Ok(sqlx::query_scalar(
         "SELECT DISTINCT u.name FROM ticket_comments c JOIN users u ON u.id = c.author_id
-         WHERE c.ticket_id = $1 AND c.public AND c.author_id <> $3
+         WHERE c.ticket_id = $1 AND c.public AND c.author_id <> $3 AND (NOT $4 OR u.role <> 'end-user')
            AND c.created_at > COALESCE((SELECT created_at FROM ticket_audits WHERE id = $2), '-infinity')",
     )
     .bind(id)
     .bind(seen)
     .bind(me)
+    .bind(agents_only)
     .fetch_all(db)
     .await?)
 }
@@ -658,7 +672,7 @@ async fn update_ticket(
     // Kollision: Hat jemand anderes inzwischen öffentlich geantwortet, wird die eigene
     // öffentliche Antwort nicht blind verschickt, sondern mit Hinweis wieder angezeigt.
     if let (Some(body), true, Some(seen)) = (&comment, public, f.seen_audit) {
-        let others = replies_since(&st.db, id, seen, me.id).await?;
+        let others = replies_since(&st.db, id, seen, me.id, true).await?;
         if !others.is_empty() {
             let draft = Draft {
                 comment: body.clone(),
@@ -736,6 +750,7 @@ struct PresenceFragment {
     viewers: Vec<Viewer>,
     updated_by: String,
     new_reply: bool,
+    visitor_typing: String,
 }
 
 async fn presence(
@@ -746,6 +761,15 @@ async fn presence(
 ) -> WebResult<Html<String>> {
     let composing = matches!(q.composing.as_deref(), Some("1" | "true"));
     let others = st.presence.touch(id, me.id, composing);
+    // Live-Chat: Tippen an den Besucher melden und umgekehrt anzeigen.
+    let chat = crate::chat::for_ticket(&st.db, id).await?;
+    if composing && chat.as_ref().is_some_and(|c| c.status != "ended") {
+        crate::chat::agent_typing(&st.db, id).await?;
+    }
+    let visitor_typing = match chat.filter(|c| crate::chat::typing(c.visitor_typing_at, chrono::Utc::now())) {
+        Some(c) => sqlx::query_scalar("SELECT name FROM users WHERE id = $1").bind(c.visitor_id).fetch_one(&st.db).await?,
+        None => String::new(),
+    };
     let names = user_names(&st.db, others.iter().map(|(uid, _)| *uid).collect()).await?;
     let mut viewers: Vec<Viewer> = others
         .into_iter()
@@ -763,12 +787,12 @@ async fn presence(
             .bind(me.id)
             .fetch_all(&st.db)
             .await?;
-            let replies = replies_since(&st.db, id, seen, me.id).await?;
+            let replies = replies_since(&st.db, id, seen, me.id, false).await?;
             (authors.join(", "), !replies.is_empty())
         }
         None => (String::new(), false),
     };
-    page(PresenceFragment { id, viewers, updated_by, new_reply })
+    page(PresenceFragment { id, viewers, updated_by, new_reply, visitor_typing })
 }
 
 #[derive(Deserialize)]

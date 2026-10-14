@@ -3,6 +3,10 @@
 {% block content %}
 <form id="macro-form" method="post" action="/tickets/{{ id }}/macro"></form>
 <form id="upload-form" method="post" action="/tickets/{{ id }}/attachments" enctype="multipart/form-data"></form>
+{% if chat_id != 0 %}
+<form id="chat-accept-form" method="post" action="/chats/{{ chat_id }}/accept"></form>
+<form id="chat-end-form" method="post" action="/chats/{{ chat_id }}/end?back=ticket" hx-confirm="Chat beenden? Weitere Antworten gehen dann per E-Mail an den Kunden."></form>
+{% endif %}
 <form id="merge-form" method="post" action="/tickets/{{ id }}/merge" hx-confirm="Ticket #{{ id }} wirklich zusammenführen und schließen?"></form>
 
 <form class="ticket-layout" method="post" action="/tickets/{{ id }}">
@@ -83,11 +87,18 @@
         <input class="subject-input" type="text" name="subject" value="{{ subject }}" aria-label="Betreff">
         <span class="muted">aktualisiert {{ updated }}</span>
       </div>
+      {% if chat_id != 0 %}
+      <div class="chat-bar chat-{{ chat_status }}">
+        <span>💬 Live-Chat · <strong>{{ chat_status_label }}</strong>{% if chat_status != "ended" %} · {% if chat_present %}Besucher ist im Chat – Antworten erscheinen sofort bei ihm{% else %}Besucher ist nicht mehr im Chat – Antworten gehen per E-Mail{% endif %}{% endif %}</span>
+        {% if chat_status == "waiting" %}<button class="btn primary" type="submit" form="chat-accept-form">Chat annehmen</button>{% endif %}
+        {% if chat_status != "ended" %}<button class="btn" type="submit" form="chat-end-form">Chat beenden</button>{% endif %}
+      </div>
+      {% endif %}
       <div id="presence" class="presence" aria-live="polite"
            hx-get="/tickets/{{ id }}/presence" hx-trigger="load, every 5s"
            hx-vals='js:{seen: {{ seen_audit }}, composing: window.ccComposing ? ccComposing() : 0}'></div>
 
-      <div class="comments">
+      <div class="comments"{% if chat_id != 0 && chat_status != "ended" %} hx-get="/tickets/{{ id }}" hx-trigger="every 3s" hx-select=".comments" hx-swap="outerHTML"{% endif %}>
         {% for c in comments %}
         <article class="comment{% if !c.public %} internal{% endif %}{% if c.is_agent %} by-agent{% endif %}">
           <div class="avatar small">{{ c.initials }}</div>

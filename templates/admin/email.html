@@ -17,8 +17,13 @@
       <div class="tile-value small-value">{% if inbound_enabled %}✓ aktiv{% else %}✗ aus{% endif %}</div>
       <div class="tile-hint">{% if inbound_enabled %}{{ inbound_url }}{% else %}INBOUND_EMAIL_SECRET setzen (mind. 16 Zeichen){% endif %}</div>
     </div>
+    <div class="tile">
+      <div class="tile-label">Eingang (IMAP-Abruf)</div>
+      <div class="tile-value small-value">{% if imap_ok %}{% if imap_status_ok %}✓ aktiv{% else %}⚠ Fehler{% endif %}{% else %}✗ aus{% endif %}</div>
+      <div class="tile-hint">{{ imap }}{% if !imap_status.is_empty() %}<br>{{ imap_status }}{% endif %}</div>
+    </div>
   </div>
-  <p class="muted small">Konfiguration über <code>.env</code>: <code>SMTP_HOST</code>, <code>SMTP_PORT</code>, <code>SMTP_USER</code>, <code>SMTP_PASSWORD</code>, <code>SMTP_FROM</code>, <code>SMTP_SECURITY</code> (starttls / tls / none), <code>PUBLIC_URL</code>, <code>INBOUND_EMAIL_SECRET</code>.</p>
+  <p class="muted small">Konfiguration über <code>.env</code>: <code>SMTP_HOST</code>, <code>SMTP_PORT</code>, <code>SMTP_USER</code>, <code>SMTP_PASSWORD</code>, <code>SMTP_FROM</code>, <code>SMTP_SECURITY</code> (starttls / tls / none), <code>PUBLIC_URL</code>, <code>INBOUND_EMAIL_SECRET</code>, für den Postfach-Abruf <code>IMAP_HOST</code>, <code>IMAP_PORT</code>, <code>IMAP_USER</code>, <code>IMAP_PASSWORD</code>, <code>IMAP_FOLDER</code>, <code>IMAP_POLL_SECONDS</code>.</p>
 
   <div class="two-col">
     <section>

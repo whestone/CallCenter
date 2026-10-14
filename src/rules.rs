@@ -433,6 +433,7 @@ mod tests {
             capacity: 10,
             totp_secret: None,
             totp_pending_secret: None,
+            extension: None,
             created_at: Utc::now(),
             updated_at: Utc::now(),
         };

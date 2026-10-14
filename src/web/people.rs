@@ -146,6 +146,7 @@ struct UserPage {
     created: String,
     org_opts: Vec<Opt>,
     rows: Vec<TicketRow>,
+    calls: Vec<super::telephony::CallView>,
 }
 
 async fn load_user(db: &PgPool, id: i64) -> AppResult<User> {
@@ -178,6 +179,7 @@ async fn show_user(State(st): State<AppState>, WebAgent(me): WebAgent, Path(id):
         created: fmt_dt(u.created_at),
         org_opts: org_opts(&st.db, u.organization_id).await?,
         rows: ticket_rows(&st.db, &tickets).await?,
+        calls: super::telephony::call_views(&st.db, &crate::telephony::for_customer(&st.db, id, 20).await?).await?,
     })
     .map(IntoResponse::into_response)
 }

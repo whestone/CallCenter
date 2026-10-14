@@ -13,6 +13,7 @@
       <select name="role">{% for o in role_opts %}<option value="{{ o.value }}"{% if o.selected %} selected{% endif %}>{{ o.label }}</option>{% endfor %}</select>
     </label>
     <label>Kapazität (max. offene Tickets für automatische Zuweisung)<input type="number" name="capacity" min="0" max="500" value="{{ capacity }}"></label>
+    <label>Telefon-Durchwahl (sipgate-Geräte-ID, z. B. e0, oder Nebenstelle)<input type="text" name="extension" value="{{ extension }}" placeholder="z. B. e0 oder 201"></label>
     <label class="check"><input type="checkbox" name="active"{% if active %} checked{% endif %}> Aktiv</label>
     <div class="checks">
       <span>Gruppen</span>

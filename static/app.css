@@ -394,3 +394,23 @@ body.portal { background: var(--bg); }
   .conv-head { flex-wrap: wrap; gap: 4px; }
   .conv-head .subject-input { flex-basis: 100%; }
 }
+
+/* Telefonie */
+form.inline { display: inline; margin: 0; }
+.head-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+#call-banner:empty { display: none; }
+#call-banner { position: sticky; top: 0; z-index: 20; }
+.call-banner { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 10px 16px; border-bottom: 1px solid var(--border); background: #e8f2fb; }
+.call-banner.call-ringing { background: #fff4e5; border-bottom-color: #f3c58a; }
+.call-banner.call-ringing .call-icon { animation: call-ring 1s ease-in-out infinite; }
+.call-icon { font-size: 22px; }
+.call-info { display: flex; flex-direction: column; flex: 1; min-width: 200px; }
+.call-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+@keyframes call-ring { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(-15deg); } 75% { transform: rotate(15deg); } }
+@media (prefers-reduced-motion: reduce) { .call-banner.call-ringing .call-icon { animation: none; } }
+.call-status { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 12px; background: #eef0f2; color: var(--text); }
+.call-status-ringing, .call-status-answered { background: #e8f2fb; color: var(--accent-dark); }
+.call-status-completed { background: #e6f4ee; color: var(--success); }
+.call-status-missed, .call-status-failed { background: #fbe9eb; color: var(--danger); }
+.call-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px; }
+.notice { padding: 10px 12px; border: 1px solid #f3c58a; background: #fff4e5; border-radius: var(--radius); margin-bottom: 12px; }

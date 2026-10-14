@@ -11,13 +11,30 @@
       </div>
     </div>
     {% if is_end_user %}
+    <div class="head-actions">
+    {% if !phone.is_empty() %}<form method="post" action="/calls/dial" class="inline"><input type="hidden" name="number" value="{{ phone }}"><button class="btn">📞 Anrufen</button></form>{% endif %}
     <a class="btn primary" href="/tickets/new?channel=phone&requester_id={{ id }}">📞 Neues Anruf-Ticket</a>
+    </div>
     {% endif %}
   </div>
   <div class="two-col">
     <section>
       <h3>Tickets</h3>
       {% include "ticket_table.html" %}
+      {% if !calls.is_empty() %}
+      <h3>Anrufe</h3>
+      <div class="table-wrap">
+      <table class="tickets">
+        <thead><tr><th>Status</th><th>Richtung</th><th>Agent</th><th>Dauer</th><th>Ticket</th><th>Zeit</th></tr></thead>
+        <tbody>
+        {% for c in calls %}
+        <tr><td><span class="call-status call-status-{{ c.status }}">{{ c.status_label }}</span></td><td>{{ c.direction_label }}</td><td>{{ c.agent }}</td><td class="nowrap">{{ c.duration }}</td>
+          <td>{% if c.ticket_id != 0 %}<a href="/tickets/{{ c.ticket_id }}">#{{ c.ticket_id }}</a>{% endif %}</td><td class="muted nowrap">{{ c.started }}</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      </div>
+      {% endif %}
     </section>
     <div>
     <form class="card" method="post" action="/users/{{ id }}">

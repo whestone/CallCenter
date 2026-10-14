@@ -59,6 +59,22 @@ Alternativ per Docker: `docker compose up -d` (siehe `docker-compose.yml`).
   (Landesvorwahl über `DEFAULT_COUNTRY_CODE`, Standard `49`)
 - Organisationszuordnung über E-Mail-Domains
 
+### Telefonie (Admin → Telefonie)
+- **Anruf-Banner (Screen-Pop)**: eingehende Anrufe erscheinen bei allen Agenten mit Status „Online“
+  mit Name, Organisation und Zahl offener Tickets; Buttons „Kundenakte“ und „Ticket anlegen“
+  (übernimmt den Anrufer und verknüpft das Gespräch)
+- Jedes Gespräch wird mit Richtung, Agent, Dauer und ggf. Aufzeichnung als interne Notiz im Ticket
+  protokolliert; Anrufliste am Ticket, beim Kunden und im Admin-Protokoll
+- **Verpasste Anrufe** → Rückruf-Ticket (Priorität hoch, Tags `verpasster_anruf`, `rueckruf`),
+  unzugewiesen, damit das Routing verteilt; weitere verpasste Anrufe ergänzen dasselbe Ticket
+- **Click-to-Call** an Ticket und Kunde: über sipgate (`SIPGATE_TOKEN_ID`/`SIPGATE_TOKEN`, Gerät =
+  Durchwahl des Agenten unter Team) oder ohne Anbieter per `tel:`-Link ans Softphone
+- Anbieter-Webhooks (aktiv, sobald `TELEPHONY_SECRET` mit mind. 16 Zeichen gesetzt ist):
+  `POST /telephony/sipgate?secret=…` (sipgate.io Push-API), `POST /telephony/twilio?secret=…`
+  (Twilio Status-Callback), `POST /api/v2/telephony/events?secret=…` (allgemeines JSON für 3CX,
+  Asterisk o. ä.: `{"event":"ringing|answered|ended","call_id":"…","from":"…","agent":"…","duration":42}`)
+- **Simulator** in der Verwaltung: Testanrufe klingeln lassen, annehmen und auflegen – ohne Anbieter
+
 ### Business-Regeln
 Gemeinsame Regel-Engine (`src/rules.rs`) im Zendesk-Format:
 
@@ -179,8 +195,5 @@ static/          CSS, JS, htmx
 
 ## Nächste Schritte
 
-- Telefonie-Anbindung (Twilio/sipgate-Webhooks → Ticket + Call-Record, Screen-Pop beim Agenten)
-- E-Mail-Kanal (IMAP/SMTP) und echte Benachrichtigungen statt Log
-- Business-Hours für SLAs, Satisfaction-Rating, Reporting
-- API-Tokens statt Passwort-Basic-Auth, CSRF-Token für Formulare
-- View-Bedingungen in SQL übersetzen (aktuell In-Memory-Auswertung über max. 20 000 Tickets)
+Siehe [ROADMAP.md](ROADMAP.md) – u. a. mehrere Projekte (Mandanten), IMAP-Eingang, SLA-Eskalationen,
+SSO, Live-Chat und Telefonie-Warteschlangen.

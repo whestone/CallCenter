@@ -156,10 +156,20 @@
       </div>
       <dl class="kv">
         <dt>E-Mail</dt><dd>{% if requester_email.is_empty() %}–{% else %}<a href="mailto:{{ requester_email }}">{{ requester_email }}</a>{% endif %}</dd>
-        <dt>Telefon</dt><dd>{% if requester_phone.is_empty() %}–{% else %}<a href="tel:{{ requester_phone }}">{{ requester_phone }}</a>{% endif %}</dd>
+        <dt>Telefon</dt><dd>{% if requester_phone.is_empty() %}–{% else %}{{ requester_phone }} <form method="post" action="/calls/dial" class="inline"><input type="hidden" name="number" value="{{ requester_phone }}"><input type="hidden" name="ticket_id" value="{{ id }}"><button class="link" title="Anrufen">📞 anrufen</button></form>{% endif %}</dd>
       </dl>
       <a class="btn wide" href="/tickets/new?channel=phone&requester_id={{ requester_id }}">📞 Neues Anruf-Ticket</a>
     </div>
+    {% if !calls.is_empty() %}
+    <div class="card">
+      <h4>Anrufe</h4>
+      <ul class="call-list">
+        {% for c in calls %}
+        <li><span class="call-status call-status-{{ c.status }}">{{ c.status_label }}</span> {{ c.direction_label }}{% if !c.agent.is_empty() %} · {{ c.agent }}{% endif %} · {{ c.duration }}<br><span class="muted small">{{ c.started }}{% if !c.recording_url.is_empty() %} · <a href="{{ c.recording_url }}" target="_blank" rel="noopener">Aufnahme</a>{% endif %}</span></li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
     {% if !kb_hits.is_empty() %}
     <div class="card">
       <h4>Passende Hilfe-Artikel</h4>

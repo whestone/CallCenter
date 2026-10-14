@@ -140,6 +140,7 @@ struct TicketPage {
     csat_good: bool,
     csat_comment: String,
     kb_hits: Vec<KbHit>,
+    calls: Vec<super::telephony::CallView>,
 }
 
 struct KbHit {
@@ -288,6 +289,7 @@ async fn show_ticket(State(st): State<AppState>, WebAgent(me): WebAgent, Path(id
     let policy = sla::load_policy(db, t.sla_policy_id).await?;
 
     let attachments = super::files::attachments_by_comment(db, id).await?;
+    let calls = super::telephony::call_views(db, &crate::telephony::for_ticket(db, id).await?).await?;
     let kb_hits: Vec<KbHit> = crate::kb::search(db, &t.subject, true, true, 3)
         .await?
         .into_iter()
@@ -443,6 +445,7 @@ async fn show_ticket(State(st): State<AppState>, WebAgent(me): WebAgent, Path(id
         csat_good: t.satisfaction_score.as_deref() == Some("good"),
         csat_comment: t.satisfaction_comment.clone().unwrap_or_default(),
         kb_hits,
+        calls,
         other_tickets: others
             .iter()
             .map(|o| MiniTicket {
@@ -581,12 +584,15 @@ struct NewTicketPage {
     group_opts: Vec<Opt>,
     cf_inputs: Vec<CfInput>,
     cf_with_orig: bool,
+    call_id: String,
+    phone_prefill: String,
 }
 
 #[derive(Deserialize)]
 struct NewTicketQuery {
     channel: Option<String>,
     requester_id: Option<i64>,
+    call_id: Option<i64>,
 }
 
 async fn new_ticket_page(
@@ -601,8 +607,13 @@ async fn new_ticket_page(
             .fetch_all(&st.db)
             .await?;
     let groups: Vec<Group> = sqlx::query_as("SELECT * FROM agent_groups ORDER BY name").fetch_all(&st.db).await?;
+    // Aus dem Anruf-Banner: Anrufer übernehmen bzw. Nummer vorbelegen.
+    let call = match q.call_id {
+        Some(id) => Some(crate::telephony::get(&st.db, id).await?),
+        None => None,
+    };
     let requester: Option<User> = sqlx::query_as("SELECT * FROM users WHERE id = $1")
-        .bind(q.requester_id)
+        .bind(q.requester_id.or(call.as_ref().and_then(|c| c.customer_id)))
         .fetch_optional(&st.db)
         .await?;
     page(NewTicketPage {
@@ -622,6 +633,8 @@ async fn new_ticket_page(
         group_opts: id_opts(groups.iter().map(|g| (g.id, g.name.as_str())), None, "–"),
         cf_inputs: cf_inputs(&service::ticket_fields(&st.db, true).await?, &json!({})),
         cf_with_orig: false,
+        call_id: call.as_ref().map(|c| c.id.to_string()).unwrap_or_default(),
+        phone_prefill: call.as_ref().map(|c| c.remote_number().to_string()).unwrap_or_default(),
     })
 }
 
@@ -646,6 +659,7 @@ struct NewTicketForm {
     assignee_id: Option<String>,
     group_id: Option<String>,
     tags: Option<String>,
+    call_id: Option<String>,
     #[serde(flatten)]
     extra: HashMap<String, String>,
 }
@@ -690,6 +704,9 @@ async fn create_ticket(
         "web",
     )
     .await?;
+    if let Some(call_id) = parse_id(&f.call_id) {
+        crate::telephony::link_ticket(&st.db, call_id, ticket.id, &me).await?;
+    }
     Ok(see_other(&format!("/tickets/{}", ticket.id)))
 }
 

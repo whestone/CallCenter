@@ -149,6 +149,7 @@ struct AgentEditPage {
     phone: String,
     active: bool,
     capacity: i32,
+    extension: String,
     twofa: bool,
     role_opts: Vec<Opt>,
     groups: Vec<GroupCheck>,
@@ -173,6 +174,7 @@ async fn agent_edit(State(st): State<AppState>, WebAdmin(me): WebAdmin, Path(id)
         phone: u.phone.clone().unwrap_or_default(),
         active: u.active,
         capacity: u.capacity,
+        extension: u.extension.clone().unwrap_or_default(),
         twofa: u.totp_secret.is_some(),
         role_opts: enum_opts(&ROLES, role_label, Some(&u.role), None),
         groups: all_groups(&st.db)
@@ -210,6 +212,13 @@ async fn update_agent(
     )
     .await?;
     service::set_group_memberships(&st.db, id, &group_ids(&pairs)).await?;
+    if let Some((_, ext)) = pairs.iter().find(|(k, _)| k == "extension") {
+        sqlx::query("UPDATE users SET extension = NULLIF($2, '') WHERE id = $1")
+            .bind(id)
+            .bind(ext.trim())
+            .execute(&st.db)
+            .await?;
+    }
     // Z. B. bei verlorenem Smartphone: 2FA zurücksetzen, der Agent richtet sie neu ein.
     if field(&pairs, "reset_2fa").is_some() {
         sqlx::query("UPDATE users SET totp_secret = NULL, totp_pending_secret = NULL WHERE id = $1")

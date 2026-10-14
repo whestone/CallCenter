@@ -7,6 +7,7 @@
     <fieldset class="card">
       <legend>{% if is_call %}Anrufer{% else %}Anfragender{% endif %}</legend>
       <input type="hidden" name="requester_id" id="requester_id" value="{{ requester_id }}">
+      {% if !call_id.is_empty() %}<input type="hidden" name="call_id" value="{{ call_id }}">{% endif %}
       <div id="requester-picked" class="picked"{% if requester_id.is_empty() %} hidden{% endif %}>
         <span id="requester-picked-label">{{ requester_label }}</span>
         <button type="button" class="link" data-clear-requester>ändern</button>
@@ -14,7 +15,7 @@
       <div id="requester-fields"{% if !requester_id.is_empty() %} hidden{% endif %}>
         <div class="row3">
           <label>Telefon
-            <input type="tel" name="requester_phone" placeholder="+49 …" autocomplete="off"{% if is_call %} autofocus{% endif %}
+            <input type="tel" name="requester_phone" value="{{ phone_prefill }}" placeholder="+49 …" autocomplete="off"{% if is_call %} autofocus{% endif %}
                    hx-get="/requesters/lookup" hx-trigger="input changed delay:300ms" hx-target="#requester-results" hx-swap="innerHTML">
           </label>
           <label>E-Mail

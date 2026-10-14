@@ -10,6 +10,7 @@ mod people;
 mod portal;
 mod profile;
 mod reports;
+mod telephony;
 mod tickets;
 
 use std::collections::HashMap;
@@ -51,6 +52,7 @@ pub fn router() -> Router<AppState> {
         .merge(mail::router())
         .merge(kb::router())
         .merge(integrations::router())
+        .merge(telephony::router())
         .merge(admin::router())
 }
 

@@ -1,0 +1,21 @@
+{% for c in calls %}
+<div class="call-banner call-{{ c.status }}" role="status">
+  <span class="call-icon" aria-hidden="true">📞</span>
+  <div class="call-info">
+    <strong>{% if c.status == "ringing" %}Eingehender Anruf{% else %}Im Gespräch{% endif %}: {{ c.name }}</strong>
+    <span class="muted small">{{ c.number }}{% if !c.org.is_empty() %} · {{ c.org }}{% endif %}{% if c.customer_id != 0 %} · {{ c.open_tickets }} offene Tickets{% endif %} · {{ c.started }}</span>
+  </div>
+  <div class="call-actions">
+    {% if c.customer_id != 0 %}<a class="btn" href="/users/{{ c.customer_id }}">Kundenakte</a>{% endif %}
+    {% if c.ticket_id != 0 %}
+    <a class="btn" href="/tickets/{{ c.ticket_id }}">Ticket #{{ c.ticket_id }}</a>
+    {% else %}
+    <a class="btn primary" href="/tickets/new?channel=phone&call_id={{ c.id }}">Ticket anlegen</a>
+    {% endif %}
+    {% if c.simulated %}
+      {% if c.status == "ringing" %}<form method="post" action="/calls/{{ c.id }}/sim-answer"><button class="btn">Annehmen</button></form>{% endif %}
+      <form method="post" action="/calls/{{ c.id }}/sim-hangup"><button class="btn danger">Auflegen</button></form>
+    {% endif %}
+  </div>
+</div>
+{% endfor %}

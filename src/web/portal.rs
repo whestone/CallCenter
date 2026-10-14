@@ -144,6 +144,7 @@ async fn register(State(st): State<AppState>, Form(f): Form<RegisterForm>) -> We
         capacity: 0,
         totp_secret: None,
         totp_pending_secret: None,
+        extension: None,
         created_at: chrono::Utc::now(),
         updated_at: chrono::Utc::now(),
     };

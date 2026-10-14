@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}Telefonie{% endblock %}
+{% block content %}
+<div class="page">
+  <h1>Verwaltung</h1>
+  {% include "admin/tabs.html" %}
+  <p class="muted small">Eingehende Anrufe erscheinen bei allen Agenten mit Status „Online“ als Banner mit Anrufer, Organisation und offenen Tickets. Jedes Gespräch wird mit Dauer und Agent im Ticket protokolliert; verpasste Anrufe werden automatisch zu Rückruf-Tickets (Priorität hoch, Tag <code>verpasster_anruf</code>) und über das Routing verteilt.</p>
+  <div class="two-col">
+    <section>
+      <h3>Anschluss an die Telefonanlage</h3>
+      {% if !secret_ok %}
+      <div class="notice">Webhooks sind deaktiviert. Setze in der <code>.env</code> <code>TELEPHONY_SECRET</code> (mind. 16 Zeichen) und starte neu.</div>
+      {% endif %}
+      <dl class="kv">
+        <dt>sipgate.io</dt><dd><code>{{ base_url }}/telephony/sipgate?secret=…</code><br><span class="muted small">Als Push-URL für eingehende und ausgehende Anrufe eintragen.</span></dd>
+        <dt>Twilio</dt><dd><code>{{ base_url }}/telephony/twilio?secret=…</code><br><span class="muted small">Als Status-Callback (alle Ereignisse) eintragen.</span></dd>
+        <dt>Allgemein (JSON)</dt><dd><code>POST {{ base_url }}/api/v2/telephony/events?secret=…</code><br><span class="muted small">Für 3CX, Asterisk o. ä.: <code>{"event":"ringing|answered|ended","call_id":"…","direction":"inbound","from":"+49…","to":"…","agent":"Durchwahl oder E-Mail","duration":42}</code></span></dd>
+        <dt>Click-to-Call</dt><dd>{% if dial_provider.is_empty() %}Kein Anbieter – Wählen öffnet das Softphone über <code>tel:</code>-Links. Für sipgate <code>SIPGATE_TOKEN_ID</code> und <code>SIPGATE_TOKEN</code> setzen.{% else %}über <strong>{{ dial_provider }}</strong> (Gerät = Durchwahl des Agenten){% endif %}</dd>
+      </dl>
+
+      <h3>Letzte Anrufe</h3>
+      {% if calls.is_empty() %}
+      <div class="empty">Noch keine Anrufe.</div>
+      {% else %}
+      <div class="table-wrap">
+      <table class="tickets">
+        <thead><tr><th>Anrufer</th><th>Richtung</th><th>Status</th><th>Agent</th><th>Dauer</th><th>Ticket</th><th>Zeit</th></tr></thead>
+        <tbody>
+        {% for c in calls %}
+        <tr>
+          <td>{% if c.customer_id != 0 %}<a href="/users/{{ c.customer_id }}">{{ c.name }}</a>{% else %}{{ c.name }}{% endif %}<br><span class="muted small">{{ c.number }}</span></td>
+          <td>{{ c.direction_label }}</td>
+          <td><span class="call-status call-status-{{ c.status }}">{{ c.status_label }}</span></td>
+          <td>{{ c.agent }}</td>
+          <td class="nowrap">{{ c.duration }}</td>
+          <td>{% if c.ticket_id != 0 %}<a href="/tickets/{{ c.ticket_id }}">#{{ c.ticket_id }}</a>{% endif %}</td>
+          <td class="muted nowrap">{{ c.started }}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      </div>
+      {% endif %}
+    </section>
+    <div>
+      <form class="card" method="post" action="/admin/telephony/simulate">
+        <h3>Testanruf simulieren</h3>
+        <p class="muted small">Erzeugt einen klingelnden Anruf ohne Telefonanbieter. Annehmen und Auflegen geht über das Banner oben.</p>
+        <label>Nummer des Anrufers<input type="tel" name="from" required value="+49 30 1234567"></label>
+        <button class="btn primary wide" type="submit">📞 Klingeln lassen</button>
+      </form>
+      <div class="card">
+        <h3>Durchwahlen</h3>
+        <p class="muted small">Zuordnung Agent ↔ Telefon (sipgate-Benutzer-/Geräte-ID oder Nebenstelle). Bearbeiten unter Team.</p>
+        <dl class="kv">
+          {% for a in agents %}<dt><a href="/admin/agents/{{ a.id }}">{{ a.name }}</a></dt><dd>{% if a.extension.is_empty() %}<span class="muted">–</span>{% else %}<code>{{ a.extension }}</code>{% endif %}</dd>{% endfor %}
+        </dl>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

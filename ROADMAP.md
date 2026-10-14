@@ -47,7 +47,8 @@ Abgleich mit modernen Helpdesk-/Callcenter-Systemen (Zendesk Suite, Freshdesk, H
 | Passwort zurücksetzen per E-Mail (Agenten & Kunden) | ✅ Phase 3 |
 | Wissensdatenbank & öffentliches Hilfe-Center, Vorschläge für Kunden und Agenten | ✅ Phase 3 |
 | Web-Widget / Live-Chat | 📋 |
-| Telefonie: Click-to-Call, Anrufprotokoll, Aufzeichnung, Warteschlange (Twilio/sipgate) | 📋 Phase 4 |
+| Telefonie: Anruf-Banner, Anrufprotokoll im Ticket, Rückruf-Tickets, Click-to-Call, Aufzeichnungs-Link (sipgate, Twilio, allgemeiner Webhook, Simulator) | ✅ |
+| Telefonie: Warteschlangen/IVR, Weiterleiten, Softphone im Browser (WebRTC) | 📋 Backlog |
 
 ## Reporting
 | Funktion | Status |

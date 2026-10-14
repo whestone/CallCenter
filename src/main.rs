@@ -11,6 +11,7 @@ mod security;
 mod seed;
 mod service;
 mod sla;
+mod telephony;
 mod twofactor;
 mod web;
 mod webhooks;

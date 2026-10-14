@@ -112,6 +112,8 @@ pub struct User {
     pub totp_secret: Option<String>,
     #[serde(skip)]
     pub totp_pending_secret: Option<String>,
+    /// Kennung beim Telefonie-Anbieter (Nebenstelle, sipgate-Benutzer-ID …).
+    pub extension: Option<String>,
 }
 
 impl User {

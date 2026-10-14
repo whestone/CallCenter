@@ -481,3 +481,11 @@ tr.needs-reply td:first-child { box-shadow: inset 3px 0 0 var(--warn); }
 .chat-bar.chat-waiting { background: #fff4e5; border-color: #f3c58a; }
 .chat-bar.chat-ended { background: #eef0f2; border-color: var(--border); }
 .code-snippet { background: #f3f4f6; border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 12px; overflow-x: auto; font: 13px/1.5 ui-monospace, monospace; }
+
+/* Verknüpfte Tickets */
+.link-list li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 6px; }
+.link-list li a { flex: 1; min-width: 120px; }
+.link-rel { font-size: 11px; color: var(--muted); white-space: nowrap; }
+.link-add { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.link-add input { flex: 1; min-width: 90px; }
+.link-add select { flex: 2; min-width: 140px; }

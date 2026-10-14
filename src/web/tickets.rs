@@ -27,6 +27,8 @@ pub fn router() -> Router<AppState> {
         .route("/tickets/{id}/macro", post(apply_macro))
         .route("/tickets/{id}/merge", post(merge_ticket))
         .route("/tickets/{id}/presence", get(presence))
+        .route("/tickets/{id}/links", post(add_link))
+        .route("/tickets/{id}/links/{other}/delete", post(remove_link))
         .route("/requesters/lookup", get(requester_lookup))
 }
 
@@ -144,12 +146,10 @@ struct TicketPage {
     csat_comment: String,
     kb_hits: Vec<KbHit>,
     calls: Vec<super::telephony::CallView>,
-    ticket_type: String,
-    problem_opts: Vec<Opt>,
-    orig_problem_id: String,
-    incidents: Vec<MiniTicket>,
+    links: Vec<LinkView>,
+    link_kinds: Vec<Opt>,
+    incident_count: usize,
     followup_source: i64,
-    followups: Vec<MiniTicket>,
     cc: String,
     time_total: String,
     time_mine: String,
@@ -169,6 +169,27 @@ struct Draft {
     comment: String,
     internal: bool,
     warning: String,
+}
+
+/// Ein verknüpftes Ticket in der Seitenleiste.
+struct LinkView {
+    id: i64,
+    subject: String,
+    status: String,
+    status_label: &'static str,
+    relation: &'static str,
+    removable: bool,
+}
+
+fn link_view(t: &Ticket, relation: &'static str, removable: bool) -> LinkView {
+    LinkView {
+        id: t.id,
+        subject: t.subject.clone(),
+        status: t.status.clone(),
+        status_label: status_label(&t.status),
+        relation,
+        removable,
+    }
 }
 
 fn mini(t: &Ticket) -> MiniTicket {
@@ -307,6 +328,8 @@ fn describe_event(ev: &AuditEvent, names: &Names) -> String {
             format!("{kind} „{title}“ ausgeführt")
         }
         AuditEvent::Notification { body } => format!("Benachrichtigung an Anfragenden: {body}"),
+        AuditEvent::Link { ticket_id, added: true, .. } => format!("Mit Ticket #{ticket_id} verknüpft"),
+        AuditEvent::Link { ticket_id, added: false, .. } => format!("Verknüpfung mit Ticket #{ticket_id} entfernt"),
     }
 }
 
@@ -356,22 +379,38 @@ async fn render_ticket(st: &AppState, me: &User, id: i64, draft: Draft) -> WebRe
     .bind(me.id)
     .fetch_all(db)
     .await?;
-    let problems: Vec<(i64, String)> = sqlx::query_as(
-        "SELECT id, subject FROM tickets WHERE ticket_type = 'problem' AND id <> $1
-           AND (status <> 'closed' OR id = $2) ORDER BY id DESC LIMIT 200",
-    )
-    .bind(id)
-    .bind(t.problem_id)
-    .fetch_all(db)
-    .await?;
+    // Alle Beziehungen zu anderen Tickets für die Karte „Verknüpfte Tickets“.
+    let mut links: Vec<LinkView> = Vec::new();
+    let one = |tid: Option<i64>| async move {
+        match tid {
+            Some(tid) => service::get_ticket(db, tid).await.ok(),
+            None => None,
+        }
+    };
+    if let Some(p) = one(t.problem_id).await {
+        links.push(link_view(&p, "Ursache (Problem)", true));
+    }
     let incidents: Vec<Ticket> = sqlx::query_as("SELECT * FROM tickets WHERE problem_id = $1 ORDER BY id")
         .bind(id)
         .fetch_all(db)
         .await?;
+    links.extend(incidents.iter().map(|i| link_view(i, "Vorfall", true)));
+    let related: Vec<Ticket> = sqlx::query_as(
+        "SELECT t.* FROM ticket_links l JOIN tickets t ON t.id = CASE WHEN l.a_id = $1 THEN l.b_id ELSE l.a_id END
+         WHERE l.a_id = $1 OR l.b_id = $1 ORDER BY t.id",
+    )
+    .bind(id)
+    .fetch_all(db)
+    .await?;
+    links.extend(related.iter().map(|r| link_view(r, "verwandt", true)));
+    if let Some(src) = one(t.followup_source_id).await {
+        links.push(link_view(&src, "Ursprung", false));
+    }
     let followups: Vec<Ticket> = sqlx::query_as("SELECT * FROM tickets WHERE followup_source_id = $1 ORDER BY id")
         .bind(id)
         .fetch_all(db)
         .await?;
+    links.extend(followups.iter().map(|f| link_view(f, "Folgeticket", false)));
     let cc_emails: Vec<String> =
         sqlx::query_scalar("SELECT email FROM users WHERE id = ANY($1) AND email IS NOT NULL ORDER BY email")
             .bind(&t.cc_ids)
@@ -491,20 +530,13 @@ async fn render_ticket(st: &AppState, me: &User, id: i64, draft: Draft) -> WebRe
 
     page(TicketPage {
         nav: Nav::new(me, "views"),
-        ticket_type: t.ticket_type.clone().unwrap_or_default(),
-        problem_opts: id_opts(problems.iter().map(|(pid, s)| (*pid, s.as_str())), t.problem_id, "– kein Problem –")
-            .into_iter()
-            .map(|mut o| {
-                if !o.value.is_empty() {
-                    o.label = format!("#{} {}", o.value, o.label);
-                }
-                o
-            })
+        links,
+        link_kinds: service::LINK_KINDS
+            .iter()
+            .map(|(v, l)| Opt { value: v.to_string(), label: l.to_string(), selected: *v == "related" })
             .collect(),
-        orig_problem_id: t.problem_id.map(|p| p.to_string()).unwrap_or_default(),
-        incidents: incidents.iter().map(mini).collect(),
+        incident_count: incidents.len(),
         followup_source: t.followup_source_id.unwrap_or(0),
-        followups: followups.iter().map(mini).collect(),
         cc: cc_emails.join(", "),
         time_total: if time_total > 0 { fmt_seconds(time_total) } else { String::new() },
         time_mine: if time_mine > 0 { fmt_seconds(time_mine) } else { String::new() },
@@ -608,8 +640,6 @@ struct TicketForm {
     orig_tags: Option<String>,
     comment: Option<String>,
     public: Option<String>,
-    problem_id: Option<String>,
-    orig_problem_id: Option<String>,
     cc: Option<String>,
     orig_cc: Option<String>,
     /// Erfasste Bearbeitungszeit („mm:ss“ oder Minuten)
@@ -702,7 +732,7 @@ async fn update_ticket(
         custom_fields,
         additional_tags: (!added.is_empty()).then_some(added),
         remove_tags: (!removed.is_empty()).then_some(removed),
-        problem_id: changed(&f.problem_id, &f.orig_problem_id).map(|v| v.parse().ok()),
+
         cc_ids: match changed(&f.cc, &f.orig_cc) {
             Some(text) => Some(cc_ids(&st.db, &text).await?),
             None => None,
@@ -725,6 +755,37 @@ async fn update_ticket(
             .execute(&st.db)
             .await?;
     }
+    Ok(see_other(&format!("/tickets/{id}")))
+}
+
+#[derive(Deserialize)]
+struct LinkForm {
+    target: String,
+    kind: Option<String>,
+}
+
+async fn add_link(
+    State(st): State<AppState>,
+    WebAgent(me): WebAgent,
+    Path(id): Path<i64>,
+    Form(f): Form<LinkForm>,
+) -> WebResult<Response> {
+    let other: i64 = f
+        .target
+        .trim()
+        .trim_start_matches('#')
+        .parse()
+        .map_err(|_| AppError::invalid("Bitte die Nummer des anderen Tickets angeben, z. B. 12"))?;
+    service::link_tickets(&st.db, &me, id, other, f.kind.as_deref().unwrap_or("related")).await?;
+    Ok(see_other(&format!("/tickets/{id}")))
+}
+
+async fn remove_link(
+    State(st): State<AppState>,
+    WebAgent(me): WebAgent,
+    Path((id, other)): Path<(i64, i64)>,
+) -> WebResult<Response> {
+    service::unlink_tickets(&st.db, &me, id, other).await?;
     Ok(see_other(&format!("/tickets/{id}")))
 }
 

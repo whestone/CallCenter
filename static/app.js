@@ -194,16 +194,6 @@ document.addEventListener("keydown", (event) => {
 });
 
 // ---------------------------------------------------------------------------
-// Ticket: Problem-Auswahl nur bei Typ „Vorfall“
-// ---------------------------------------------------------------------------
-document.addEventListener("change", (event) => {
-  if (!event.target.matches("select[name=ticket_type]")) return;
-  document.querySelectorAll("[data-show-if-type]").forEach((el) => {
-    el.hidden = el.dataset.showIfType !== event.target.value;
-  });
-});
-
-// ---------------------------------------------------------------------------
 // Kollisionserkennung: „schreibt gerade“ (wird von der Anwesenheitsabfrage gelesen)
 // ---------------------------------------------------------------------------
 let lastTyped = 0;

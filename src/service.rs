@@ -797,6 +797,106 @@ pub async fn update_ticket_with(
     Ok(t)
 }
 
+/// Art einer Verknüpfung aus Sicht des aktuellen Tickets.
+pub const LINK_KINDS: [(&str, &str); 3] = [
+    ("related", "verwandt"),
+    ("problem", "ist Vorfall von … (Ursache)"),
+    ("incident", "hat Vorfall …"),
+];
+
+/// Verknüpft zwei Tickets. `kind`: "related" (gleichrangig), "problem" (das andere Ticket
+/// ist die Ursache; Typen werden auf Vorfall/Problem gesetzt) oder "incident" (umgekehrt).
+pub async fn link_tickets(db: &PgPool, actor: &User, id: i64, other: i64, kind: &str) -> AppResult<()> {
+    if id == other {
+        return Err(AppError::invalid("Ein Ticket kann nicht mit sich selbst verknüpft werden"));
+    }
+    let me = get_ticket(db, id).await?;
+    let target = get_ticket(db, other)
+        .await
+        .map_err(|_| AppError::invalid(format!("Ticket #{other} existiert nicht")))?;
+    match kind {
+        "related" => {
+            let mut tx = db.begin().await?;
+            let inserted = sqlx::query(
+                "INSERT INTO ticket_links (a_id, b_id, created_by) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING",
+            )
+            .bind(id.min(other))
+            .bind(id.max(other))
+            .bind(actor.id)
+            .execute(&mut *tx)
+            .await?
+            .rows_affected();
+            if inserted == 0 {
+                return Err(AppError::invalid(format!("Ticket #{other} ist bereits verknüpft")));
+            }
+            for (a, b) in [(id, other), (other, id)] {
+                let ev = AuditEvent::Link { ticket_id: b, relation: "related".into(), added: true };
+                insert_audit(&mut tx, a, Some(actor.id), "web", &[ev]).await?;
+            }
+            tx.commit().await?;
+            Ok(())
+        }
+        "problem" | "incident" => {
+            let (incident, problem) = if kind == "problem" { (&me, &target) } else { (&target, &me) };
+            if incident.ticket_type.as_deref() == Some("problem") {
+                let n: i64 = sqlx::query_scalar("SELECT count(*) FROM tickets WHERE problem_id = $1")
+                    .bind(incident.id)
+                    .fetch_one(db)
+                    .await?;
+                if n > 0 {
+                    return Err(AppError::invalid(format!(
+                        "#{} ist ein Problem mit eigenen Vorfällen und kann kein Vorfall werden",
+                        incident.id
+                    )));
+                }
+            }
+            if problem.ticket_type.as_deref() == Some("incident") && problem.problem_id.is_some() {
+                return Err(AppError::invalid(format!("#{} ist selbst ein Vorfall eines anderen Problems", problem.id)));
+            }
+            if problem.ticket_type.as_deref() != Some("problem") {
+                let changes = TicketChanges { ticket_type: Some(Some("problem".into())), ..Default::default() };
+                update_ticket(db, actor, problem.id, changes, None, "web").await?;
+            }
+            let changes = TicketChanges {
+                ticket_type: Some(Some("incident".into())),
+                problem_id: Some(Some(problem.id)),
+                ..Default::default()
+            };
+            update_ticket(db, actor, incident.id, changes, None, "web").await?;
+            Ok(())
+        }
+        _ => Err(AppError::invalid("Unbekannte Art der Verknüpfung")),
+    }
+}
+
+/// Hebt eine Verknüpfung zwischen zwei Tickets auf (verwandt oder Problem ↔ Vorfall).
+pub async fn unlink_tickets(db: &PgPool, actor: &User, id: i64, other: i64) -> AppResult<()> {
+    let removed = sqlx::query("DELETE FROM ticket_links WHERE a_id = $1 AND b_id = $2")
+        .bind(id.min(other))
+        .bind(id.max(other))
+        .execute(db)
+        .await?
+        .rows_affected();
+    if removed > 0 {
+        let mut tx = db.begin().await?;
+        for (a, b) in [(id, other), (other, id)] {
+            let ev = AuditEvent::Link { ticket_id: b, relation: "related".into(), added: false };
+            insert_audit(&mut tx, a, Some(actor.id), "web", &[ev]).await?;
+        }
+        tx.commit().await?;
+        return Ok(());
+    }
+    for (incident, problem) in [(id, other), (other, id)] {
+        let t = get_ticket(db, incident).await?;
+        if t.problem_id == Some(problem) {
+            let changes = TicketChanges { problem_id: Some(None), ..Default::default() };
+            update_ticket(db, actor, incident, changes, None, "web").await?;
+            return Ok(());
+        }
+    }
+    Err(AppError::invalid(format!("Ticket #{other} ist nicht verknüpft")))
+}
+
 /// Löst alle offenen Vorfälle eines gelösten Problems (wie bei Zendesk) und
 /// informiert deren Anfragende mit dem Lösungstext des Problems.
 async fn solve_incidents(db: &PgPool, actor: &User, problem: &Ticket, note: Option<String>) -> AppResult<()> {

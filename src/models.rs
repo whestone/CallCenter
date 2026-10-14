@@ -287,6 +287,8 @@ pub enum AuditEvent {
     Comment { comment_id: i64, public: bool },
     RuleApplied { kind: String, id: i64, title: String },
     Notification { body: String },
+    /// Verknüpfung mit einem anderen Ticket angelegt (`added`) oder entfernt.
+    Link { ticket_id: i64, relation: String, added: bool },
 }
 
 #[derive(Debug, Clone, Serialize, FromRow)]

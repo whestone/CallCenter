@@ -83,8 +83,9 @@ Alternativ per Docker: `docker compose up -d` (siehe `docker-compose.yml`).
 - **Benachrichtigungen** (Glocke oben rechts, `/notifications`): @Erwähnung (auch per E-Mail),
   Zuweisung, Kundenantwort auf eigene Tickets, SLA-Warnung/-Verletzung (auch per E-Mail)
 - **@Erwähnungen** mit Vorschlagsliste beim Tippen von „@“
-- **Problem ↔ Vorfälle**: Vorfälle (Typ „Vorfall“) mit einem Problem-Ticket verknüpfen; wird das
-  Problem gelöst, werden alle offenen Vorfälle mitgelöst und erhalten die Lösungsantwort
+- **Verknüpfte Tickets** (Karte rechts im Ticket): Ticket-Nr. eingeben und Art wählen – „verwandt“
+  oder „ist Vorfall von …“ (das andere Ticket wird zum Problem). Wird ein Problem gelöst, werden alle
+  offenen Vorfälle mitgelöst und erhalten die Lösungsantwort. Verknüpfungen lassen sich per ✕ aufheben
 - **Folgetickets** zu geschlossenen Tickets (Button im Ticket; Antwort-Mails auf geschlossene
   Tickets werden automatisch zu Folgetickets)
 - **CC**: weitere Personen erhalten öffentliche Antworten per E-Mail

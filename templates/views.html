@@ -40,11 +40,10 @@
     <div class="empty">Keine Tickets gefunden.</div>
     {% else %}
     <div class="table-wrap">
-    <table class="tickets selectable">
+    <table class="tickets selectable ticket-list">
       <thead>
         <tr>
           <th class="narrow"><input type="checkbox" data-select-all aria-label="Alle auswählen"></th>
-          <th class="narrow"></th>
           {% for h in headers %}
           <th>{% if h.url.is_empty() %}{{ h.label }}{% else %}<a class="sort-link" href="{{ h.url }}">{{ h.label }}{{ h.arrow }}</a>{% endif %}</th>
           {% endfor %}
@@ -52,18 +51,9 @@
       </thead>
       <tbody>
       {% for r in rows %}
-        <tr>
+        <tr data-href="/tickets/{{ r.id }}">
           <td><input type="checkbox" name="ticket_id" value="{{ r.id }}" form="bulk-form" aria-label="Ticket #{{ r.id }} auswählen"></td>
-          <td><span class="status-badge s-{{ r.status }}" title="{{ r.status_label }}">{{ r.status_letter }}</span></td>
-          <td class="muted">#{{ r.id }}</td>
-          <td class="subject"><a href="/tickets/{{ r.id }}">{{ r.subject }}</a></td>
-          <td>{{ r.requester }}</td>
-          <td>{% if !r.priority.is_empty() %}<span class="prio p-{{ r.priority }}">{{ r.priority_label }}</span>{% endif %}</td>
-          <td>{{ r.assignee }}</td>
-          <td>{{ r.group }}</td>
-          <td>{{ r.channel_label }}</td>
-          <td>{% if !r.sla_text.is_empty() %}<span class="{{ r.sla_class }}">{{ r.sla_text }}</span>{% endif %}</td>
-          <td class="muted nowrap">{{ r.updated }}</td>
+          {% include "ticket_row_cells.html" %}
         </tr>
       {% endfor %}
       </tbody>

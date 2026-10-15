@@ -280,13 +280,9 @@ async fn view_show(
 
     let base = format!("/views/{id}");
     let headers = [
-        ("id", "ID"),
-        ("subject", "Betreff"),
-        ("", "Anfragender"),
+        ("id", "Ticket"),
         ("priority", "Priorität"),
         ("", "Bearbeiter"),
-        ("", "Gruppe"),
-        ("", "Kanal"),
         ("sla", "SLA"),
         ("updated", "Aktualisiert"),
     ]

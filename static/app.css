@@ -732,3 +732,41 @@ label.is-dirty > .chips-input { border-color: var(--tint-orange-border); backgro
 .composer-tabs.segmented label:has(input:checked) { background: var(--panel); color: var(--text); box-shadow: 0 1px 3px var(--shadow); }
 .composer-tabs.segmented label.seg-internal:has(input:checked) { background: var(--tint-orange); color: var(--warn-strong); }
 .composer-tabs.segmented label:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+/* ---------------------------------------------------------------------------
+   Ticketliste (modern): zweizeilige Ticket-Spalte, Farbpunkte, Avatare, Pillen-Filter
+   --------------------------------------------------------------------------- */
+.table-wrap:has(> table.ticket-list) { border: 1px solid var(--border); border-radius: 10px; overflow: hidden; background: var(--panel); }
+table.ticket-list { background: transparent; }
+table.ticket-list thead th { position: sticky; top: 0; z-index: 1; background: var(--panel); font-size: 11.5px; text-transform: uppercase; letter-spacing: .04em; padding: 10px 12px; }
+table.ticket-list td { padding: 10px 12px; }
+table.ticket-list tbody tr[data-href] { cursor: pointer; transition: background .1s; }
+table.ticket-list tbody tr:hover td { background: var(--hover); }
+table.ticket-list tbody tr:has(input[name=ticket_id]:checked) td { background: var(--tint-blue); }
+.t-main { min-width: 280px; }
+.t-title { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.t-subject { font-weight: 600; color: var(--text); overflow: hidden; text-overflow: ellipsis; }
+.t-subject:hover { color: var(--accent); text-decoration: none; }
+.t-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 0; margin-top: 3px; font-size: 12.5px; color: var(--muted); }
+.t-meta > span:not(.chip-item) + span:not(.chip-item)::before { content: "·"; margin: 0 6px; opacity: .6; }
+.t-meta > .chip-item { margin-left: 6px; }
+.t-id { font-variant-numeric: tabular-nums; }
+.status-pill { flex: none; border-radius: 999px; font-size: 11px; height: 20px; }
+.chip-sm { font-size: 11px; padding: 0 7px; line-height: 18px; font-weight: 600; }
+.prio-dot { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; white-space: nowrap; }
+.prio-dot::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+.prio-dot.p-urgent { color: var(--danger); font-weight: 700; }
+.prio-dot.p-urgent::before { background: var(--danger); box-shadow: 0 0 0 3px var(--tint-red); }
+.prio-dot.p-high { color: var(--warn); font-weight: 600; }
+.prio-dot.p-high::before { background: var(--warn); }
+.prio-dot.p-normal { color: var(--text); }
+.prio-dot.p-normal::before { background: var(--accent); }
+.prio-dot.p-low::before { background: var(--border); }
+.who { display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; }
+.avatar.xs { width: 24px; height: 24px; font-size: 10px; background: var(--tint-blue); color: var(--accent-dark); }
+
+/* Filterleiste als Pillen; gesetzte Filter sind hervorgehoben */
+.filter-bar input[type=search], .filter-bar select { border-radius: 999px; padding: 6px 12px; font-size: 13px; }
+.filter-bar select:not(:has(option[value=""]:checked)) { background: var(--tint-blue); border-color: var(--tint-blue-border); color: var(--accent-dark); font-weight: 600; }
+.bulk-bar { border-radius: 10px; }
+.t-title .status-pill { min-width: 78px; }

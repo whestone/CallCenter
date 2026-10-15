@@ -41,6 +41,16 @@ function showCustomerTickets(id) {
   if (window.htmx) htmx.ajax("GET", `/requesters/${encodeURIComponent(id)}/tickets`, { target: side, swap: "innerHTML" });
 }
 
+// Ticketlisten: ganze Zeile öffnet das Ticket (Strg/⌘-Klick in neuem Tab),
+// außer beim Klick auf Checkbox, Link oder markiertem Text.
+document.addEventListener("click", (event) => {
+  const row = event.target.closest("tr[data-href]");
+  if (!row || event.target.closest("a, button, input, select, label, textarea")) return;
+  if (window.getSelection().toString()) return;
+  if (event.ctrlKey || event.metaKey) window.open(row.dataset.href, "_blank");
+  else go(row.dataset.href);
+});
+
 // Massenbearbeitung: "alle auswählen" und Zähler der markierten Tickets.
 function updateBulkCount() {
   const boxes = document.querySelectorAll("input[name=ticket_id]");

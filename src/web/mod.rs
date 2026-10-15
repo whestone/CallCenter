@@ -239,7 +239,6 @@ pub struct TicketRow {
     pub subject_html: String,
     pub status: String,
     pub status_label: &'static str,
-    pub status_letter: String,
     pub priority: String,
     pub priority_label: &'static str,
     pub requester: String,
@@ -249,6 +248,9 @@ pub struct TicketRow {
     pub updated: String,
     pub sla_text: String,
     pub sla_class: &'static str,
+    pub org: String,
+    pub tags: Vec<String>,
+    pub assignee_initials: String,
 }
 
 pub async fn ticket_rows(db: &PgPool, tickets: &[Ticket]) -> AppResult<Vec<TicketRow>> {
@@ -256,6 +258,11 @@ pub async fn ticket_rows(db: &PgPool, tickets: &[Ticket]) -> AppResult<Vec<Ticke
     let ids = tickets.iter().flat_map(|t| [Some(t.requester_id), t.assignee_id]).flatten().collect();
     let users = user_names(db, ids).await?;
     let groups = group_names(db).await?;
+    let orgs: HashMap<i64, String> = sqlx::query_as::<_, (i64, String)>("SELECT id, name FROM organizations")
+        .fetch_all(db)
+        .await?
+        .into_iter()
+        .collect();
     let policies: HashMap<i64, SlaPolicy> =
         sla::load_policies_with_schedule(db).await?.into_iter().map(|p| (p.id, p)).collect();
     Ok(tickets
@@ -277,7 +284,6 @@ pub async fn ticket_rows(db: &PgPool, tickets: &[Ticket]) -> AppResult<Vec<Ticke
                 subject: t.subject.clone(),
                 status: t.status.clone(),
                 status_label: status_label(&t.status),
-                status_letter: status_label(&t.status).chars().next().unwrap_or('?').to_string(),
                 priority: t.priority.clone().unwrap_or_default(),
                 priority_label: t.priority.as_deref().map(priority_label).unwrap_or(""),
                 requester: users.get(&t.requester_id).cloned().unwrap_or_default(),
@@ -287,6 +293,9 @@ pub async fn ticket_rows(db: &PgPool, tickets: &[Ticket]) -> AppResult<Vec<Ticke
                 updated: fmt_rel(t.updated_at, now),
                 sla_text,
                 sla_class,
+                org: t.organization_id.and_then(|id| orgs.get(&id).cloned()).unwrap_or_default(),
+                tags: t.tags.clone(),
+                assignee_initials: t.assignee_id.and_then(|id| users.get(&id)).map(|n| initials(n)).unwrap_or_default(),
             }
         })
         .collect())

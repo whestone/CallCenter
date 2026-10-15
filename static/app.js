@@ -184,16 +184,62 @@ document.addEventListener("change", (event) => {
   }
 });
 
-// Hilfe-Artikel per Klick als Link in die Antwort übernehmen.
-document.addEventListener("click", (event) => {
-  const btn = event.target.closest("[data-insert]");
-  if (!btn) return;
+// Hilfe-Artikel: Titel öffnet eine Vorschau, „einfügen“ übernimmt den Artikeltext in die Antwort.
+function insertIntoReply(text) {
   const area = document.querySelector("textarea[name=comment]");
-  if (!area) return;
-  area.value = (area.value.trim() ? area.value.trimEnd() + "\n\n" : "") + btn.dataset.insert;
+  if (!area || !text.trim()) return;
+  area.value = (area.value.trim() ? area.value.trimEnd() + "\n\n" : "") + text.trim();
   area.dispatchEvent(new Event("input", { bubbles: true }));
   area.dispatchEvent(new Event("cc:replace"));
   (area._editor || area).focus();
+  showToast("Artikeltext eingefügt");
+}
+
+function kbText(id) {
+  return document.getElementById("kb-text-" + id)?.value || "";
+}
+
+function showKbArticle(id) {
+  const tpl = document.getElementById("kb-" + id);
+  if (!tpl) return;
+  let dlg = document.getElementById("cc-kb");
+  if (!dlg) {
+    dlg = document.createElement("dialog");
+    dlg.id = "cc-kb";
+    dlg.className = "confirm-dialog kb-dialog";
+    dlg.innerHTML =
+      '<div class="kb-dialog-head"><h3></h3><button type="button" class="icon-btn" data-close aria-label="Schließen">✕</button></div>' +
+      '<div class="kb-dialog-body"></div>' +
+      '<div class="confirm-actions"><a class="btn" target="_blank" rel="noopener" data-open>Im Hilfe-Center öffnen ↗</a>' +
+      '<button type="button" class="btn primary" data-use>In Antwort einfügen</button></div>';
+    document.body.append(dlg);
+    dlg.querySelector("[data-close]").onclick = () => dlg.close();
+    // Klick auf den Hintergrund schließt.
+    dlg.addEventListener("click", (e) => {
+      if (e.target === dlg) dlg.close();
+    });
+  }
+  dlg.querySelector("h3").textContent = tpl.dataset.title;
+  dlg.querySelector(".kb-dialog-body").replaceChildren(tpl.content.cloneNode(true));
+  dlg.querySelector("[data-open]").href = tpl.dataset.url;
+  const use = dlg.querySelector("[data-use]");
+  // Ohne Antwortfeld (geschlossenes Ticket) gibt es nichts einzufügen.
+  use.hidden = !document.querySelector("textarea[name=comment]");
+  use.onclick = () => {
+    dlg.close();
+    insertIntoReply(kbText(id));
+  };
+  dlg.showModal();
+}
+
+document.addEventListener("click", (event) => {
+  const preview = event.target.closest("[data-kb-preview]");
+  if (preview) {
+    showKbArticle(preview.dataset.kbPreview);
+    return;
+  }
+  const insert = event.target.closest("[data-kb-insert]");
+  if (insert) insertIntoReply(kbText(insert.dataset.kbInsert));
 });
 
 // Status-Menü am Absenden-Button schließen, wenn daneben geklickt wird.

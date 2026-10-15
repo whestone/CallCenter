@@ -224,9 +224,13 @@ fn parse_duration(s: &str) -> Option<i64> {
 }
 
 struct KbHit {
+    id: i64,
     title: String,
     url: String,
-    insert: String,
+    /// Artikeltext als HTML für die Vorschau im Popup.
+    html: String,
+    /// Artikeltext zum Einfügen in die Antwort.
+    text: String,
 }
 
 fn field_label(field: &str) -> String {
@@ -451,7 +455,7 @@ async fn render_ticket(st: &AppState, me: &User, id: i64, draft: Draft) -> WebRe
         .into_iter()
         .map(|a| {
             let url = crate::kb::article_url(a.id);
-            KbHit { insert: format!("{}: {}", a.title, url), title: a.title, url }
+            KbHit { id: a.id, html: crate::markdown::render(&a.body), text: a.body, title: a.title, url }
         })
         .collect();
     let mut ids: Vec<i64> = comments.iter().map(|c| c.author_id).collect();

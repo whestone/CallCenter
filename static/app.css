@@ -670,3 +670,11 @@ mark { background: #ffe58a; color: inherit; padding: 0 1px; border-radius: 2px; 
 .ct-last { margin: 3px 0 2px; overflow-wrap: anywhere; }
 .ct-recent { margin-top: 10px; }
 .ct-recent summary { cursor: pointer; color: var(--muted); font-size: 13px; margin-bottom: 8px; }
+
+/* Hilfe-Artikel: Vorschau im Popup */
+.kb-hits .kb-title { text-align: left; }
+.kb-dialog { width: min(720px, calc(100vw - 32px)); max-width: none; }
+.kb-dialog-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.kb-dialog-head h3 { margin: 4px 0 8px; }
+.kb-dialog-body { max-height: 60vh; overflow-y: auto; padding: 12px 14px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--bg); line-height: 1.55; }
+.kb-dialog .confirm-actions { justify-content: flex-end; }

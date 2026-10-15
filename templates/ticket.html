@@ -248,8 +248,10 @@
       <h4>Passende Hilfe-Artikel</h4>
       <ul class="kb-hits">
         {% for k in kb_hits %}
-        <li><a href="{{ k.url }}" target="_blank" rel="noopener">{{ k.title }}</a>
-          {% if !closed %}<button type="button" class="link" data-insert="{{ k.insert }}" title="Link in die Antwort einfügen">einfügen</button>{% endif %}</li>
+        <li><button type="button" class="link kb-title" data-kb-preview="{{ k.id }}" title="Artikel ansehen">{{ k.title }}</button>
+          {% if !closed %}<button type="button" class="link" data-kb-insert="{{ k.id }}" title="Text des Artikels in die Antwort einfügen">einfügen</button>{% endif %}
+          <template id="kb-{{ k.id }}" data-title="{{ k.title }}" data-url="{{ k.url }}"><div class="text md">{{ k.html|safe }}</div></template>
+          <textarea id="kb-text-{{ k.id }}" hidden>{{ k.text }}</textarea></li>
         {% endfor %}
       </ul>
     </div>

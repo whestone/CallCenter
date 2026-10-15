@@ -1,0 +1,22 @@
+<div class="quick-results" role="listbox" aria-label="Suchvorschläge">
+  {% if tickets.is_empty() && people.is_empty() && orgs.is_empty() && articles.is_empty() %}
+  <div class="quick-empty muted">Keine Treffer für „{{ q }}“</div>
+  {% endif %}
+  {% if !tickets.is_empty() %}
+  <div class="quick-group">Tickets</div>
+  {% for t in tickets %}<a class="quick-item" role="option" href="/tickets/{{ t.0 }}"><span class="status-badge s-{{ t.2 }}">{{ t.3 }}</span> <span class="muted">#{{ t.0 }}</span> {{ t.1|safe }}</a>{% endfor %}
+  {% endif %}
+  {% if !people.is_empty() %}
+  <div class="quick-group">Kunden</div>
+  {% for u in people %}<a class="quick-item" role="option" href="/users/{{ u.id }}"><strong>{{ u.name }}</strong> <span class="muted small">{{ u.contact }}</span></a>{% endfor %}
+  {% endif %}
+  {% if !orgs.is_empty() %}
+  <div class="quick-group">Firmen</div>
+  {% for o in orgs %}<a class="quick-item" role="option" href="/organizations/{{ o.id }}">{{ o.name }}</a>{% endfor %}
+  {% endif %}
+  {% if !articles.is_empty() %}
+  <div class="quick-group">Wissen</div>
+  {% for a in articles %}<a class="quick-item" role="option" href="/kb/{{ a.id }}">📘 {{ a.title }}</a>{% endfor %}
+  {% endif %}
+  <a class="quick-item quick-all" role="option" href="/search?{{ q_url }}">Alle Ergebnisse für „{{ q }}“ anzeigen ↵</a>
+</div>

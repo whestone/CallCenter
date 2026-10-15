@@ -22,7 +22,6 @@ pub fn router() -> Router<AppState> {
         .route("/users/{id}/anonymize", post(anonymize_user))
         .route("/organizations", get(orgs_index).post(create_org))
         .route("/organizations/{id}", get(show_org).post(update_org))
-        .route("/search", get(search))
 }
 
 #[derive(Deserialize)]
@@ -195,7 +194,7 @@ async fn update_user(
     }
     let admin = me.is_admin();
     service::update_user(&st.db, &me, id, f.into_input(admin)).await?;
-    Ok(see_other(&format!("/users/{id}")))
+    Ok(see_other_ok(&format!("/users/{id}"), "Gespeichert"))
 }
 
 #[derive(Deserialize)]
@@ -250,7 +249,7 @@ async fn export_user(State(st): State<AppState>, crate::auth::WebAdmin(_): crate
 
 async fn anonymize_user(State(st): State<AppState>, crate::auth::WebAdmin(me): crate::auth::WebAdmin, Path(id): Path<i64>) -> WebResult<Response> {
     service::anonymize_user(&st.db, &me, id).await?;
-    Ok(see_other(&format!("/users/{id}")))
+    Ok(see_other_ok(&format!("/users/{id}"), "Zusammengeführt"))
 }
 
 // ---------------------------------------------------------------------------
@@ -369,35 +368,6 @@ async fn update_org(
         return Err(AppError::Forbidden.into());
     }
     service::update_org(&st.db, id, f.into_input()).await?;
-    Ok(see_other(&format!("/organizations/{id}")))
+    Ok(see_other_ok(&format!("/organizations/{id}"), "Gespeichert"))
 }
 
-// ---------------------------------------------------------------------------
-// Suche
-// ---------------------------------------------------------------------------
-
-#[derive(Template)]
-#[template(path = "search.html")]
-struct SearchPage {
-    nav: Nav,
-    q: String,
-    rows: Vec<TicketRow>,
-    users: Vec<UserRow>,
-}
-
-async fn search(State(st): State<AppState>, WebAgent(me): WebAgent, Query(q): Query<SearchQuery>) -> WebResult<Html<String>> {
-    let query = q.q.unwrap_or_default();
-    let (tickets, users) = if query.trim().is_empty() {
-        (Vec::new(), Vec::new())
-    } else {
-        let has_filters = query.contains(':') || query.trim_start().starts_with('#');
-        let users = if has_filters { Vec::new() } else { service::search_users(&st.db, &query, 20, true).await? };
-        (service::search_tickets(&st.db, &query, &me).await?, users)
-    };
-    page(SearchPage {
-        nav: Nav::new(&me, "search"),
-        q: query,
-        rows: ticket_rows(&st.db, &tickets).await?,
-        users: user_rows(&st.db, &users).await?,
-    })
-}

@@ -9,6 +9,8 @@ Abgleich mit modernen Helpdesk-/Callcenter-Systemen (Zendesk Suite, Freshdesk, H
 | Ticketansicht mit Antwort / interner Notiz, Makros, Audit-Log | ✅ |
 | Ansichten (Views) mit Live-Zählern | ✅ |
 | Volltextsuche mit Filtern (`status:` `tag:` `assignee:` …) | ✅ |
+| Suche: Live-Vorschläge, `#Nr.` direkt, Phrasen, Ausschließen, Datumsfilter, Relevanz, Textausschnitte, Firmen & Wissensartikel | ✅ Phase 6 |
+| Dunkelmodus, Bestätigungen nach dem Speichern, Fokusrahmen für Tastaturbedienung | ✅ Phase 6 |
 | Sortieren per Klick auf Spaltenköpfe (inkl. SLA-Dringlichkeit) | ✅ Phase 1 |
 | Ad-hoc-Filter in Listen (Status, Priorität, Bearbeiter, Gruppe, Kanal, Text) | ✅ Phase 1 |
 | Seitenweise Anzeige (50 pro Seite) | ✅ Phase 1 |
@@ -33,7 +35,7 @@ Abgleich mit modernen Helpdesk-/Callcenter-Systemen (Zendesk Suite, Freshdesk, H
 | Zeitgesteuerte Automationen (konfigurierbar, z. B. Erinnerung, Auto-Schließen) | ✅ Phase 2 |
 | Geschäftszeiten & Feiertage für SLAs | ✅ Phase 3 |
 | SLA-Eskalationen (Warnung vor Ablauf, Meldung bei Verletzung) | ✅ Phase 5 |
-| Skill-basiertes Routing (Sprache, Produkt) | 📋 |
+| Routing nach Fähigkeiten (Sprache, Produkt – erkannt an Tags, mit Wartezeit-Fallback) | ✅ Phase 6 |
 | Webhooks (signiert, mit Wiederholung und Zustellprotokoll) | ✅ Phase 3 |
 
 ## Kundenseite
@@ -57,7 +59,8 @@ Abgleich mit modernen Helpdesk-/Callcenter-Systemen (Zendesk Suite, Freshdesk, H
 | Dashboard: neue/gelöste Tickets, Backlog, Ø Erstantwort, Ø Lösung, SLA-Quote, CSAT | ✅ Phase 1/2 |
 | Verlauf pro Tag, Verteilung nach Kanal/Priorität, Agenten-Statistik | ✅ Phase 1 |
 | CSV-Export (Excel-kompatibel) | ✅ Phase 1 |
-| Benutzerdefinierte Berichte, geplante Berichte per E-Mail | 📋 |
+| Eigene Berichte (Kennzahl × Gruppierung × Filter, speichern, CSV) | ✅ Phase 6 |
+| Geplante Berichte per E-Mail | 📋 |
 
 ## Kunden und Mitarbeitende getrennt ✅
 - „Kunden“ zeigt nur Endkunden (Liste, Suche, Anruferkennung, Firmen); Mitarbeitende werden ausschließlich unter Verwaltung → Team gepflegt.

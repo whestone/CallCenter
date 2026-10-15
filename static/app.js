@@ -498,3 +498,112 @@ window.ccListIdle = () =>
   !document.querySelector("input[name=ticket_id]:checked, tr.kb-focus") &&
   !document.activeElement?.matches("input, select, textarea") &&
   !document.querySelector("dialog[open]");
+
+// ---------------------------------------------------------------------------
+// Suchfeld in der Kopfzeile: Vorschläge per Tastatur bedienen, schließen
+// ---------------------------------------------------------------------------
+function quickBox() {
+  return document.getElementById("quick-search");
+}
+function quickItems() {
+  return [...(quickBox()?.querySelectorAll(".quick-item") || [])];
+}
+function closeQuick() {
+  const box = quickBox();
+  if (box) box.innerHTML = "";
+}
+document.addEventListener("keydown", (event) => {
+  const input = event.target;
+  const inField = input.matches?.(".search input[name=q]");
+  const inBox = input.closest?.("#quick-search");
+  if (!inField && !inBox) return;
+  const items = quickItems();
+  if (event.key === "Escape") {
+    closeQuick();
+    if (inBox) document.querySelector(".search input[name=q]")?.focus();
+    return;
+  }
+  if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
+  if (!items.length) return;
+  event.preventDefault();
+  const idx = items.indexOf(document.activeElement);
+  const next = event.key === "ArrowDown" ? idx + 1 : idx - 1;
+  if (next < 0) document.querySelector(".search input[name=q]")?.focus();
+  else items[Math.min(next, items.length - 1)].focus();
+});
+document.addEventListener("focusout", () => {
+  // Nach dem Fokuswechsel prüfen, ob er noch im Suchbereich ist.
+  setTimeout(() => {
+    if (!document.activeElement?.closest?.("form.search")) closeQuick();
+  }, 150);
+});
+
+// ---------------------------------------------------------------------------
+// Kurze Bestätigung nach dem Speichern (?ok=… in der Adresse)
+// ---------------------------------------------------------------------------
+function showToast(text) {
+  let box = document.getElementById("cc-toast");
+  if (!box) {
+    box = document.createElement("div");
+    box.id = "cc-toast";
+    box.className = "toast";
+    box.setAttribute("role", "status");
+    document.body.append(box);
+  }
+  box.textContent = "✓ " + text;
+  box.classList.add("show");
+  clearTimeout(box._timer);
+  box._timer = setTimeout(() => box.classList.remove("show"), 2800);
+}
+function consumeOk() {
+  const url = new URL(location.href);
+  const ok = url.searchParams.get("ok");
+  if (!ok) return;
+  url.searchParams.delete("ok");
+  history.replaceState(history.state, "", url.pathname + (url.search || "") + url.hash);
+  showToast(ok);
+}
+document.addEventListener("DOMContentLoaded", consumeOk);
+document.addEventListener("htmx:afterSettle", consumeOk);
+
+// ---------------------------------------------------------------------------
+// Ungelesene Benachrichtigungen im Tab-Titel: „(3) Ticket …“
+// ---------------------------------------------------------------------------
+document.addEventListener("htmx:afterSwap", (event) => {
+  if (!event.detail.target.matches?.(".bell")) return;
+  const n = parseInt(event.detail.target.querySelector(".badge-count")?.textContent || "0", 10) || 0;
+  const base = document.title.replace(/^\(\d+\+?\) /, "");
+  document.title = n > 0 ? `(${n > 99 ? "99+" : n}) ${base}` : base;
+});
+
+// ---------------------------------------------------------------------------
+// Hell/Dunkel: folgt dem System, lässt sich aber umschalten (pro Browser gespeichert)
+// ---------------------------------------------------------------------------
+const THEMES = ["auto", "dark", "light"];
+const THEME_LABEL = { auto: "Design: wie System", dark: "Design: dunkel", light: "Design: hell" };
+function currentTheme() {
+  try {
+    return localStorage.getItem("cc-theme") || "auto";
+  } catch {
+    return "auto";
+  }
+}
+function applyTheme(theme) {
+  if (theme === "auto") document.documentElement.removeAttribute("data-theme");
+  else document.documentElement.dataset.theme = theme;
+  document.querySelectorAll("[data-theme-toggle]").forEach((b) => {
+    b.title = THEME_LABEL[theme];
+    b.setAttribute("aria-label", THEME_LABEL[theme]);
+  });
+}
+document.addEventListener("click", (event) => {
+  if (!event.target.closest("[data-theme-toggle]")) return;
+  const next = THEMES[(THEMES.indexOf(currentTheme()) + 1) % THEMES.length];
+  try {
+    localStorage.setItem("cc-theme", next);
+  } catch {}
+  applyTheme(next);
+  showToast(THEME_LABEL[next]);
+});
+document.addEventListener("DOMContentLoaded", () => applyTheme(currentTheme()));
+document.addEventListener("htmx:afterSettle", () => applyTheme(currentTheme()));

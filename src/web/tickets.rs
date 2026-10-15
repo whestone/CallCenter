@@ -761,7 +761,7 @@ async fn update_ticket(
             .execute(&st.db)
             .await?;
     }
-    Ok(see_other(&format!("/tickets/{id}")))
+    Ok(see_other_ok(&format!("/tickets/{id}"), "Gespeichert"))
 }
 
 #[derive(Deserialize)]
@@ -783,7 +783,7 @@ async fn add_link(
         .parse()
         .map_err(|_| AppError::invalid("Bitte die Nummer des anderen Tickets angeben, z. B. 12"))?;
     service::link_tickets(&st.db, &me, id, other, f.kind.as_deref().unwrap_or("related")).await?;
-    Ok(see_other(&format!("/tickets/{id}")))
+    Ok(see_other_ok(&format!("/tickets/{id}"), "Verknüpft"))
 }
 
 async fn remove_link(
@@ -792,7 +792,7 @@ async fn remove_link(
     Path((id, other)): Path<(i64, i64)>,
 ) -> WebResult<Response> {
     service::unlink_tickets(&st.db, &me, id, other).await?;
-    Ok(see_other(&format!("/tickets/{id}")))
+    Ok(see_other_ok(&format!("/tickets/{id}"), "Verknüpfung aufgehoben"))
 }
 
 // ---------------------------------------------------------------------------
@@ -880,7 +880,7 @@ async fn merge_ticket(
         .parse()
         .map_err(|_| AppError::invalid("Bitte die Nummer des Zieltickets angeben, z. B. 12"))?;
     service::merge_tickets(&st.db, &me, id, target).await?;
-    Ok(see_other(&format!("/tickets/{target}")))
+    Ok(see_other_ok(&format!("/tickets/{target}"), "Zusammengeführt"))
 }
 
 #[derive(Deserialize)]
@@ -895,7 +895,7 @@ async fn apply_macro(
     Form(f): Form<MacroForm>,
 ) -> WebResult<Response> {
     service::update_ticket(&st.db, &me, id, TicketChanges::default(), Some(f.macro_id), "web").await?;
-    Ok(see_other(&format!("/tickets/{id}")))
+    Ok(see_other_ok(&format!("/tickets/{id}"), "Makro angewendet"))
 }
 
 // ---------------------------------------------------------------------------

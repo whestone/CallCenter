@@ -13,6 +13,7 @@ mod notify;
 mod presence;
 mod routing;
 mod rules;
+mod search;
 mod security;
 mod seed;
 mod service;

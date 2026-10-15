@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}CallCenter{% endblock %} · CallCenter</title>
   <meta name="htmx-config" content='{"responseHandling":[{"code":"204","swap":false},{"code":"[23]..","swap":true},{"code":"[45]..","swap":true,"error":true}]}'>
+  <script>try{var t=localStorage.getItem("cc-theme");if(t&&t!=="auto")document.documentElement.dataset.theme=t}catch(e){}</script>
   <link rel="stylesheet" href="/static/app.css">
   <script src="/static/htmx.min.js" defer></script>
   <script src="/static/app.js" defer></script>
@@ -35,7 +36,9 @@
   <div class="main">
     <header class="topbar">
       <form action="/search" method="get" class="search" role="search">
-        <input type="search" name="q" placeholder="Suchen … z. B. drucker status:open tag:anruf assignee:me" aria-label="Suche">
+        <input type="search" name="q" placeholder="Suchen … #Nr., Name, Text oder status:open" aria-label="Suche" autocomplete="off"
+               hx-get="/search/quick" hx-trigger="input changed delay:250ms, focus" hx-target="#quick-search" hx-swap="innerHTML" hx-sync="this:replace">
+        <div id="quick-search" class="quick-search"></div>
       </form>
       <div class="topbar-actions">
         <a class="btn" href="/tickets/new?channel=phone">📞 Anruf erfassen</a>
@@ -46,6 +49,7 @@
             {% for o in nav.availability_opts %}<option value="{{ o.value }}"{% if o.selected %} selected{% endif %}>{{ o.label }}</option>{% endfor %}
           </select>
         </form>
+        <button type="button" class="icon-btn" data-theme-toggle aria-label="Design umschalten" title="Design umschalten">◐</button>
         <a class="bell" href="/notifications" title="Benachrichtigungen" hx-get="/notifications/badge" hx-trigger="load, every 30s" hx-swap="innerHTML"><span aria-hidden="true">🔔</span></a>
         <a class="avatar" href="/me" title="{{ nav.name }} – Mein Profil">{{ nav.initials }}</a>
         <form method="post" action="/logout" hx-boost="false"><button class="link">Abmelden</button></form>

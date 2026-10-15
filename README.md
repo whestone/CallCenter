@@ -138,6 +138,9 @@ remove_tags, comment_value, comment_private, notify_requester, custom_fields.<ke
   mit Kapazität pro Agent und Warteschlange, die alle 20 s bzw. beim Online-Gehen verteilt wird
 - Tickets und Kunden zusammenführen, Dateianhänge (max. 5 × 10 MB, HTML/SVG nie im Browser ausgeführt)
 - Eigene Ticketfelder (Admin → Ticketfelder), optional Pflicht beim Lösen
+- **Routing nach Fähigkeiten** (Admin → Fähigkeiten): Eine Fähigkeit wird an Tags erkannt (z. B.
+  „Englisch“ ↔ `englisch`); solche Tickets gehen zuerst nur an Agenten mit dieser Fähigkeit (Team → Agent).
+  Ist nach `SKILL_TIMEOUT_MINUTES` (Standard 30) niemand Passendes frei, wird normal verteilt
 
 ### Regeln grafisch bauen
 Ansichten, Makros, Trigger, Automationen und SLAs werden im Admin-Bereich per Klick
@@ -153,6 +156,9 @@ im Kundenprofil einen Portalzugang einrichten. Demo: `max@acme.example` / `kunde
 ### Reports (`/reports`)
 Kennzahlen (neu, gelöst, Backlog, Ø Erstantwort, Ø Lösung, SLA-Quote, Zufriedenheit),
 Verlauf pro Tag, Verteilung nach Kanal/Priorität, Agenten-Statistik, CSV-Export.
+**Eigene Berichte** (`/reports/custom`): Kennzahl (neue/gelöste/offene Tickets, Ø Erstantwort, Ø Lösung,
+Zufriedenheit, erfasste Zeit) × Aufteilung (Tag/Woche/Monat/Wochentag, Status, Priorität, Kanal, Typ,
+Gruppe, Bearbeiter, Organisation, Tag) × Filter; als Balken und Tabelle, CSV, für alle speicherbar.
 
 ### E-Mail (Admin → E-Mail)
 - Kunden erhalten öffentliche Antworten und Trigger-Benachrichtigungen per Mail; Betreff mit `[#123]`
@@ -189,7 +195,19 @@ Ereignisse `ticket.created`, `ticket.updated`, `ticket.solved` als JSON-POST, si
 - DSGVO im Kundenprofil (Admins): Datenauskunft als JSON, Anonymisieren
 
 ### Suche
-`drucker status:open priority:urgent tag:vip assignee:me requester:max@acme.example group:support`
+- **Suchfeld oben**: Vorschläge beim Tippen (Tickets, Kunden, Firmen, Wissensartikel), mit ↑/↓ bedienbar;
+  `#12` + Enter öffnet das Ticket direkt
+- **Ergebnisseite** (`/search`): Treffer mit hervorgehobenem Textausschnitt, Sortierung nach Relevanz,
+  Aktualisierung oder Alter; Schnellsuchen und Syntaxhilfe bei leerer Suche
+- Syntax: `drucker toner` (alle Wörter), `"kein internet"` (Phrase), `-tag:spam` / `-drucker` (ausschließen),
+  `status:unsolved`, `priority:`, `type:`, `channel:`, `tag:`, `assignee:me|none|Name`,
+  `requester:"Max Mustermann"`, `group:`, `organization:`,
+  `created>2026-10-01`, `updated<7d`, `solved:heute` (Operatoren `: > < >= <=`)
+
+### Oberfläche
+- Dunkelmodus: folgt dem System, Umschalter ◐ oben rechts (wie System → dunkel → hell)
+- Kurze Bestätigung nach dem Speichern, Zahl ungelesener Benachrichtigungen im Tab-Titel
+- Deutlicher Fokusrahmen für die Bedienung per Tastatur
 
 ## REST-API (`/api/v2`)
 

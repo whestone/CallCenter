@@ -4,18 +4,73 @@
 <div class="page">
   <div class="pane-head">
     <h1>Suche</h1>
-    <form method="get" action="/search" class="inline-search">
-      <input type="search" name="q" value="{{ q }}" placeholder="z. B. drucker status:open tag:anruf assignee:me" autofocus>
-      <button class="btn">Suchen</button>
+    <form method="get" action="/search" class="inline-search search-page-form">
+      <input type="search" name="q" value="{{ q }}" placeholder="z. B. drucker status:unsolved tag:anruf" autofocus aria-label="Suchbegriff">
+      <select name="sort" aria-label="Sortierung" onchange="this.form.requestSubmit()">{% for o in sort_opts %}<option value="{{ o.value }}"{% if o.selected %} selected{% endif %}>{{ o.label }}</option>{% endfor %}</select>
+      <button class="btn primary">Suchen</button>
     </form>
   </div>
-  <p class="muted small">Filter: <code>status:</code> (new, open, pending, hold, solved, closed, unsolved) · <code>priority:</code> · <code>type:</code> · <code>channel:</code> · <code>tag:</code> · <code>assignee:me</code>/<code>none</code>/E-Mail · <code>requester:</code> E-Mail/Telefon/Name · <code>group:</code> · <code>organization:</code></p>
-  {% if !q.is_empty() %}
-  <h3>Tickets ({{ rows.len() }})</h3>
-  {% include "ticket_table.html" %}
-  {% if !users.is_empty() %}
-  <h3>Kunden ({{ users.len() }})</h3>
-  {% include "user_table.html" %}
+  {% for p in problems %}<div class="alert" role="alert">{{ p }}</div>{% endfor %}
+
+  {% if q.is_empty() %}
+  <section class="card search-help">
+    <h3>Schnellsuchen</h3>
+    <div class="chips">{% for e in examples %}<a class="chip" href="/search?q={{ e.0|urlencode }}">{{ e.1 }}</a>{% endfor %}</div>
+    <h3>So funktioniert die Suche</h3>
+    <dl class="kv search-syntax">
+      <dt>Wörter</dt><dd><code>drucker toner</code> – alle Wörter müssen vorkommen (Betreff, Text, Kommentare, Anfragender)</dd>
+      <dt>Phrase</dt><dd><code>"kein internet"</code></dd>
+      <dt>Ausschließen</dt><dd><code>-tag:spam</code> · <code>-status:closed</code> · <code>-drucker</code></dd>
+      <dt>Ticketnummer</dt><dd><code>#12</code> öffnet das Ticket direkt</dd>
+      <dt>Status / Priorität</dt><dd><code>status:open</code> (new, open, pending, hold, solved, closed, unsolved) · <code>priority:urgent</code></dd>
+      <dt>Zuordnung</dt><dd><code>assignee:me</code> / <code>none</code> / Name · <code>requester:"Max Mustermann"</code> · <code>group:support</code> · <code>organization:acme</code></dd>
+      <dt>Weitere</dt><dd><code>tag:vip</code> · <code>channel:phone</code> · <code>type:incident</code></dd>
+      <dt>Datum</dt><dd><code>created&gt;2026-10-01</code> · <code>updated&lt;7d</code> · <code>solved:heute</code> (Operatoren <code>: &gt; &lt; &gt;= &lt;=</code>; Werte JJJJ-MM-TT, TT.MM.JJJJ, <code>7d</code>, <code>heute</code>, <code>gestern</code>)</dd>
+    </dl>
+  </section>
+  {% else %}
+
+  <h3>Tickets ({% if more %}mehr als {{ hits.len() }}{% else %}{{ hits.len() }}{% endif %})</h3>
+  {% if more %}<p class="muted small">Es gibt mehr Treffer – bitte mit weiteren Wörtern oder Filtern eingrenzen.</p>{% endif %}
+  {% if hits.is_empty() %}
+  <div class="empty">Keine Tickets gefunden.</div>
+  {% else %}
+  <ul class="search-hits">
+    {% for h in hits %}
+    <li>
+      <div class="hit-head">
+        <span class="status-badge s-{{ h.row.status }}" title="{{ h.row.status_label }}">{{ h.row.status_label }}</span>
+        <a class="hit-title" href="/tickets/{{ h.row.id }}"><span class="muted">#{{ h.row.id }}</span> {{ h.row.subject_html|safe }}</a>
+        {% if !h.row.priority.is_empty() %}<span class="prio p-{{ h.row.priority }}">{{ h.row.priority_label }}</span>{% endif %}
+      </div>
+      {% if !h.snippet.is_empty() %}<div class="hit-snippet">{{ h.snippet|safe }}</div>{% endif %}
+      <div class="hit-meta muted small">{{ h.row.requester }} · {% if h.row.assignee.is_empty() %}nicht zugewiesen{% else %}{{ h.row.assignee }}{% endif %} · {{ h.row.channel_label }} · aktualisiert {{ h.row.updated }}</div>
+    </li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+
+  {% if !people.is_empty() || !orgs.is_empty() || !articles.is_empty() %}
+  <div class="search-side-results">
+    {% if !people.is_empty() %}
+    <section class="card">
+      <h3>Kunden ({{ people.len() }})</h3>
+      <ul class="mini-list">{% for u in people %}<li><a href="/users/{{ u.id }}"><strong>{{ u.name }}</strong></a> <span class="muted small">{{ u.contact }}{% if !u.org.is_empty() %} · {{ u.org }}{% endif %}</span></li>{% endfor %}</ul>
+    </section>
+    {% endif %}
+    {% if !orgs.is_empty() %}
+    <section class="card">
+      <h3>Firmen ({{ orgs.len() }})</h3>
+      <ul class="mini-list">{% for o in orgs %}<li><a href="/organizations/{{ o.id }}"><strong>{{ o.name }}</strong></a>{% if !o.domains.is_empty() %} <span class="muted small">{{ o.domains }}</span>{% endif %}</li>{% endfor %}</ul>
+    </section>
+    {% endif %}
+    {% if !articles.is_empty() %}
+    <section class="card">
+      <h3>Wissensartikel ({{ articles.len() }})</h3>
+      <ul class="mini-list">{% for a in articles %}<li><a href="/kb/{{ a.id }}">{{ a.title }}</a>{% if a.draft %} <span class="pill">Entwurf</span>{% endif %}</li>{% endfor %}</ul>
+    </section>
+    {% endif %}
+  </div>
   {% endif %}
   {% endif %}
 </div>

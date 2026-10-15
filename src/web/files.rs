@@ -107,7 +107,7 @@ async fn agent_upload(
     let public = fields.get("public").map(String::as_str) != Some("0");
     let note = fields.get("note").cloned().unwrap_or_default();
     service::attach_files(&st.db, &me, id, public, &note, files, "web").await?;
-    Ok(see_other(&format!("/tickets/{id}")))
+    Ok(see_other_ok(&format!("/tickets/{id}"), "Hochgeladen"))
 }
 
 async fn agent_download(State(st): State<AppState>, WebAgent(_): WebAgent, Path(id): Path<i64>) -> WebResult<Response> {

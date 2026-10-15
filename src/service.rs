@@ -9,7 +9,7 @@ use std::collections::HashSet;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Deserializer};
 use serde_json::{json, Value};
-use sqlx::{PgConnection, PgPool, Postgres, QueryBuilder};
+use sqlx::{PgConnection, PgPool};
 
 use crate::{
     auth, email,
@@ -1318,73 +1318,9 @@ fn like_pattern(s: &str) -> String {
 /// Ticketsuche mit Zendesk-ähnlicher Syntax:
 /// `drucker status:open priority:urgent tag:vip assignee:me requester:max@acme.de group:support type:incident channel:phone`
 pub async fn search_tickets(db: &PgPool, query: &str, me: &User) -> AppResult<Vec<Ticket>> {
-    let mut qb: QueryBuilder<Postgres> = QueryBuilder::new("SELECT t.* FROM tickets t WHERE TRUE");
-    for token in query.split_whitespace() {
-        let (key, value) = token.split_once(':').unwrap_or(("", token));
-        match key {
-            "status" if value == "unsolved" => {
-                qb.push(" AND t.status IN ('new', 'open', 'pending', 'hold')");
-            }
-            "status" => {
-                qb.push(" AND t.status = ").push_bind(value.to_lowercase());
-            }
-            "priority" => {
-                qb.push(" AND t.priority = ").push_bind(value.to_lowercase());
-            }
-            "type" => {
-                qb.push(" AND t.ticket_type = ").push_bind(value.to_lowercase());
-            }
-            "channel" | "via" => {
-                qb.push(" AND t.channel = ").push_bind(value.to_lowercase());
-            }
-            "tag" | "tags" => {
-                qb.push(" AND ").push_bind(value.to_lowercase()).push(" = ANY(t.tags)");
-            }
-            "assignee" if value == "me" => {
-                qb.push(" AND t.assignee_id = ").push_bind(me.id);
-            }
-            "assignee" if value == "none" => {
-                qb.push(" AND t.assignee_id IS NULL");
-            }
-            "assignee" | "requester" => {
-                let col = if key == "assignee" { "t.assignee_id" } else { "t.requester_id" };
-                qb.push(format!(" AND {col} IN (SELECT id FROM users WHERE lower(email) = lower("))
-                    .push_bind(value.to_string())
-                    .push(") OR phone = ")
-                    .push_bind(normalize_phone(value))
-                    .push(" OR name ILIKE ")
-                    .push_bind(like_pattern(value))
-                    .push(")");
-            }
-            "group" => {
-                qb.push(" AND t.group_id IN (SELECT id FROM agent_groups WHERE name ILIKE ")
-                    .push_bind(like_pattern(value))
-                    .push(")");
-            }
-            "organization" => {
-                qb.push(" AND t.organization_id IN (SELECT id FROM organizations WHERE name ILIKE ")
-                    .push_bind(like_pattern(value))
-                    .push(")");
-            }
-            _ => {
-                let term = token.trim_start_matches('#');
-                let pattern = like_pattern(term);
-                qb.push(" AND (t.subject ILIKE ")
-                    .push_bind(pattern.clone())
-                    .push(" OR t.description ILIKE ")
-                    .push_bind(pattern.clone())
-                    .push(" OR EXISTS (SELECT 1 FROM ticket_comments c WHERE c.ticket_id = t.id AND c.body ILIKE ")
-                    .push_bind(pattern)
-                    .push(")");
-                if let Ok(id) = term.parse::<i64>() {
-                    qb.push(" OR t.id = ").push_bind(id);
-                }
-                qb.push(")");
-            }
-        }
-    }
-    qb.push(" ORDER BY t.updated_at DESC LIMIT 200");
-    Ok(qb.build_query_as::<Ticket>().fetch_all(db).await?)
+    let mut tickets = crate::search::tickets(db, query, me, "relevance").await?;
+    tickets.truncate(crate::search::LIMIT);
+    Ok(tickets)
 }
 
 /// Personensuche (Name, E-Mail, Telefon). `customers_only`: nur Endkunden, keine Mitarbeitenden.

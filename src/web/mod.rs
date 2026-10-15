@@ -13,6 +13,7 @@ mod people;
 mod portal;
 mod profile;
 mod reports;
+mod search;
 mod telephony;
 mod tickets;
 
@@ -50,6 +51,7 @@ pub fn router() -> Router<AppState> {
         .merge(people::router())
         .merge(reports::router())
         .merge(custom_reports::router())
+        .merge(search::router())
         .merge(portal::router())
         .merge(files::router())
         .merge(profile::router())
@@ -124,6 +126,13 @@ pub fn page<T: Template>(t: T) -> WebResult<Html<String>> {
 
 pub fn see_other(path: &str) -> Response {
     Redirect::to(path).into_response()
+}
+
+/// Weiterleitung mit kurzer Bestätigung („✓ Gespeichert“), die app.js anzeigt.
+pub fn see_other_ok(path: &str, message: &str) -> Response {
+    let sep = if path.contains('?') { '&' } else { '?' };
+    let ok = serde_urlencoded::to_string([("ok", message)]).unwrap_or_default();
+    see_other(&format!("{path}{sep}{ok}"))
 }
 
 // ---------------------------------------------------------------------------
@@ -225,6 +234,8 @@ pub async fn group_names(db: &PgPool) -> AppResult<HashMap<i64, String>> {
 pub struct TicketRow {
     pub id: i64,
     pub subject: String,
+    /// Betreff als HTML (maskiert; in der Suche mit hervorgehobenen Treffern).
+    pub subject_html: String,
     pub status: String,
     pub status_label: &'static str,
     pub status_letter: String,
@@ -261,6 +272,7 @@ pub async fn ticket_rows(db: &PgPool, tickets: &[Ticket]) -> AppResult<Vec<Ticke
             };
             TicketRow {
                 id: t.id,
+                subject_html: crate::markdown::escape(&t.subject),
                 subject: t.subject.clone(),
                 status: t.status.clone(),
                 status_label: status_label(&t.status),

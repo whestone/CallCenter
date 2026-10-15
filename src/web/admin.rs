@@ -152,7 +152,7 @@ async fn create_agent(
     )
     .await?;
     service::set_group_memberships(&st.db, user.id, &group_ids(&pairs)).await?;
-    Ok(see_other("/admin/agents"))
+    Ok(see_other_ok("/admin/agents", "Angelegt"))
 }
 
 #[derive(Template)]
@@ -261,7 +261,7 @@ async fn update_agent(
             .execute(&st.db)
             .await?;
     }
-    Ok(see_other("/admin/agents"))
+    Ok(see_other_ok("/admin/agents", "Gespeichert"))
 }
 
 // ---------------------------------------------------------------------------

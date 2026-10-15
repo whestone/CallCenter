@@ -37,7 +37,7 @@
       <legend>Anliegen</legend>
       {% if !followup.is_empty() %}<p class="small">↪ Folgeticket zu <a href="/tickets/{{ followup }}">#{{ followup }}</a></p>{% endif %}
       <label>Betreff<input type="text" name="subject" value="{{ subject_prefill }}" required></label>
-      <label>CC<input type="text" name="cc" autocomplete="off" placeholder="weitere E-Mail-Adressen (optional)"></label>
+      <label>CC<input type="text" name="cc" autocomplete="off" placeholder="E-Mail hinzufügen …" data-chips="emails"></label>
       <label>{% if is_call %}Gesprächsnotiz{% else %}Beschreibung{% endif %}
         <textarea name="description" rows="7" required></textarea>
       </label>
@@ -69,7 +69,7 @@
           <select name="status">{% for o in status_opts %}<option value="{{ o.value }}"{% if o.selected %} selected{% endif %}>{{ o.label }}</option>{% endfor %}</select>
         </label>
       </div>
-      <label>Tags<input type="text" name="tags" placeholder="mit Leerzeichen getrennt"></label>
+      <label>Tags<input type="text" name="tags" placeholder="Tag hinzufügen …" data-chips="tags"></label>
       {% if !cf_inputs.is_empty() %}<div class="row3">{% include "cf_inputs.html" %}</div>{% endif %}
     </fieldset>
 

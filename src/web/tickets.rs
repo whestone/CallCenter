@@ -31,6 +31,7 @@ pub fn router() -> Router<AppState> {
         .route("/tickets/{id}/links/{other}/delete", post(remove_link))
         .route("/requesters/lookup", get(requester_lookup))
         .route("/requesters/{id}/tickets", get(requester_tickets))
+        .route("/tags/suggest", get(tag_suggest))
 }
 
 // ---------------------------------------------------------------------------
@@ -1208,4 +1209,26 @@ async fn requester_tickets(
         open: open.into_iter().map(view).collect(),
         recent: recent.into_iter().map(view).collect(),
     })
+}
+
+#[derive(Deserialize)]
+struct TagQuery {
+    q: Option<String>,
+}
+
+/// Vorschläge für das Tag-Feld: vorhandene Tags, häufigste zuerst.
+async fn tag_suggest(
+    State(st): State<AppState>,
+    WebAgent(_): WebAgent,
+    Query(q): Query<TagQuery>,
+) -> WebResult<axum::Json<Vec<String>>> {
+    let term = q.q.unwrap_or_default().trim().to_lowercase();
+    let tags: Vec<String> = sqlx::query_scalar(
+        "SELECT tag FROM tickets, unnest(tags) AS tag WHERE left(tag, length($1)) = $1
+         GROUP BY tag ORDER BY count(*) DESC, tag LIMIT 10",
+    )
+    .bind(term)
+    .fetch_all(&st.db)
+    .await?;
+    Ok(axum::Json(tags))
 }

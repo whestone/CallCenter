@@ -49,12 +49,12 @@
         <select name="assignee_id">{% for o in assignee_opts %}<option value="{{ o.value }}"{% if o.selected %} selected{% endif %}>{{ o.label }}</option>{% endfor %}</select>
       </label>
       <label>Tags
-        <input type="text" name="tags" value="{{ tags }}" placeholder="mit Leerzeichen getrennt">
+        <input type="text" name="tags" value="{{ tags }}" placeholder="Tag hinzufügen …" data-chips="tags">
       </label>
       {% if !skills.is_empty() %}<p class="small skill-need" title="Ergibt sich aus den Tags; die automatische Zuweisung bevorzugt Agenten mit diesen Fähigkeiten">🎯 Benötigt: {{ skills }}</p>{% endif %}
 
       <label>CC
-        <input type="text" name="cc" value="{{ cc }}" placeholder="E-Mail-Adressen, mit Komma getrennt">
+        <input type="text" name="cc" value="{{ cc }}" placeholder="E-Mail hinzufügen …" data-chips="emails">
       </label>
 
       {% if !cf_inputs.is_empty() %}
@@ -123,21 +123,25 @@
       {% if !closed %}
       {% if !warning.is_empty() %}<div class="alert" role="alert">{{ warning }}</div>{% endif %}
       <div class="composer">
-        <div class="composer-tabs">
+        <div class="composer-tabs segmented" role="radiogroup" aria-label="Art der Antwort">
           <label><input type="radio" name="public" value="1"{% if !draft_internal %} checked{% endif %}> Öffentliche Antwort</label>
-          <label><input type="radio" name="public" value="0"{% if draft_internal %} checked{% endif %}> Interne Notiz</label>
+          <label class="seg-internal"><input type="radio" name="public" value="0"{% if draft_internal %} checked{% endif %}> Interne Notiz</label>
         </div>
+        <div class="editor-box">
         <div class="format-bar" role="toolbar" aria-label="Formatierung">
-          <button type="button" data-fmt="bold" title="Fett (Strg+B)"><b>B</b></button>
-          <button type="button" data-fmt="italic" title="Kursiv (Strg+I)"><i>I</i></button>
-          <button type="button" data-fmt="ul" title="Aufzählung">• Liste</button>
-          <button type="button" data-fmt="ol" title="Nummerierte Liste">1. Liste</button>
-          <button type="button" data-fmt="link" title="Link einfügen">🔗 Link</button>
-          <button type="button" data-fmt="code" title="Code">&lt;/&gt;</button>
+          <button type="button" data-fmt="bold" title="Fett (Strg+B)" aria-label="Fett"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5h6a3.5 3.5 0 0 1 0 7H7zM7 12h7a3.5 3.5 0 0 1 0 7H7z"/></svg></button>
+          <button type="button" data-fmt="italic" title="Kursiv (Strg+I)" aria-label="Kursiv"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 5h-4M14 19h-4M14.5 5l-5 14"/></svg></button>
+          <span class="fmt-sep" aria-hidden="true"></span>
+          <button type="button" data-fmt="ul" title="Aufzählung" aria-label="Aufzählung"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1.2"/><circle cx="4.5" cy="12" r="1.2"/><circle cx="4.5" cy="18" r="1.2"/></svg></button>
+          <button type="button" data-fmt="ol" title="Nummerierte Liste" aria-label="Nummerierte Liste"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 6h10M10 12h10M10 18h10M4 4.5h1.5V9M3.5 9h3M3.5 14.5a1.5 1.5 0 0 1 3 .3c0 1.2-3 2.2-3 3.7h3"/></svg></button>
+          <span class="fmt-sep" aria-hidden="true"></span>
+          <button type="button" data-fmt="link" title="Link einfügen" aria-label="Link einfügen"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg></button>
+          <button type="button" data-fmt="code" title="Code" aria-label="Code"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8.5 7 3.5 12l5 5M15.5 7l5 5-5 5"/></svg></button>
         </div>
         <div class="mention-wrap">
           <textarea name="comment" id="comment" rows="5" placeholder="Antwort schreiben …" aria-label="Antwort" data-mentions data-rte>{{ draft }}</textarea>
           <ul class="mention-list" role="listbox" hidden></ul>
+        </div>
         </div>
         <div class="composer-tools">
           <select class="macro-select" name="macro_id" form="macro-form" aria-label="Makro anwenden" data-auto-submit>

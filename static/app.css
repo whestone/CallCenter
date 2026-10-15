@@ -692,3 +692,43 @@ mark { background: #ffe58a; color: inherit; padding: 0 1px; border-radius: 2px; 
 .help-section ul { margin: 0; padding-left: 20px; }
 .help-section li { margin-bottom: 4px; }
 .help-section :target, .help-section:target { outline: 2px solid var(--tint-blue-border); outline-offset: 4px; border-radius: 4px; }
+
+/* ---------------------------------------------------------------------------
+   Modernere Eingaben: Chips, Editor-Rahmen mit Icon-Leiste, Umschalter
+   --------------------------------------------------------------------------- */
+/* Chips (Tags, CC) */
+.chips-input { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; min-height: 36px; padding: 4px 6px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--panel); cursor: text; }
+.chips-input:focus-within { border-color: var(--accent); outline: 2px solid var(--tint-blue-border); }
+.chips-input.chips-invalid { border-color: var(--danger); }
+.chips-entry { flex: 1; min-width: 90px; border: 0 !important; outline: none !important; padding: 3px 2px !important; background: transparent !important; box-shadow: none !important; }
+.chip-item { display: inline-flex; align-items: center; gap: 2px; max-width: 100%; padding: 2px 4px 2px 9px; border-radius: 999px; font-size: 12.5px; font-weight: 600; line-height: 1.5; overflow-wrap: anywhere; }
+.chip-tag { background: var(--tint-blue); color: var(--accent-dark); }
+.chip-tag::before { content: "#"; opacity: .55; margin-right: 1px; }
+.chip-mail { background: var(--chip); color: var(--text); }
+.chip-x { border: 0; background: transparent; color: inherit; opacity: .6; cursor: pointer; font-size: 15px; line-height: 1; width: 18px; height: 18px; border-radius: 50%; display: grid; place-items: center; padding: 0; }
+.chip-x:hover { opacity: 1; background: rgba(127, 127, 127, .2); }
+label.is-dirty > .chips-input { border-color: var(--tint-orange-border); background: var(--tint-orange); }
+
+/* Antwort: Rahmen mit Icon-Leiste oben */
+.editor-box { border: 1px solid var(--border); border-radius: 10px; background: var(--panel); transition: border-color .15s, box-shadow .15s; }
+.editor-box:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--tint-blue); }
+.editor-box .format-bar { margin: 0; padding: 4px 6px; gap: 2px; border-bottom: 1px solid var(--line); }
+.editor-box .format-bar button { width: 32px; height: 30px; padding: 0; display: grid; place-items: center; border: 0; border-radius: 6px; background: transparent; color: var(--muted); }
+.editor-box .format-bar button:hover { background: var(--hover); color: var(--text); }
+.editor-box .format-bar button.is-active { background: var(--tint-blue); color: var(--accent-dark); }
+.editor-box .format-bar svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.editor-box .format-bar circle { fill: currentColor; stroke: none; }
+.fmt-sep { width: 1px; height: 18px; background: var(--line); margin: 0 4px; }
+.editor-box .rte, .editor-box textarea { border: 0; border-radius: 0 0 10px 10px; background: transparent; }
+.editor-box .rte:focus { outline: none; }
+.composer:has(input[name=public][value="0"]:checked) .editor-box { background: var(--tint-orange); border-color: var(--tint-orange-border); }
+.composer:has(input[name=public][value="0"]:checked) .editor-box .rte { background: transparent; }
+.composer:has(input[name=public][value="0"]:checked) .editor-box:focus-within { box-shadow: 0 0 0 3px var(--tint-orange); }
+
+/* Öffentliche Antwort / Interne Notiz als Umschalter */
+.composer-tabs.segmented { display: inline-flex; gap: 2px; padding: 3px; margin-bottom: 8px; border-radius: 9px; background: var(--chip); }
+.composer-tabs.segmented label { position: relative; margin: 0; padding: 5px 14px; border-radius: 7px; font-weight: 600; font-size: 13px; color: var(--muted); cursor: pointer; display: inline-flex; align-items: center; }
+.composer-tabs.segmented input { position: absolute; opacity: 0; width: 1px; height: 1px; pointer-events: none; }
+.composer-tabs.segmented label:has(input:checked) { background: var(--panel); color: var(--text); box-shadow: 0 1px 3px var(--shadow); }
+.composer-tabs.segmented label.seg-internal:has(input:checked) { background: var(--tint-orange); color: var(--warn-strong); }
+.composer-tabs.segmented label:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 1px; }

@@ -151,9 +151,11 @@ document.addEventListener("htmx:confirm", (event) => {
   const question = event.detail.question;
   const form = dirtyTicketForm();
   const source = event.detail.elt;
-  // Nur echte Navigation (Links, Formulare) verlässt das Ticket – Hintergrund-Abfragen
-  // wie Anruf-Banner, Glocke oder Anwesenheit nicht. Absenden des Ticketformulars ist erlaubt.
-  const navigates = source.matches("a[href], form, button, input[type=submit]");
+  // Nur echte Navigation (Klick auf Link/Knopf, Absenden) verlässt das Ticket –
+  // Hintergrund-Abfragen (Glocke, Anruf-Banner, Anwesenheit, Chat-Zähler) nicht, auch wenn
+  // das abfragende Element ein Link ist. Absenden des Ticketformulars ist erlaubt.
+  const trigger = event.detail.triggeringEvent?.type;
+  const navigates = (trigger === "click" || trigger === "submit") && source.matches("a[href], form, button, input[type=submit]");
   const leavesDirtyTicket = form && navigates && source !== form && source.form !== form;
   if (!question && !leavesDirtyTicket) return;
   event.preventDefault();

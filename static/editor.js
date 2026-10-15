@@ -234,6 +234,25 @@
     });
   }
 
+  // Aktive Formatierung an der Cursorposition in der Leiste hervorheben.
+  const STATES = { bold: "bold", italic: "italic", ul: "insertUnorderedList", ol: "insertOrderedList" };
+  document.addEventListener("selectionchange", () => {
+    const sel = window.getSelection();
+    const node = sel.rangeCount ? sel.getRangeAt(0).startContainer : null;
+    const editor = node && (node.nodeType === 1 ? node : node.parentElement)?.closest(".rte");
+    document.querySelectorAll(".format-bar [data-fmt]").forEach((btn) => {
+      const cmd = STATES[btn.dataset.fmt];
+      let on = false;
+      if (editor && cmd) {
+        try {
+          on = document.queryCommandState(cmd);
+        } catch {}
+      }
+      btn.classList.toggle("is-active", on);
+      if (cmd) btn.setAttribute("aria-pressed", String(on));
+    });
+  });
+
   // Knöpfe der Formatierleiste nehmen den Fokus nicht, sonst ginge die Markierung verloren.
   document.addEventListener("mousedown", (event) => {
     if (event.target.closest("[data-fmt]") && document.querySelector(".rte")) event.preventDefault();

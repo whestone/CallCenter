@@ -6,6 +6,7 @@ mod custom_reports;
 mod files;
 mod integrations;
 mod kb;
+mod list_prefs;
 mod lists;
 mod mail;
 mod notifications;
@@ -61,6 +62,7 @@ pub fn router() -> Router<AppState> {
         .merge(integrations::router())
         .merge(telephony::router())
         .merge(notifications::router())
+        .merge(list_prefs::router())
         .merge(chat::router())
         .merge(admin::personal_router())
         .merge(admin::router())
@@ -251,6 +253,8 @@ pub struct TicketRow {
     pub org: String,
     pub tags: Vec<String>,
     pub assignee_initials: String,
+    pub created: String,
+    pub type_label: &'static str,
 }
 
 pub async fn ticket_rows(db: &PgPool, tickets: &[Ticket]) -> AppResult<Vec<TicketRow>> {
@@ -296,6 +300,8 @@ pub async fn ticket_rows(db: &PgPool, tickets: &[Ticket]) -> AppResult<Vec<Ticke
                 org: t.organization_id.and_then(|id| orgs.get(&id).cloned()).unwrap_or_default(),
                 tags: t.tags.clone(),
                 assignee_initials: t.assignee_id.and_then(|id| users.get(&id)).map(|n| initials(n)).unwrap_or_default(),
+                created: fmt_rel(t.created_at, now),
+                type_label: t.ticket_type.as_deref().map(type_label).unwrap_or(""),
             }
         })
         .collect())

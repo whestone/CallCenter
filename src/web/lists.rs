@@ -173,6 +173,7 @@ struct ViewsPage {
     dir: String,
     headers: Vec<Header>,
     pages: Vec<PageLink>,
+    cols: super::list_prefs::ListPrefs,
     return_to: String,
     notice: String,
     bulk_status_opts: Vec<Opt>,
@@ -279,14 +280,13 @@ async fn view_show(
     let page_items: Vec<Ticket> = matching.into_iter().skip((page_no - 1) * PER_PAGE).take(PER_PAGE).collect();
 
     let base = format!("/views/{id}");
-    let headers = [
-        ("id", "Ticket"),
-        ("priority", "Priorität"),
-        ("", "Bearbeiter"),
-        ("sla", "SLA"),
-        ("updated", "Aktualisiert"),
-    ]
-    .into_iter()
+    let cols = super::list_prefs::load(db, me.id).await?;
+    // Spalten nach persönlicher Einstellung; sortierbar sind nur einige.
+    let headers = std::iter::once(("id", "Ticket"))
+        .chain(cols.columns().into_iter().map(|(key, label)| match key {
+            "priority" | "sla" | "updated" | "created" => (key, label),
+            _ => ("", label),
+        }))
     .map(|(key, label)| {
         if key.is_empty() {
             return Header { label, url: String::new(), arrow: "" };
@@ -382,6 +382,7 @@ async fn view_show(
         dir,
         headers,
         pages,
+        cols,
         return_to: format!("{base}?{}", p.query(|_| {})),
         notice,
         bulk_status_opts: with_special(&[], enum_list(&["open", "pending", "hold", "solved"], status_label), None, "Status …"),

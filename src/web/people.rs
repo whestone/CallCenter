@@ -145,6 +145,7 @@ struct UserPage {
     created: String,
     org_opts: Vec<Opt>,
     rows: Vec<TicketRow>,
+    cols: super::list_prefs::ListPrefs,
     calls: Vec<super::telephony::CallView>,
 }
 
@@ -178,6 +179,7 @@ async fn show_user(State(st): State<AppState>, WebAgent(me): WebAgent, Path(id):
         created: fmt_dt(u.created_at),
         org_opts: org_opts(&st.db, u.organization_id).await?,
         rows: ticket_rows(&st.db, &tickets).await?,
+        cols: super::list_prefs::load(&st.db, me.id).await?,
         calls: super::telephony::call_views(&st.db, &crate::telephony::for_customer(&st.db, id, 20).await?).await?,
     })
     .map(IntoResponse::into_response)
@@ -329,6 +331,7 @@ struct OrgPage {
     can_admin: bool,
     users: Vec<UserRow>,
     rows: Vec<TicketRow>,
+    cols: super::list_prefs::ListPrefs,
 }
 
 async fn show_org(State(st): State<AppState>, WebAgent(me): WebAgent, Path(id): Path<i64>) -> WebResult<Html<String>> {
@@ -355,6 +358,7 @@ async fn show_org(State(st): State<AppState>, WebAgent(me): WebAgent, Path(id): 
         can_admin: me.is_admin(),
         users: user_rows(&st.db, &users).await?,
         rows: ticket_rows(&st.db, &tickets).await?,
+        cols: super::list_prefs::load(&st.db, me.id).await?,
     })
 }
 

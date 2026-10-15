@@ -6,7 +6,29 @@
   <section class="pane">
     <div class="pane-head">
       <h1>{{ current_title }}</h1>
-      <span class="muted">{% if filtered %}{{ total }} von {{ total_unfiltered }} Tickets{% else %}{{ total }} Tickets{% endif %}</span>
+      <div class="pane-head-actions">
+        <span class="muted">{% if filtered %}{{ total }} von {{ total_unfiltered }} Tickets{% else %}{{ total }} Tickets{% endif %}</span>
+        <details class="list-settings">
+          <summary class="btn" title="Filter und Felder ein- oder ausblenden">⚙ Anpassen</summary>
+          <form class="list-settings-panel" method="post" action="/me/list-prefs">
+            <input type="hidden" name="return_to" value="{{ return_to }}">
+            <div class="ls-cols">
+              <fieldset>
+                <legend>Filter</legend>
+                {% for c in cols.filter_choices() %}<label class="check"><input type="checkbox" name="filter" value="{{ c.key }}"{% if c.on %} checked{% endif %}> {{ c.label }}</label>{% endfor %}
+              </fieldset>
+              <fieldset>
+                <legend>Felder</legend>
+                {% for c in cols.field_choices() %}<label class="check"><input type="checkbox" name="field" value="{{ c.key }}"{% if c.on %} checked{% endif %}> {{ c.label }}</label>{% endfor %}
+              </fieldset>
+            </div>
+            <div class="ls-actions">
+              <button class="link" type="submit" name="reset" value="1">Standard</button>
+              <button class="btn primary" type="submit">Übernehmen</button>
+            </div>
+          </form>
+        </details>
+      </div>
     </div>
 
     {% if !notice.is_empty() %}<div class="alert info">{{ notice }}</div>{% endif %}
@@ -14,12 +36,12 @@
     <form class="filter-bar" method="get" action="/views/{{ current }}"
           hx-get="/views/{{ current }}" hx-trigger="change, keyup changed delay:400ms from:input[name=q]"
           hx-target="body" hx-push-url="true">
-      <input type="search" name="q" value="{{ q }}" placeholder="Betreff oder #Nr." aria-label="In Ansicht filtern">
-      <select name="status" aria-label="Status">{% for o in status_opts %}<option value="{{ o.value }}"{% if o.selected %} selected{% endif %}>{{ o.label }}</option>{% endfor %}</select>
-      <select name="priority" aria-label="Priorität">{% for o in priority_opts %}<option value="{{ o.value }}"{% if o.selected %} selected{% endif %}>{{ o.label }}</option>{% endfor %}</select>
-      <select name="assignee" aria-label="Bearbeiter">{% for o in assignee_opts %}<option value="{{ o.value }}"{% if o.selected %} selected{% endif %}>{{ o.label }}</option>{% endfor %}</select>
-      <select name="group" aria-label="Gruppe">{% for o in group_opts %}<option value="{{ o.value }}"{% if o.selected %} selected{% endif %}>{{ o.label }}</option>{% endfor %}</select>
-      <select name="channel" aria-label="Kanal">{% for o in channel_opts %}<option value="{{ o.value }}"{% if o.selected %} selected{% endif %}>{{ o.label }}</option>{% endfor %}</select>
+      {% if cols.filter("q") %}<input type="search" name="q" value="{{ q }}" placeholder="Betreff oder #Nr." aria-label="In Ansicht filtern">{% endif %}
+      {% if cols.filter("status") %}<select name="status" aria-label="Status">{% for o in status_opts %}<option value="{{ o.value }}"{% if o.selected %} selected{% endif %}>{{ o.label }}</option>{% endfor %}</select>{% endif %}
+      {% if cols.filter("priority") %}<select name="priority" aria-label="Priorität">{% for o in priority_opts %}<option value="{{ o.value }}"{% if o.selected %} selected{% endif %}>{{ o.label }}</option>{% endfor %}</select>{% endif %}
+      {% if cols.filter("assignee") %}<select name="assignee" aria-label="Bearbeiter">{% for o in assignee_opts %}<option value="{{ o.value }}"{% if o.selected %} selected{% endif %}>{{ o.label }}</option>{% endfor %}</select>{% endif %}
+      {% if cols.filter("group") %}<select name="group" aria-label="Gruppe">{% for o in group_opts %}<option value="{{ o.value }}"{% if o.selected %} selected{% endif %}>{{ o.label }}</option>{% endfor %}</select>{% endif %}
+      {% if cols.filter("channel") %}<select name="channel" aria-label="Kanal">{% for o in channel_opts %}<option value="{{ o.value }}"{% if o.selected %} selected{% endif %}>{{ o.label }}</option>{% endfor %}</select>{% endif %}
       {% if !sort.is_empty() %}<input type="hidden" name="sort" value="{{ sort }}"><input type="hidden" name="dir" value="{{ dir }}">{% endif %}
       {% if filtered %}<a class="btn" href="/views/{{ current }}">Filter zurücksetzen</a>{% endif %}
       <noscript><button class="btn">Filtern</button></noscript>

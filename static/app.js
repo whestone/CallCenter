@@ -574,7 +574,7 @@ document.addEventListener("keydown", (event) => {
 window.ccListIdle = () =>
   !document.querySelector("input[name=ticket_id]:checked, tr.kb-focus") &&
   !document.activeElement?.matches("input, select, textarea") &&
-  !document.querySelector("dialog[open]");
+  !document.querySelector("dialog[open], details.list-settings[open]");
 
 // ---------------------------------------------------------------------------
 // Suchfeld in der Kopfzeile: Vorschläge per Tastatur bedienen, schließen

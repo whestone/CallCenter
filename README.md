@@ -172,12 +172,14 @@ Gruppe, Bearbeiter, Organisation, Tag) × Filter; als Balken und Tabelle, CSV, f
   ohne Konfiguration landen Mails im Postausgang mit Status „nicht gesendet“
 - Eingang: `POST /api/v2/inbound/email?secret=…` mit JSON `{from, from_name, subject, text}`
   (z. B. von Mailgun/Postmark weitergeleitet). Antworten mit `[#123]` vom Anfragenden werden dem Ticket
-  zugeordnet, Zitate abgeschnitten; alles andere wird ein neues Ticket. Secret: `INBOUND_EMAIL_SECRET`
+  zugeordnet, Zitate abgeschnitten; alles andere wird ein neues Ticket. Adresse samt Geheimnis wird unter
+  Verwaltung → E-Mail erzeugt (ersatzweise `INBOUND_EMAIL_SECRET`)
 - „Passwort vergessen?“ für Agenten und Kunden (Einmal-Link, 1 Stunde gültig); `PUBLIC_URL` für Links
 
 ### E-Mail-Eingang per IMAP
-- Ungelesene Mails im Postfach werden jede Minute abgeholt (`IMAP_HOST`, `IMAP_PORT` (993),
-  `IMAP_USER`, `IMAP_PASSWORD`, `IMAP_FOLDER` (INBOX), `IMAP_POLL_SECONDS`) und danach als gelesen
+- Zugang unter Verwaltung → E-Mail (wirkt ohne Neustart; ersatzweise `IMAP_HOST`, `IMAP_PORT` (993),
+  `IMAP_USER`, `IMAP_PASSWORD`, `IMAP_FOLDER` (INBOX), `IMAP_POLL_SECONDS`). Ungelesene Mails werden
+  im eingestellten Abstand abgeholt und danach als gelesen
   markiert: neue Anfrage → Ticket, Antwort mit `[#123]` im Betreff → Kommentar, Anhänge werden übernommen
 - Abwesenheitsnotizen (`Auto-Submitted`), Massenmails und eigene Mails werden ignoriert
 - Status des letzten Abrufs unter Admin → E-Mail

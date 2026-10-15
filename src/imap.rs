@@ -2,10 +2,16 @@
 //! macht daraus Tickets bzw. Antworten (gleiche Logik wie der Eingangs-Webhook).
 //!
 //! Bewusst ein schlanker eigener Client (LOGIN, SELECT, UID SEARCH/FETCH/STORE),
-//! Konfiguration über `IMAP_*` in der `.env`. Verarbeitete Mails werden als gelesen markiert.
+//! Zugang unter Verwaltung → E-Mail (Tabelle `settings`, Schlüssel `imap.*`), ersatzweise
+//! `IMAP_*` aus der `.env`. Änderungen wirken ohne Neustart. Verarbeitete Mails werden
+//! als gelesen markiert.
 
 use std::{
-    sync::{Arc, Mutex},
+    collections::HashMap,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc, Mutex,
+    },
     time::Duration,
 };
 
@@ -24,11 +30,12 @@ use tokio_rustls::{
 
 use crate::{
     email::{self, InboundEmail, InboundResult},
+    error::{AppError, AppResult},
     models::User,
     service::{self, Upload},
 };
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct ImapConfig {
     pub host: String,
     pub port: u16,
@@ -38,20 +45,89 @@ pub struct ImapConfig {
     /// "tls" (implizit, Port 993, Standard) oder "none" (nur für lokale Tests)
     pub security: String,
     pub interval: u64,
+    /// Herkunft: "admin" (Verwaltung) oder "env" (Umgebungsvariablen).
+    pub source: &'static str,
 }
 
-pub fn config() -> Option<ImapConfig> {
-    let var = |k: &str| std::env::var(k).ok().map(|v| v.trim().to_string()).filter(|v| !v.is_empty());
-    let security = var("IMAP_SECURITY").unwrap_or_else(|| "tls".into()).to_lowercase();
+/// Felder des IMAP-Zugangs in der Verwaltung (Schlüssel in `settings`).
+pub const KEYS: [&str; 7] =
+    ["imap.host", "imap.port", "imap.security", "imap.user", "imap.password", "imap.folder", "imap.interval"];
+
+pub fn default_port(security: &str) -> u16 {
+    if security == "none" {
+        143
+    } else {
+        993
+    }
+}
+
+fn build(var: impl Fn(&str) -> Option<String>, source: &'static str) -> Option<ImapConfig> {
+    let security = var("security").unwrap_or_else(|| "tls".into()).to_lowercase();
     Some(ImapConfig {
-        host: var("IMAP_HOST")?,
-        port: var("IMAP_PORT").and_then(|p| p.parse().ok()).unwrap_or(if security == "none" { 143 } else { 993 }),
-        user: var("IMAP_USER")?,
-        password: var("IMAP_PASSWORD")?,
-        folder: var("IMAP_FOLDER").unwrap_or_else(|| "INBOX".into()),
-        interval: var("IMAP_POLL_SECONDS").and_then(|p| p.parse().ok()).filter(|s| *s >= 10).unwrap_or(60),
+        host: var("host")?,
+        port: var("port").and_then(|p| p.parse().ok()).unwrap_or_else(|| default_port(&security)),
+        user: var("user")?,
+        password: var("password")?,
+        folder: var("folder").unwrap_or_else(|| "INBOX".into()),
+        interval: var("interval").and_then(|p| p.parse().ok()).filter(|s| *s >= 10).unwrap_or(60),
         security,
+        source,
     })
+}
+
+/// IMAP-Zugang aus der Verwaltung, ersatzweise aus den Umgebungsvariablen `IMAP_*`.
+pub fn config_from(settings: &HashMap<String, String>) -> Option<ImapConfig> {
+    let clean = |v: Option<&String>| v.map(|v| v.trim().to_string()).filter(|v| !v.is_empty());
+    build(|k| clean(settings.get(&format!("imap.{k}"))), "admin").or_else(|| {
+        let env_key = |k: &str| if k == "interval" { "IMAP_POLL_SECONDS".to_string() } else { format!("IMAP_{}", k.to_uppercase()) };
+        build(|k| clean(std::env::var(env_key(k)).ok().as_ref()), "env")
+    })
+}
+
+pub async fn current(db: &PgPool) -> AppResult<Option<ImapConfig>> {
+    Ok(config_from(&email::settings(db).await?))
+}
+
+/// IMAP-Zugang speichern (leeres Passwort = bisheriges behalten) und gleich einen Abruf anstoßen.
+pub async fn save(db: &PgPool, values: &HashMap<&str, String>) -> AppResult<()> {
+    let get = |k: &str| values.get(k).map(|v| v.trim()).unwrap_or_default();
+    if get("imap.host").is_empty() || get("imap.host").contains(char::is_whitespace) {
+        return Err(AppError::invalid("Bitte einen IMAP-Server angeben"));
+    }
+    if get("imap.user").is_empty() {
+        return Err(AppError::invalid("Bitte einen Benutzer angeben"));
+    }
+    if !get("imap.port").is_empty() && get("imap.port").parse::<u16>().ok().filter(|p| *p > 0).is_none() {
+        return Err(AppError::invalid("Port muss eine Zahl zwischen 1 und 65535 sein"));
+    }
+    if !matches!(get("imap.security"), "" | "tls" | "none") {
+        return Err(AppError::invalid("Unbekannte Verschlüsselung"));
+    }
+    if !get("imap.interval").is_empty() && get("imap.interval").parse::<u64>().ok().filter(|s| *s >= 10).is_none() {
+        return Err(AppError::invalid("Abrufintervall: mindestens 10 Sekunden"));
+    }
+    let has_password: bool = sqlx::query_scalar("SELECT EXISTS (SELECT 1 FROM settings WHERE key = 'imap.password' AND value <> '')")
+        .fetch_one(db)
+        .await?;
+    if get("imap.password").is_empty() && !has_password {
+        return Err(AppError::invalid("Bitte ein Passwort angeben"));
+    }
+    email::store_settings(db, &KEYS, values, Some("imap.password")).await?;
+    request_poll();
+    Ok(())
+}
+
+pub async fn clear(db: &PgPool) -> AppResult<()> {
+    email::delete_settings(db, &KEYS).await?;
+    request_poll();
+    Ok(())
+}
+
+static POLL_NOW: AtomicBool = AtomicBool::new(false);
+
+/// Beim nächsten Durchlauf der Hintergrundschleife sofort abrufen.
+pub fn request_poll() {
+    POLL_NOW.store(true, Ordering::Relaxed);
 }
 
 /// Ergebnis des letzten Abrufs (für die Anzeige in der Verwaltung).
@@ -71,6 +147,12 @@ pub fn last_status() -> Option<Status> {
 fn set_status(ok: bool, message: String) {
     if let Ok(mut s) = STATUS.lock() {
         *s = Some(Status { at: Utc::now(), ok, message });
+    }
+}
+
+fn clear_status() {
+    if let Ok(mut s) = STATUS.lock() {
+        *s = None;
     }
 }
 
@@ -270,16 +352,40 @@ pub async fn import(db: &PgPool, raw: &[u8]) -> anyhow::Result<bool> {
     Ok(true)
 }
 
+/// Hintergrundschleife: liest den Zugang alle paar Sekunden neu (Änderungen in der
+/// Verwaltung wirken sofort) und ruft im eingestellten Abstand ab.
 pub fn spawn(db: PgPool) {
-    let Some(cfg) = config() else {
-        tracing::info!("IMAP-Abruf nicht konfiguriert (IMAP_HOST/IMAP_USER/IMAP_PASSWORD)");
-        return;
-    };
-    tracing::info!(host = %cfg.host, folder = %cfg.folder, "IMAP-Abruf aktiv, alle {} s", cfg.interval);
     tokio::spawn(async move {
-        let mut interval = tokio::time::interval(Duration::from_secs(cfg.interval));
+        let mut last: Option<ImapConfig> = None;
+        let mut next_due = tokio::time::Instant::now();
         loop {
-            interval.tick().await;
+            tokio::time::sleep(Duration::from_secs(3)).await;
+            let cfg = match current(&db).await {
+                Ok(c) => c,
+                Err(e) => {
+                    tracing::warn!("IMAP: Einstellungen nicht lesbar: {}", e.public_message());
+                    continue;
+                }
+            };
+            let changed = cfg != last;
+            if changed {
+                match &cfg {
+                    Some(c) => tracing::info!(host = %c.host, folder = %c.folder, "IMAP-Abruf aktiv, alle {} s", c.interval),
+                    None if last.is_some() => tracing::info!("IMAP-Abruf beendet"),
+                    None => {}
+                }
+                if cfg.is_none() {
+                    clear_status();
+                }
+                last = cfg.clone();
+            }
+            let forced = POLL_NOW.swap(false, Ordering::Relaxed);
+            let Some(cfg) = cfg else { continue };
+            let now = tokio::time::Instant::now();
+            if !(changed || forced || now >= next_due) {
+                continue;
+            }
+            next_due = now + Duration::from_secs(cfg.interval);
             match poll(&db, &cfg).await {
                 Ok(n) => {
                     if n > 0 {

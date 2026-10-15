@@ -15,7 +15,7 @@
     <div class="tile">
       <div class="tile-label">Eingang (Webhook)</div>
       <div class="tile-value small-value">{% if inbound_enabled %}✓ aktiv{% else %}✗ aus{% endif %}</div>
-      <div class="tile-hint">{% if inbound_enabled %}{{ inbound_url }}{% else %}INBOUND_EMAIL_SECRET setzen (mind. 16 Zeichen){% endif %}</div>
+      <div class="tile-hint">{% if inbound_from_env %}aus Umgebungsvariablen{% else if inbound_enabled %}Adresse siehe unten{% else %}nicht eingerichtet{% endif %}</div>
     </div>
     <div class="tile">
       <div class="tile-label">Eingang (IMAP-Abruf)</div>
@@ -64,8 +64,43 @@
       <label>Passwort<input type="password" name="smtp.password" value="" autocomplete="new-password"{% if smtp_has_password %} placeholder="gespeichert – leer lassen = unverändert"{% endif %}></label>
       <label>Absenderadresse<input type="email" name="smtp.from" value="{{ smtp_from }}" placeholder="support@example.com"></label>
       <div class="form-actions">
-        <button class="btn primary" type="submit">Speichern</button>
         {% if smtp_in_admin %}<button class="btn danger" type="submit" formaction="/admin/email/smtp/delete" formnovalidate hx-confirm="SMTP-Zugang entfernen?">Entfernen</button>{% endif %}
+        <button class="btn primary" type="submit">Speichern</button>
+      </div>
+    </form>
+
+    <form class="card" method="post" action="/admin/email/imap" id="imap">
+      <h3>Eingang (IMAP-Abruf) <a class="help-q" href="/hilfe#hilfe-imap" title="IMAP in der Hilfe" aria-label="IMAP in der Hilfe">?</a></h3>
+      <label>Server<input type="text" name="imap.host" value="{{ imap_host }}" placeholder="imap.example.com" required autocomplete="off"></label>
+      <div class="form-row">
+        <label>Verschlüsselung
+          <select name="imap.security">{% for o in imap_security_opts %}<option value="{{ o.value }}"{% if o.selected %} selected{% endif %}>{{ o.label }}</option>{% endfor %}</select>
+        </label>
+        <label class="narrow-field">Port<input type="number" name="imap.port" value="{{ imap_port }}" min="1" max="65535" placeholder="Standard"></label>
+      </div>
+      <label>Benutzer<input type="text" name="imap.user" value="{{ imap_user }}" required autocomplete="off"></label>
+      <label>Passwort<input type="password" name="imap.password" value="" autocomplete="new-password"{% if imap_has_password %} placeholder="gespeichert – leer lassen = unverändert"{% else %} required{% endif %}></label>
+      <div class="form-row">
+        <label>Ordner<input type="text" name="imap.folder" value="{{ imap_folder }}" placeholder="INBOX"></label>
+        <label class="narrow-field">Alle … Sek.<input type="number" name="imap.interval" value="{{ imap_interval }}" min="10" placeholder="60"></label>
+      </div>
+      <div class="form-actions">
+        {% if imap_ok %}<button class="btn" type="submit" formaction="/admin/email/imap/poll" formnovalidate>Jetzt abrufen</button>{% endif %}
+        {% if imap_in_admin %}<button class="btn danger" type="submit" formaction="/admin/email/imap/delete" formnovalidate hx-confirm="IMAP-Zugang entfernen?">Entfernen</button>{% endif %}
+        <button class="btn primary" type="submit">Speichern</button>
+      </div>
+    </form>
+
+    <form class="card" method="post" action="/admin/email/inbound" id="webhook">
+      <h3>Eingang (Webhook) <a class="help-q" href="/hilfe#hilfe-webhook-eingang" title="Webhook in der Hilfe" aria-label="Webhook in der Hilfe">?</a></h3>
+      {% if inbound_enabled %}
+      <label>Adresse
+        <span class="copy-field"><input type="text" id="inbound-url" value="{{ inbound_url }}" readonly onclick="this.select()"><button class="btn" type="button" onclick="navigator.clipboard.writeText(document.getElementById('inbound-url').value); this.textContent='Kopiert ✓'">Kopieren</button></span>
+      </label>
+      {% endif %}
+      <div class="form-actions">
+        {% if inbound_in_admin %}<button class="btn danger" type="submit" formaction="/admin/email/inbound/delete" hx-confirm="Webhook deaktivieren? Die bisherige Adresse funktioniert dann nicht mehr.">Deaktivieren</button>{% endif %}
+        {% if inbound_enabled %}<button class="btn" type="submit" hx-confirm="Neue Adresse erzeugen? Die bisherige funktioniert dann nicht mehr.">Neue Adresse erzeugen</button>{% else %}<button class="btn primary" type="submit">Aktivieren</button>{% endif %}
       </div>
     </form>
 

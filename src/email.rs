@@ -221,10 +221,26 @@ pub async fn save_smtp(db: &PgPool, values: &HashMap<&str, String>) -> AppResult
             return Err(AppError::invalid("Absenderadresse ist keine gültige E-Mail-Adresse"));
         }
     }
+    store_settings(db, &SMTP_KEYS, values, Some("smtp.password")).await
+}
+
+/// SMTP-Zugang aus der Verwaltung entfernen (danach gelten ggf. wieder die Umgebungsvariablen).
+pub async fn clear_smtp(db: &PgPool) -> AppResult<()> {
+    delete_settings(db, &SMTP_KEYS).await
+}
+
+/// Mehrere Einstellungen in einem Rutsch speichern. Ein leeres Passwortfeld
+/// (`secret_key`) lässt den gespeicherten Wert unverändert.
+pub async fn store_settings(
+    db: &PgPool,
+    keys: &[&str],
+    values: &HashMap<&str, String>,
+    secret_key: Option<&str>,
+) -> AppResult<()> {
     let mut tx = db.begin().await?;
-    for key in SMTP_KEYS {
+    for key in keys {
         let value = values.get(key).map(|v| v.trim().to_string()).unwrap_or_default();
-        if key == "smtp.password" && value.is_empty() {
+        if Some(*key) == secret_key && value.is_empty() {
             continue;
         }
         sqlx::query("INSERT INTO settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2")
@@ -237,10 +253,35 @@ pub async fn save_smtp(db: &PgPool, values: &HashMap<&str, String>) -> AppResult
     Ok(())
 }
 
-/// SMTP-Zugang aus der Verwaltung entfernen (danach gelten ggf. wieder die Umgebungsvariablen).
-pub async fn clear_smtp(db: &PgPool) -> AppResult<()> {
-    sqlx::query("DELETE FROM settings WHERE key = ANY($1)").bind(&SMTP_KEYS[..]).execute(db).await?;
+pub async fn delete_settings(db: &PgPool, keys: &[&str]) -> AppResult<()> {
+    sqlx::query("DELETE FROM settings WHERE key = ANY($1)").bind(keys).execute(db).await?;
     Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// Eingangs-Webhook: Geheimnis
+// ---------------------------------------------------------------------------
+
+pub const INBOUND_SECRET_KEY: &str = "inbound.secret";
+
+/// Geheimnis des Eingangs-Webhooks: aus der Verwaltung, ersatzweise `INBOUND_EMAIL_SECRET`.
+/// Gibt (Geheimnis, Herkunft "admin"/"env") zurück; zu kurze Werte gelten als nicht gesetzt.
+pub fn inbound_secret_from(settings: &HashMap<String, String>) -> Option<(String, &'static str)> {
+    let ok = |v: String| Some(v.trim().to_string()).filter(|v| v.len() >= 16);
+    settings
+        .get(INBOUND_SECRET_KEY)
+        .cloned()
+        .and_then(ok)
+        .map(|s| (s, "admin"))
+        .or_else(|| std::env::var("INBOUND_EMAIL_SECRET").ok().and_then(ok).map(|s| (s, "env")))
+}
+
+/// Neues zufälliges Geheimnis (64 Hex-Zeichen) speichern und zurückgeben.
+pub async fn rotate_inbound_secret(db: &PgPool) -> AppResult<String> {
+    let secret = format!("{}{}", Uuid::new_v4().simple(), Uuid::new_v4().simple());
+    let values = HashMap::from([(INBOUND_SECRET_KEY, secret.clone())]);
+    store_settings(db, &[INBOUND_SECRET_KEY], &values, None).await?;
+    Ok(secret)
 }
 
 fn transport(cfg: &SmtpConfig) -> anyhow::Result<AsyncSmtpTransport<Tokio1Executor>> {

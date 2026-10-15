@@ -48,7 +48,26 @@ async fn main() -> anyhow::Result<()> {
 
     let url = std::env::var("DATABASE_URL")
         .map_err(|_| anyhow::anyhow!("DATABASE_URL ist nicht gesetzt (siehe .env.example)"))?;
-    let db = PgPoolOptions::new().max_connections(10).connect(&url).await?;
+    // Direkt nach dem Hochfahren braucht die Datenbank oft noch ein paar Sekunden
+    // (z. B. Wiederherstellung nach einem unsauberen Ende) – so lange warten.
+    let mut attempt = 0;
+    let db = loop {
+        match PgPoolOptions::new().max_connections(10).connect(&url).await {
+            Ok(db) => break db,
+            Err(e) if attempt < 30 => {
+                if attempt == 0 {
+                    tracing::warn!("Datenbank noch nicht erreichbar ({e}) – warte bis zu 30 Sekunden …");
+                }
+                attempt += 1;
+                tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+            }
+            Err(e) => {
+                return Err(anyhow::anyhow!(
+                    "Datenbank nicht erreichbar: {e}\nLäuft PostgreSQL? Stimmt DATABASE_URL in der .env?"
+                ))
+            }
+        }
+    };
     sqlx::migrate!().run(&db).await?;
     seed::run(&db).await?;
 
@@ -79,7 +98,9 @@ async fn main() -> anyhow::Result<()> {
     let addr: SocketAddr = std::env::var("BIND_ADDR")
         .unwrap_or_else(|_| "127.0.0.1:3000".into())
         .parse()?;
-    let listener = tokio::net::TcpListener::bind(addr).await?;
+    let listener = tokio::net::TcpListener::bind(addr).await.map_err(|e| {
+        anyhow::anyhow!("Port {addr} ist nicht verfügbar ({e}).\nLäuft CallCenter schon in einem anderen Fenster? Sonst BIND_ADDR in der .env ändern.")
+    })?;
     tracing::info!("CallCenter läuft auf http://{addr} (auch http://localhost:{})", addr.port());
 
     // "localhost" wird unter Windows zuerst als IPv6 (::1) aufgelöst. Bei lokaler

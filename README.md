@@ -13,6 +13,12 @@ cp .env.example .env        # DATABASE_URL anpassen
 cargo run
 ```
 
+Auf diesem Rechner einfach **`start.cmd` doppelklicken**: startet bei Bedarf die Datenbank, kompiliert
+falls nötig, startet den Server und öffnet den Browser. Das Fenster offen lassen, solange CallCenter
+laufen soll; Schließen oder Strg+C beendet den Server, die Datenbank läuft weiter. Läuft CallCenter
+schon, öffnet `start.cmd` nur den Browser. Probleme (Datenbank startet nicht, Port belegt,
+Kompilierfehler) werden im Fenster mit Hinweis angezeigt.
+
 Danach <http://127.0.0.1:3000> öffnen. Beim ersten Start mit leerer Datenbank
 werden Migrationen ausgeführt und Startdaten angelegt:
 

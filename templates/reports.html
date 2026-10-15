@@ -10,6 +10,7 @@
           {% for o in range_opts %}<option value="{{ o.value }}"{% if o.selected %} selected{% endif %}>{{ o.label }}</option>{% endfor %}
         </select>
       </form>
+      <a class="btn primary" href="/reports/custom">📊 Eigene Berichte</a>
       <a class="btn" href="/reports/export.csv?days={{ days }}" hx-boost="false">⬇ CSV-Export</a>
     </div>
   </div>

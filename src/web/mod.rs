@@ -2,6 +2,7 @@
 
 mod admin;
 mod chat;
+mod custom_reports;
 mod files;
 mod integrations;
 mod kb;
@@ -48,6 +49,7 @@ pub fn router() -> Router<AppState> {
         .merge(tickets::router())
         .merge(people::router())
         .merge(reports::router())
+        .merge(custom_reports::router())
         .merge(portal::router())
         .merge(files::router())
         .merge(profile::router())

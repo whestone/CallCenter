@@ -43,6 +43,7 @@
       <label>Tags
         <input type="text" name="tags" value="{{ tags }}" placeholder="mit Leerzeichen getrennt">
       </label>
+      {% if !skills.is_empty() %}<p class="small skill-need" title="Ergibt sich aus den Tags; die automatische Zuweisung bevorzugt Agenten mit diesen Fähigkeiten">🎯 Benötigt: {{ skills }}</p>{% endif %}
       <div class="row2">
         <label>Typ
           <select name="ticket_type">{% for o in type_opts %}<option value="{{ o.value }}"{% if o.selected %} selected{% endif %}>{{ o.label }}</option>{% endfor %}</select>

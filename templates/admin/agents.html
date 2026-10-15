@@ -7,7 +7,7 @@
   <div class="two-col">
     <div class="table-wrap">
     <table class="tickets">
-      <thead><tr><th>Name</th><th>E-Mail</th><th>Rolle</th><th>Gruppen</th><th>Erreichbarkeit</th><th>Offen / Kapazität</th><th>Konto</th></tr></thead>
+      <thead><tr><th>Name</th><th>E-Mail</th><th>Rolle</th><th>Gruppen</th><th>Fähigkeiten</th><th>Erreichbarkeit</th><th>Offen / Kapazität</th><th>Konto</th></tr></thead>
       <tbody>
       {% for a in agents %}
         <tr>
@@ -15,6 +15,7 @@
           <td>{{ a.email }}</td>
           <td>{{ a.role_label }}</td>
           <td class="muted">{{ a.groups }}</td>
+          <td class="muted">{{ a.skills }}</td>
           <td class="nowrap"><span class="dot dot-{{ a.availability }}"></span> {{ a.availability_label }}</td>
           <td>{{ a.load }}</td>
           <td>{% if a.active %}aktiv{% else %}<span class="muted">deaktiviert</span>{% endif %}</td>

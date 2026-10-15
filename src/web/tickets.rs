@@ -148,6 +148,7 @@ struct TicketPage {
     calls: Vec<super::telephony::CallView>,
     links: Vec<LinkView>,
     link_kinds: Vec<Opt>,
+    skills: String,
     incident_count: usize,
     followup_source: i64,
     cc: String,
@@ -429,6 +430,10 @@ async fn render_ticket(st: &AppState, me: &User, id: i64, draft: Draft) -> WebRe
         .fetch_one(db)
         .await?;
     let chat = crate::chat::for_ticket(db, id).await?;
+    let skills: Vec<String> = sqlx::query_scalar("SELECT name FROM skills WHERE tags && $1 ORDER BY name")
+        .bind(&t.tags)
+        .fetch_all(db)
+        .await?;
     let others: Vec<Ticket> = sqlx::query_as(
         "SELECT * FROM tickets WHERE requester_id = $1 AND id <> $2 ORDER BY updated_at DESC LIMIT 8",
     )
@@ -531,6 +536,7 @@ async fn render_ticket(st: &AppState, me: &User, id: i64, draft: Draft) -> WebRe
     page(TicketPage {
         nav: Nav::new(me, "views"),
         links,
+        skills: skills.join(", "),
         link_kinds: service::LINK_KINDS
             .iter()
             .map(|(v, l)| Opt { value: v.to_string(), label: l.to_string(), selected: *v == "related" })

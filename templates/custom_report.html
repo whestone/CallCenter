@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block title %}Eigene Berichte{% endblock %}
+{% block content %}
+<div class="page reports">
+  <div class="pane-head">
+    <h1>{% if title.is_empty() %}Eigene Berichte{% else %}{{ title }}{% endif %}</h1>
+    <div class="report-controls">
+      <a class="btn" href="/reports">← Übersicht</a>
+      <a class="btn" href="/reports/custom?{{ query }}&amp;format=csv" hx-boost="false">⬇ CSV</a>
+    </div>
+  </div>
+  {% if !notice.is_empty() %}<div class="alert info">{{ notice }}</div>{% endif %}
+
+  <div class="report-builder-layout">
+    <form class="card report-builder" method="get" action="/reports/custom">
+      <h3>Bericht zusammenstellen</h3>
+      <label>Kennzahl
+        <select name="metric">{% for o in metric_opts %}<option value="{{ o.value }}"{% if o.selected %} selected{% endif %}>{{ o.label }}</option>{% endfor %}</select>
+      </label>
+      <label>Aufgeteilt nach
+        <select name="group_by">{% for o in group_opts %}<option value="{{ o.value }}"{% if o.selected %} selected{% endif %}>{{ o.label }}</option>{% endfor %}</select>
+      </label>
+      <label>Zeitraum
+        <select name="days">{% for o in range_opts %}<option value="{{ o.value }}"{% if o.selected %} selected{% endif %}>{{ o.label }}</option>{% endfor %}</select>
+      </label>
+      <fieldset class="report-filters">
+        <legend>Filter</legend>
+        <select name="channel" aria-label="Kanal">{% for o in channel_opts %}<option value="{{ o.value }}"{% if o.selected %} selected{% endif %}>{{ o.label }}</option>{% endfor %}</select>
+        <select name="priority" aria-label="Priorität">{% for o in priority_opts %}<option value="{{ o.value }}"{% if o.selected %} selected{% endif %}>{{ o.label }}</option>{% endfor %}</select>
+        <select name="group_id" aria-label="Gruppe">{% for o in group_id_opts %}<option value="{{ o.value }}"{% if o.selected %} selected{% endif %}>{{ o.label }}</option>{% endfor %}</select>
+        <select name="assignee_id" aria-label="Agent">{% for o in assignee_opts %}<option value="{{ o.value }}"{% if o.selected %} selected{% endif %}>{{ o.label }}</option>{% endfor %}</select>
+        <input type="text" name="tag" value="{{ tag }}" placeholder="nur mit Tag, z. B. anruf" aria-label="Tag">
+      </fieldset>
+      <button class="btn primary wide" type="submit">Anzeigen</button>
+    </form>
+
+    <section class="card viz-root report-result">
+      <div class="chart-head">
+        <h3>{% for o in metric_opts %}{% if o.selected %}{{ o.label }}{% endif %}{% endfor %}
+          <span class="muted small">nach {% for o in group_opts %}{% if o.selected %}{{ o.label }}{% endif %}{% endfor %} · {% for o in range_opts %}{% if o.selected %}{{ o.label }}{% endif %}{% endfor %}</span></h3>
+        {% if !total.is_empty() %}<div class="report-total">Summe <strong>{{ total }}</strong></div>{% endif %}
+      </div>
+      {% if !unit_hint.is_empty() %}<p class="muted small">{{ unit_hint }}</p>{% endif %}
+      {% if bars.is_empty() %}
+      <div class="empty">Keine Daten für diese Auswahl.</div>
+      {% else %}
+      <div class="report-bars" role="img" aria-label="Balkendiagramm, Werte in der Tabelle darunter">
+        {% for b in bars %}
+        <div class="hbar" title="{{ b.label }}: {{ b.value }} ({{ b.tickets }} {{ count_label }})">
+          <span class="hbar-label">{{ b.label }}</span>
+          <span class="hbar-track"><span class="bar series-1" style="width: {{ b.pct }}%"></span></span>
+          <span class="hbar-value">{{ b.value }}</span>
+        </div>
+        {% endfor %}
+      </div>
+      <details class="table-view">
+        <summary>Als Tabelle anzeigen</summary>
+        <table class="tickets compact">
+          <thead><tr><th>{% for o in group_opts %}{% if o.selected %}{{ o.label }}{% endif %}{% endfor %}</th><th>Wert</th><th>{{ count_label }}</th></tr></thead>
+          <tbody>{% for b in bars %}<tr><td>{{ b.label }}</td><td>{{ b.value }}</td><td>{{ b.tickets }}</td></tr>{% endfor %}</tbody>
+        </table>
+      </details>
+      {% endif %}
+      <form class="inline-form" method="post" action="/reports/custom/save">
+        <input type="hidden" name="config" value="{{ cfg_json }}">
+        <input type="text" name="name" required maxlength="120" placeholder="Name, z. B. Telefon-Tickets pro Woche" aria-label="Name des Berichts">
+        <button class="btn" type="submit">💾 Bericht speichern</button>
+      </form>
+    </section>
+  </div>
+
+  <section class="card">
+    <h3>Gespeicherte Berichte</h3>
+    {% if saved.is_empty() %}
+    <p class="muted">Noch keine gespeicherten Berichte. Stelle oben einen Bericht zusammen und speichere ihn – er ist dann für alle Agenten abrufbar.</p>
+    {% else %}
+    <ul class="saved-reports">
+      {% for r in saved %}
+      <li><a href="{{ r.url }}">{{ r.name }}</a>{% if !r.by.is_empty() %} <span class="muted small">von {{ r.by }}</span>{% endif %}
+        {% if r.can_delete %}<form method="post" action="/reports/custom/{{ r.id }}/delete" class="inline" hx-confirm="Bericht „{{ r.name }}“ löschen?"><button class="link danger small">Löschen</button></form>{% endif %}</li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+  </section>
+</div>
+{% endblock %}

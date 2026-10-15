@@ -489,3 +489,17 @@ tr.needs-reply td:first-child { box-shadow: inset 3px 0 0 var(--warn); }
 .link-add { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 .link-add input { flex: 1; min-width: 90px; }
 .link-add select { flex: 2; min-width: 140px; }
+
+/* Eigene Berichte & Fähigkeiten */
+.report-builder-layout { display: grid; grid-template-columns: minmax(240px, 300px) 1fr; gap: 16px; align-items: start; }
+@media (max-width: 900px) { .report-builder-layout { grid-template-columns: 1fr; } }
+.report-builder label { display: flex; flex-direction: column; gap: 4px; }
+.report-filters { border: 1px solid var(--border); border-radius: var(--radius); padding: 8px 10px 10px; margin: 8px 0 12px; display: flex; flex-direction: column; gap: 6px; }
+.report-filters legend { font-size: 12px; color: var(--muted); padding: 0 4px; }
+.report-total { font-size: 14px; color: var(--muted); }
+.report-total strong { color: var(--text); font-size: 18px; }
+.report-bars { display: flex; flex-direction: column; gap: 4px; margin: 8px 0; }
+.report-result .inline-form { border-top: 1px solid var(--border); padding-top: 12px; }
+.saved-reports { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.skill-need { margin: -4px 0 8px; color: var(--accent-dark); }
+.skill-card .row2 { gap: 10px; }

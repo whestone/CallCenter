@@ -19,6 +19,11 @@
       <span>Gruppen</span>
       {% for g in groups %}<label class="check"><input type="checkbox" name="group_id" value="{{ g.id }}"{% if g.checked %} checked{% endif %}> {{ g.name }}</label>{% endfor %}
     </div>
+    <div class="checks">
+      <span>Fähigkeiten <a class="small" href="/admin/skills">(verwalten)</a></span>
+      {% if skills.is_empty() %}<span class="muted small">Noch keine Fähigkeiten angelegt.</span>{% endif %}
+      {% for s in skills %}<label class="check"><input type="checkbox" name="skill_id" value="{{ s.id }}"{% if s.checked %} checked{% endif %}> {{ s.name }}</label>{% endfor %}
+    </div>
     <label>Neues Passwort<input type="password" name="password" minlength="8" placeholder="leer lassen = unverändert" autocomplete="new-password"></label>
     {% if twofa %}<label class="check"><input type="checkbox" name="reset_2fa"> Zwei-Faktor-Anmeldung zurücksetzen (z. B. Smartphone verloren)</label>{% endif %}
     <button class="btn primary wide" type="submit">Speichern</button>

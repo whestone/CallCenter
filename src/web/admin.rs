@@ -36,6 +36,9 @@ pub fn router() -> Router<AppState> {
         .route("/admin/hours", get(hours_index).post(save_hours))
         .route("/admin/hours/holidays", post(add_holiday))
         .route("/admin/hours/holidays/{day}/delete", post(delete_holiday))
+        .route("/admin/skills", get(skills_index).post(create_skill))
+        .route("/admin/skills/{id}", post(update_skill))
+        .route("/admin/skills/{id}/delete", post(delete_skill))
         .route("/admin/groups", get(groups_index).post(create_group))
         .route("/admin/groups/{id}", post(update_group))
         .route("/admin/groups/{id}/delete", post(delete_group))
@@ -59,6 +62,7 @@ struct AgentRow {
     availability: String,
     availability_label: &'static str,
     load: String,
+    skills: String,
 }
 
 struct GroupCheck {
@@ -82,14 +86,17 @@ async fn all_groups(db: &PgPool) -> AppResult<Vec<Group>> {
 
 async fn agents_index(State(st): State<AppState>, WebAdmin(me): WebAdmin) -> WebResult<Html<String>> {
     #[allow(clippy::type_complexity)]
-    let rows: Vec<(i64, String, Option<String>, String, bool, Option<String>, String, i32, i64)> = sqlx::query_as(
+    let rows: Vec<(i64, String, Option<String>, String, bool, Option<String>, String, i32, i64, Option<String>)> = sqlx::query_as(
         "SELECT u.id, u.name, u.email, u.role, u.active,
                 (SELECT string_agg(g.name, ', ' ORDER BY g.name) FROM group_memberships m
                  JOIN agent_groups g ON g.id = m.group_id WHERE m.user_id = u.id),
                 u.availability, u.capacity,
-                (SELECT count(*) FROM tickets t WHERE t.assignee_id = u.id AND t.status IN ('new', 'open'))
-         FROM users u WHERE u.role IN ('agent', 'admin') ORDER BY u.active DESC, u.name",
+                (SELECT count(*) FROM tickets t WHERE t.assignee_id = u.id AND t.status IN ('new', 'open')),
+                (SELECT string_agg(s.name, ', ' ORDER BY s.name) FROM user_skills us
+                 JOIN skills s ON s.id = us.skill_id WHERE us.user_id = u.id)
+         FROM users u WHERE u.role IN ('agent', 'admin') AND u.email <> $1 ORDER BY u.active DESC, u.name",
     )
+    .bind(crate::automations::SYSTEM_EMAIL)
     .fetch_all(&st.db)
     .await?;
     page(AgentsPage {
@@ -97,8 +104,9 @@ async fn agents_index(State(st): State<AppState>, WebAdmin(me): WebAdmin) -> Web
         tab: "agents",
         agents: rows
             .into_iter()
-            .map(|(id, name, email, role, active, groups, availability, capacity, load)| AgentRow {
+            .map(|(id, name, email, role, active, groups, availability, capacity, load, skills)| AgentRow {
                 id,
+                skills: skills.unwrap_or_default(),
                 name,
                 email: email.unwrap_or_default(),
                 role_label: role_label(&role),
@@ -162,6 +170,7 @@ struct AgentEditPage {
     twofa: bool,
     role_opts: Vec<Opt>,
     groups: Vec<GroupCheck>,
+    skills: Vec<GroupCheck>,
 }
 
 async fn agent_edit(State(st): State<AppState>, WebAdmin(me): WebAdmin, Path(id): Path<i64>) -> WebResult<Html<String>> {
@@ -191,6 +200,16 @@ async fn agent_edit(State(st): State<AppState>, WebAdmin(me): WebAdmin, Path(id)
             .into_iter()
             .map(|g| GroupCheck { checked: member_of.contains(&g.id), id: g.id, name: g.name })
             .collect(),
+        skills: sqlx::query_as::<_, (i64, String, bool)>(
+            "SELECT s.id, s.name, EXISTS(SELECT 1 FROM user_skills us WHERE us.skill_id = s.id AND us.user_id = $1)
+             FROM skills s ORDER BY s.name",
+        )
+        .bind(id)
+        .fetch_all(&st.db)
+        .await?
+        .into_iter()
+        .map(|(id, name, checked)| GroupCheck { id, name, checked })
+        .collect(),
     })
 }
 
@@ -221,6 +240,13 @@ async fn update_agent(
     )
     .await?;
     service::set_group_memberships(&st.db, id, &group_ids(&pairs)).await?;
+    let skill_ids: Vec<i64> = pairs.iter().filter(|(k, _)| k == "skill_id").filter_map(|(_, v)| v.parse().ok()).collect();
+    sqlx::query("DELETE FROM user_skills WHERE user_id = $1").bind(id).execute(&st.db).await?;
+    sqlx::query("INSERT INTO user_skills (user_id, skill_id) SELECT $1, unnest($2::bigint[]) ON CONFLICT DO NOTHING")
+        .bind(id)
+        .bind(&skill_ids)
+        .execute(&st.db)
+        .await?;
     if let Some((_, ext)) = pairs.iter().find(|(k, _)| k == "extension") {
         sqlx::query("UPDATE users SET extension = NULLIF($2, '') WHERE id = $1")
             .bind(id)
@@ -236,6 +262,128 @@ async fn update_agent(
             .await?;
     }
     Ok(see_other("/admin/agents"))
+}
+
+// ---------------------------------------------------------------------------
+// Fähigkeiten (Routing nach Skills)
+// ---------------------------------------------------------------------------
+
+struct SkillRow {
+    id: i64,
+    name: String,
+    tags: String,
+    agents: String,
+    open_tickets: i64,
+}
+
+#[derive(Template)]
+#[template(path = "admin/skills.html")]
+struct SkillsPage {
+    nav: Nav,
+    tab: &'static str,
+    skills: Vec<SkillRow>,
+    timeout: i64,
+    error: String,
+}
+
+async fn skills_page(db: &PgPool, me: &User, error: String) -> AppResult<SkillsPage> {
+    #[allow(clippy::type_complexity)]
+    let rows: Vec<(i64, String, Vec<String>, Option<String>, i64)> = sqlx::query_as(
+        "SELECT s.id, s.name, s.tags,
+                (SELECT string_agg(u.name, ', ' ORDER BY u.name) FROM user_skills us JOIN users u ON u.id = us.user_id
+                 WHERE us.skill_id = s.id AND u.active),
+                (SELECT count(*) FROM tickets t WHERE t.tags && s.tags AND t.status IN ('new', 'open', 'pending', 'hold'))
+         FROM skills s ORDER BY s.name",
+    )
+    .fetch_all(db)
+    .await?;
+    Ok(SkillsPage {
+        nav: Nav::new(me, "admin"),
+        tab: "skills",
+        skills: rows
+            .into_iter()
+            .map(|(id, name, tags, agents, open_tickets)| SkillRow {
+                id,
+                name,
+                tags: tags.join(" "),
+                agents: agents.unwrap_or_default(),
+                open_tickets,
+            })
+            .collect(),
+        timeout: crate::routing::skill_timeout_minutes(),
+        error,
+    })
+}
+
+async fn skills_index(State(st): State<AppState>, WebAdmin(me): WebAdmin) -> WebResult<Html<String>> {
+    page(skills_page(&st.db, &me, String::new()).await?)
+}
+
+#[derive(Deserialize)]
+struct SkillForm {
+    name: String,
+    #[serde(default)]
+    tags: String,
+}
+
+fn skill_input(f: &SkillForm) -> AppResult<(String, Vec<String>)> {
+    let name = f.name.trim().to_string();
+    if name.is_empty() {
+        return Err(AppError::invalid("Bitte einen Namen angeben"));
+    }
+    let tags = rules::normalize_tags(f.tags.split([' ', ',']));
+    if tags.is_empty() {
+        return Err(AppError::invalid("Bitte mindestens einen Tag angeben, an dem Tickets diese Fähigkeit erkennen"));
+    }
+    Ok((name, tags))
+}
+
+async fn save_skill(db: &PgPool, id: Option<i64>, f: &SkillForm) -> AppResult<()> {
+    let (name, tags) = skill_input(f)?;
+    let result = match id {
+        Some(id) => sqlx::query("UPDATE skills SET name = $2, tags = $3 WHERE id = $1").bind(id).bind(&name).bind(&tags).execute(db).await,
+        None => sqlx::query("INSERT INTO skills (name, tags) VALUES ($1, $2)").bind(&name).bind(&tags).execute(db).await,
+    };
+    match result {
+        Err(sqlx::Error::Database(e)) if e.is_unique_violation() => {
+            Err(AppError::invalid(format!("Es gibt bereits eine Fähigkeit „{name}“")))
+        }
+        other => {
+            other?;
+            Ok(())
+        }
+    }
+}
+
+async fn skill_result(st: &AppState, me: &User, r: AppResult<()>) -> WebResult<Response> {
+    match r {
+        Ok(()) => Ok(see_other("/admin/skills")),
+        Err(AppError::Unprocessable(msg)) => {
+            let html = page(skills_page(&st.db, me, msg).await?)?;
+            Ok((axum::http::StatusCode::UNPROCESSABLE_ENTITY, html).into_response())
+        }
+        Err(e) => Err(e.into()),
+    }
+}
+
+async fn create_skill(State(st): State<AppState>, WebAdmin(me): WebAdmin, Form(f): Form<SkillForm>) -> WebResult<Response> {
+    let r = save_skill(&st.db, None, &f).await;
+    skill_result(&st, &me, r).await
+}
+
+async fn update_skill(
+    State(st): State<AppState>,
+    WebAdmin(me): WebAdmin,
+    Path(id): Path<i64>,
+    Form(f): Form<SkillForm>,
+) -> WebResult<Response> {
+    let r = save_skill(&st.db, Some(id), &f).await;
+    skill_result(&st, &me, r).await
+}
+
+async fn delete_skill(State(st): State<AppState>, WebAdmin(_): WebAdmin, Path(id): Path<i64>) -> WebResult<Response> {
+    sqlx::query("DELETE FROM skills WHERE id = $1").bind(id).execute(&st.db).await?;
+    Ok(see_other("/admin/skills"))
 }
 
 // ---------------------------------------------------------------------------

@@ -1,39 +1,7 @@
+/* Farben, Abstände, Rundungen, Schatten, Schrift: static/tokens.css */
 :root {
-  --rail: #0f2f35;
-  --rail-text: #b9d0d3;
-  --accent: #1f73b7;
-  --accent-dark: #144a75;
-  --success: #038153;
-  --danger: #cc3340;
-  --warn: #c96400;
-  --bg: #f5f6f7;
-  --panel: #ffffff;
-  --border: #d8dcde;
-  --text: #2f3941;
-  --muted: #68737d;
-  --internal: #fff8e1;
-  --internal-border: #f5d36b;
-  --chip: #eef0f2;
-  --hover: #f3f4f5;
-  --line: #eceef0;
-  --tint-blue: #e8f2fb;
-  --tint-blue-border: #b7d8f2;
-  --tint-green: #e6f4ee;
-  --tint-green-border: #b7dfc9;
-  --success-strong: #03543a;
-  --tint-orange: #fff4e5;
-  --tint-orange-border: #f3c58a;
-  --warn-strong: #8a4600;
-  --tint-red: #fde8ea;
-  --tint-red-border: #f3b8bf;
-  --danger-strong: #8c232c;
-  --shadow: rgba(0, 0, 0, .12);
-  --internal-text: #5c4400;
-  --hold: #2f3941;
-  color-scheme: light;
-  --radius: 6px;
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  font-size: 14px;
+  font-family: var(--font-sans);
+  font-size: var(--fs-md);
   color: var(--text);
 }
 
@@ -58,7 +26,7 @@ code { background: var(--chip); padding: 1px 4px; border-radius: 3px; }
 .logo.big { width: 56px; height: 56px; font-size: 20px; margin: 0 auto 12px; background: var(--rail); }
 .rail-link { width: 60px; padding: 8px 0; border-radius: 8px; color: var(--rail-text); display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 11px; }
 .rail-link svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
-.rail-link:hover, .rail-link.active { background: #1d454b; color: #fff; text-decoration: none; }
+.rail-link:hover, .rail-link.active { text-decoration: none; }
 .main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .topbar { height: 56px; background: var(--panel); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding: 0 16px; gap: 16px; position: sticky; top: 0; z-index: 5; }
 .topbar-actions { display: flex; align-items: center; gap: 10px; }
@@ -82,7 +50,7 @@ code { background: var(--chip); padding: 1px 4px; border-radius: 3px; }
 input[type=text], input[type=email], input[type=password], input[type=search], input[type=tel], input[type=number], select, textarea {
   width: 100%; font: inherit; font-size: 14px; font-weight: 400; color: inherit; padding: 7px 9px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--panel);
 }
-::placeholder { color: #9aa3ab; }
+
 input:focus, select:focus, textarea:focus { outline: 2px solid var(--tint-blue-border); border-color: var(--accent); }
 textarea { resize: vertical; }
 textarea.code { font-family: ui-monospace, "Cascadia Code", Consolas, monospace; font-size: 13px; }
@@ -173,7 +141,7 @@ td.subject a { color: var(--text); font-weight: 600; }
 table.selectable tbody tr:has(input[name=ticket_id]:checked) { background: var(--tint-blue); }
 .pagination { display: flex; gap: 4px; justify-content: center; margin-top: 14px; flex-wrap: wrap; }
 .pagination a { min-width: 32px; text-align: center; padding: 5px 9px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--panel); color: var(--text); }
-.pagination a.current { background: var(--accent); border-color: var(--accent); color: #fff; }
+.pagination a.current { background: var(--accent); border-color: var(--accent); color: var(--accent-contrast); }
 
 /* Reports (Farben: validierte Standardpalette, Slot 1 Blau / Slot 2 Orange) */
 .viz-root { --series-1: #2a78d6; --series-2: #eb6834; --grid: var(--line); }
@@ -522,77 +490,6 @@ tr.needs-reply td:first-child { box-shadow: inset 3px 0 0 var(--warn); }
 .skill-card .row2 { gap: 10px; }
 
 
-/* ---------------------------------------------------------------------------
-   Dunkelmodus: folgt dem System; Umschalter in der Kopfzeile setzt data-theme.
-   --------------------------------------------------------------------------- */
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-  --rail: #0b1f23;
-  --accent: #5aa7e8;
-  --accent-dark: #9ccbf3;
-  --success: #46c08d;
-  --danger: #f0717b;
-  --warn: #f2a65e;
-  --bg: #121619;
-  --panel: #1b2024;
-  --border: #353c43;
-  --text: #e2e6e9;
-  --muted: #9aa5ae;
-  --internal: #332c17;
-  --internal-border: #8c7424;
-  --chip: #2a3036;
-  --hover: #242a2f;
-  --line: #2b3137;
-  --tint-blue: #1b3144;
-  --tint-blue-border: #2f5577;
-  --tint-green: #173428;
-  --tint-green-border: #2b5c46;
-  --success-strong: #86dbb5;
-  --tint-orange: #36291a;
-  --tint-orange-border: #7a5626;
-  --warn-strong: #f5c08a;
-  --tint-red: #3a1d22;
-  --tint-red-border: #7a3640;
-  --danger-strong: #f5a8af;
-  --shadow: rgba(0, 0, 0, .45);
-  --internal-text: #fff3c4;
-  --hold: #5d6873;
-  color-scheme: dark;
-  }
-}
-:root[data-theme="dark"] {
-  --rail: #0b1f23;
-  --accent: #5aa7e8;
-  --accent-dark: #9ccbf3;
-  --success: #46c08d;
-  --danger: #f0717b;
-  --warn: #f2a65e;
-  --bg: #121619;
-  --panel: #1b2024;
-  --border: #353c43;
-  --text: #e2e6e9;
-  --muted: #9aa5ae;
-  --internal: #332c17;
-  --internal-border: #8c7424;
-  --chip: #2a3036;
-  --hover: #242a2f;
-  --line: #2b3137;
-  --tint-blue: #1b3144;
-  --tint-blue-border: #2f5577;
-  --tint-green: #173428;
-  --tint-green-border: #2b5c46;
-  --success-strong: #86dbb5;
-  --tint-orange: #36291a;
-  --tint-orange-border: #7a5626;
-  --warn-strong: #f5c08a;
-  --tint-red: #3a1d22;
-  --tint-red-border: #7a3640;
-  --danger-strong: #f5a8af;
-  --shadow: rgba(0, 0, 0, .45);
-  --internal-text: #fff3c4;
-  --hold: #5d6873;
-  color-scheme: dark;
-}
 input, select, textarea { color: var(--text); }
 
 /* Tastaturbedienung: deutlicher Fokusrahmen überall */
@@ -782,3 +679,111 @@ table.ticket-list tbody tr:has(input[name=ticket_id]:checked) td { background: v
 .ls-cols legend { font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin-bottom: 6px; }
 .ls-cols .check { font-weight: 400; }
 .ls-actions { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line); }
+
+/* ===========================================================================
+   Einheitliche Bausteine (gelten überall, nutzen nur Werte aus tokens.css)
+   =========================================================================== */
+
+/* Grundlagen */
+body { background: var(--bg); color: var(--text); -webkit-font-smoothing: antialiased; }
+::selection { background: var(--tint-blue-border); }
+::placeholder { color: var(--placeholder); }
+h1 { font-size: var(--fs-xl); font-weight: 700; letter-spacing: -.01em; }
+h3 { font-size: var(--fs-lg); font-weight: 650; }
+code { border-radius: var(--radius-sm); font-family: var(--font-mono); font-size: .9em; }
+* { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
+
+/* Eingabefelder */
+input[type=text], input[type=email], input[type=password], input[type=search], input[type=tel],
+input[type=number], input[type=url], input[type=date], input[type=time], select, textarea {
+  padding: 8px 11px; border: 1px solid var(--border); border-radius: var(--radius);
+  background: var(--panel); color: var(--text); transition: border-color var(--ease), box-shadow var(--ease);
+}
+input:hover, select:hover, textarea:hover { border-color: color-mix(in srgb, var(--border) 60%, var(--muted)); }
+input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent); box-shadow: var(--focus-ring); }
+label { font-size: var(--fs-sm); color: var(--muted); }
+label.check { font-size: var(--fs-md); }
+input[type=checkbox], input[type=radio] { accent-color: var(--accent); width: 16px; height: 16px; }
+
+/* Knöpfe */
+.btn { padding: 7px 14px; border-radius: var(--radius); border-color: var(--border); background: var(--panel); color: var(--text);
+  font-size: var(--fs-md); box-shadow: var(--shadow-sm); transition: background var(--ease), border-color var(--ease), box-shadow var(--ease), transform var(--ease); }
+.btn:hover { background: var(--hover); border-color: color-mix(in srgb, var(--border) 60%, var(--muted)); }
+.btn:active { transform: translateY(1px); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-contrast); }
+.btn.primary:hover { background: var(--accent-dark); border-color: var(--accent-dark); color: var(--accent-contrast); }
+.btn.danger { background: var(--panel); color: var(--danger); border-color: var(--tint-red-border); }
+.btn.danger:hover { background: var(--tint-red); }
+.btn:disabled { opacity: .55; cursor: default; transform: none; }
+button.link { font-weight: 500; }
+.icon-btn { border-radius: var(--radius); }
+
+/* Karten & Flächen */
+.card { border: 1px solid var(--border); border-radius: var(--radius-lg); padding: var(--space-4) calc(var(--space-4) + 2px); box-shadow: var(--shadow-sm); }
+.card h3:first-child, .card h4:first-child { margin-top: 0; }
+.empty { border: 1px dashed var(--border); border-radius: var(--radius-lg); background: var(--panel-2); color: var(--muted); padding: var(--space-5); text-align: center; }
+.alert { border-radius: var(--radius); }
+.notice { border-radius: var(--radius); background: var(--tint-orange); border-color: var(--tint-orange-border); }
+
+/* Tabellen (alle Listen in einem einheitlichen Rahmen) */
+.table-wrap { border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: auto; background: var(--panel); box-shadow: var(--shadow-sm); }
+table.tickets { background: transparent; }
+table.tickets th { font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: .04em; padding: 10px 12px; background: var(--panel-2); border-bottom: 1px solid var(--border); }
+table.tickets td { padding: 10px 12px; border-bottom: 1px solid var(--line); }
+table.tickets tbody tr:hover td { background: var(--hover); }
+.table-wrap > table.tickets { border: 0; }
+
+/* Etiketten (Status, Kapseln, Zähler) */
+.status-badge, .status-pill, .pill, .badge, .sla, .call-status, .chat-status, .notif-kind, .mail-status { border-radius: var(--radius-full); }
+.pill { display: inline-block; padding: 1px 9px; font-size: var(--fs-xs); font-weight: 600; background: var(--chip); color: var(--muted); }
+.pill-ok { background: var(--tint-green); color: var(--success); }
+
+/* Seitenleiste (Navigation links) */
+.rail { gap: 2px; }
+.rail-link { position: relative; border-radius: var(--radius-lg); transition: background var(--ease), color var(--ease); }
+.rail-link:hover { background: var(--rail-active); color: #fff; }
+.rail-link.active { background: var(--rail-active); color: #fff; }
+.rail-link.active::before { content: ""; position: absolute; left: -6px; top: 10px; bottom: 10px; width: 3px; border-radius: 3px; background: #fff; }
+.logo { border-radius: var(--radius-lg); background: linear-gradient(135deg, #1f6f78, #17494d); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .08); }
+
+/* Kopfzeile */
+.topbar { position: sticky; top: 0; z-index: 25; background: color-mix(in srgb, var(--panel) 88%, transparent); backdrop-filter: saturate(1.4) blur(8px); border-bottom: 1px solid var(--border); }
+.search input { border-radius: var(--radius-full); padding-left: 14px; background: var(--panel-2); }
+.availability select { border-radius: var(--radius-full); }
+.dot-online { background: var(--success); }
+.dot-away { background: var(--warn); }
+
+/* Ansichten-Leiste */
+.views-nav { background: var(--panel); }
+.view-link { border-radius: var(--radius); padding: 7px 10px; transition: background var(--ease); }
+.view-link .count { min-width: 24px; padding: 0 7px; border-radius: var(--radius-full); background: var(--chip); font-size: var(--fs-xs); font-weight: 600; text-align: center; line-height: 20px; }
+.view-link.active .count { background: var(--accent); color: var(--accent-contrast); }
+
+/* Reiter (Verwaltung) */
+.tabs { gap: 4px; border-bottom: 1px solid var(--line); padding-bottom: 8px; margin: var(--space-3) 0 var(--space-5); }
+.tabs a { padding: 6px 12px; border-radius: var(--radius); border-bottom: 0; font-size: var(--fs-md); transition: background var(--ease), color var(--ease); }
+.tabs a:hover { background: var(--hover); color: var(--text); text-decoration: none; }
+.tabs a.active { background: var(--tint-blue); color: var(--accent-dark); }
+
+/* Kennzahlen-Kacheln */
+.tile { border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); background: var(--panel); }
+
+/* Ticket-Ansicht */
+.comment { border-radius: var(--radius-lg); }
+.props, .context { background: var(--panel); }
+
+/* Dialoge */
+dialog.confirm-dialog { border: 1px solid var(--border); border-radius: var(--radius-xl); background: var(--panel); color: var(--text); box-shadow: var(--shadow-lg); }
+dialog.confirm-dialog::backdrop { background: rgba(10, 16, 24, .45); backdrop-filter: blur(2px); }
+
+/* Seitennummern */
+.pagination a { border-radius: var(--radius); }
+
+/* Anmeldung & Portal */
+.login-card { border: 1px solid var(--border); border-radius: var(--radius-xl); box-shadow: var(--shadow-lg); background: var(--panel); }
+.portal-header { background: color-mix(in srgb, var(--panel) 90%, transparent); backdrop-filter: blur(8px); }
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; }
+}
+table.tickets:not(.ticket-list) th { white-space: normal; }

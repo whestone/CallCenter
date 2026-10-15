@@ -1,0 +1,168 @@
+/* ===========================================================================
+   Gestaltungswerte (Design-Tokens) – die EINZIGE Stelle für Farben, Abstände,
+   Rundungen, Schatten und Schrift. Alle Seiten (Agenten-Oberfläche, Anmeldung,
+   Kundenportal, Chatfenster, Fehlerseiten) laden diese Datei zuerst.
+   Komponenten (app.css, chat.css) verwenden nur diese Variablen.
+   =========================================================================== */
+
+:root {
+  /* Schrift */
+  --font-sans: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, "Cascadia Code", Consolas, monospace;
+  --fs-xs: 11.5px;
+  --fs-sm: 12.5px;
+  --fs-md: 14px;
+  --fs-lg: 16px;
+  --fs-xl: 20px;
+  --fs-2xl: 24px;
+
+  /* Abstände */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+
+  /* Rundungen */
+  --radius-sm: 6px;
+  --radius: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-full: 999px;
+
+  /* Bewegung */
+  --ease: .15s ease;
+
+  /* Farben – hell */
+  --accent: #2563eb;
+  --accent-dark: #1d4ed8;
+  --accent-contrast: #ffffff;
+  --success: #059669;
+  --success-strong: #065f46;
+  --danger: #dc2626;
+  --danger-strong: #991b1b;
+  --warn: #d97706;
+  --warn-strong: #92400e;
+
+  --bg: #f5f6f8;
+  --panel: #ffffff;
+  --panel-2: #fafbfc;
+  --border: #e1e4e8;
+  --line: #eef0f3;
+  --chip: #eef1f4;
+  --hover: #f3f5f7;
+  --text: #1f2933;
+  --muted: #6b7280;
+  --placeholder: #9aa3ad;
+
+  --tint-blue: #eaf1fe;
+  --tint-blue-border: #bcd0fb;
+  --tint-green: #e7f6ef;
+  --tint-green-border: #b6e2cd;
+  --tint-orange: #fff4e6;
+  --tint-orange-border: #f6cf95;
+  --tint-red: #fdecec;
+  --tint-red-border: #f5bcbc;
+
+  --internal: #fff8e6;
+  --internal-border: #f2d27a;
+  --internal-text: #5c4400;
+  --hold: #374151;
+
+  --rail: #0f2f35;
+  --rail-text: #b9d0d3;
+  --rail-active: rgba(255, 255, 255, .12);
+
+  /* Schatten */
+  --shadow: rgba(16, 24, 40, .12);
+  --shadow-sm: 0 1px 2px rgba(16, 24, 40, .05);
+  --shadow-md: 0 4px 14px rgba(16, 24, 40, .08);
+  --shadow-lg: 0 14px 36px rgba(16, 24, 40, .16);
+  --focus-ring: 0 0 0 3px var(--tint-blue-border);
+
+  color-scheme: light;
+}
+
+/* Farben – dunkel. Gleiche Werte zweimal: einmal „wie System“, einmal per Umschalter.
+   Bei Änderungen beide Blöcke gleich halten. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --accent: #60a5fa;
+    --accent-dark: #a5c8fd;
+    --accent-contrast: #0b1220;
+    --success: #34d399;
+    --success-strong: #86efc4;
+    --danger: #f87171;
+    --danger-strong: #fca5a5;
+    --warn: #fbbf24;
+    --warn-strong: #fcd581;
+    --bg: #0f1317;
+    --panel: #171c21;
+    --panel-2: #1b2127;
+    --border: #2d353d;
+    --line: #242b32;
+    --chip: #252d34;
+    --hover: #1f262c;
+    --text: #e5e9ed;
+    --muted: #9aa5ae;
+    --placeholder: #6f7a84;
+    --tint-blue: #172a42;
+    --tint-blue-border: #284a74;
+    --tint-green: #12302a;
+    --tint-green-border: #22574a;
+    --tint-orange: #33260f;
+    --tint-orange-border: #6e5120;
+    --tint-red: #3a1a1d;
+    --tint-red-border: #6f3037;
+    --internal: #2e2814;
+    --internal-border: #7d6820;
+    --internal-text: #fff3c4;
+    --hold: #5d6873;
+    --rail: #0a1d21;
+    --shadow: rgba(0, 0, 0, .5);
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, .4);
+    --shadow-md: 0 4px 14px rgba(0, 0, 0, .45);
+    --shadow-lg: 0 14px 36px rgba(0, 0, 0, .6);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --accent: #60a5fa;
+  --accent-dark: #a5c8fd;
+  --accent-contrast: #0b1220;
+  --success: #34d399;
+  --success-strong: #86efc4;
+  --danger: #f87171;
+  --danger-strong: #fca5a5;
+  --warn: #fbbf24;
+  --warn-strong: #fcd581;
+  --bg: #0f1317;
+  --panel: #171c21;
+  --panel-2: #1b2127;
+  --border: #2d353d;
+  --line: #242b32;
+  --chip: #252d34;
+  --hover: #1f262c;
+  --text: #e5e9ed;
+  --muted: #9aa5ae;
+  --placeholder: #6f7a84;
+  --tint-blue: #172a42;
+  --tint-blue-border: #284a74;
+  --tint-green: #12302a;
+  --tint-green-border: #22574a;
+  --tint-orange: #33260f;
+  --tint-orange-border: #6e5120;
+  --tint-red: #3a1a1d;
+  --tint-red-border: #6f3037;
+  --internal: #2e2814;
+  --internal-border: #7d6820;
+  --internal-text: #fff3c4;
+  --hold: #5d6873;
+  --rail: #0a1d21;
+  --shadow: rgba(0, 0, 0, .5);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, .4);
+  --shadow-md: 0 4px 14px rgba(0, 0, 0, .45);
+  --shadow-lg: 0 14px 36px rgba(0, 0, 0, .6);
+  color-scheme: dark;
+}

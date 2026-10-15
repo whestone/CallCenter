@@ -211,6 +211,11 @@ Ereignisse `ticket.created`, `ticket.updated`, `ticket.solved` als JSON-POST, si
   `created>2026-10-01`, `updated<7d`, `solved:heute` (Operatoren `: > < >= <=`)
 
 ### Oberfläche
+- **Ein globaler Stil für alles:** `static/tokens.css` enthält alle Gestaltungswerte (Farben hell/dunkel,
+  Abstände, Rundungen, Schatten, Schrift) und wird von jeder Seite geladen – Agenten-Oberfläche, Anmeldung,
+  Kundenportal, Chatfenster, Fehlerseiten. `static/app.css` (bzw. `chat.css`) baut die Bausteine nur aus
+  diesen Werten; Farben o. ä. werden ausschließlich in `tokens.css` geändert
+- Ticketlisten pro Nutzer anpassbar („⚙ Anpassen“: Filter und Felder ein-/ausblenden)
 - Dunkelmodus: folgt dem System, Umschalter ◐ oben rechts (wie System → dunkel → hell)
 - Kurze Bestätigung nach dem Speichern, Zahl ungelesener Benachrichtigungen im Tab-Titel
 - Deutlicher Fokusrahmen für die Bedienung per Tastatur

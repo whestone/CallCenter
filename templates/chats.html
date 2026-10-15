@@ -4,33 +4,57 @@
 <div class="page">
   <div class="pane-head">
     <h1>Live-Chats</h1>
-    <span class="muted">{{ rows.len() }} offen bzw. in der letzten Stunde</span>
+    <div class="pane-head-actions">
+      <span class="muted">{{ rows.len() }} offen bzw. in der letzten Stunde</span>
+      {% let lp = ccols %}{% include "list_settings.html" %}
+    </div>
   </div>
   {% if !online %}<div class="notice">Du bist nicht „Online“. Besucher können nur chatten, wenn mindestens ein Agent online ist – sonst wird ihre Nachricht zur normalen Anfrage mit Antwort per E-Mail.</div>{% endif %}
 
-  <div hidden hx-get="/chats" hx-trigger="every 5s [ccListIdle()]" hx-select=".chat-list-wrap" hx-target=".chat-list-wrap" hx-swap="outerHTML"></div>
+  {% if ccols.filter("status") %}
+  <form class="filter-bar" method="get" action="/chats" hx-get="/chats" hx-trigger="change" hx-target="body" hx-push-url="true">
+    <select name="status" aria-label="Status">{% for o in status_opts %}<option value="{{ o.value }}"{% if o.selected %} selected{% endif %}>{{ o.label }}</option>{% endfor %}</select>
+  </form>
+  {% endif %}
+
+  <div hidden hx-get="{{ return_to }}" hx-trigger="every 5s [ccListIdle()]" hx-select=".chat-list-wrap" hx-target=".chat-list-wrap" hx-swap="outerHTML"></div>
   <div class="chat-list-wrap">
   {% if rows.is_empty() %}
   <div class="empty">Gerade keine Chats.</div>
   {% else %}
   <div class="table-wrap">
-  <table class="tickets">
-    <thead><tr><th>Besucher</th><th>Anliegen</th><th>Status</th><th>Agent</th><th>Seit</th><th></th></tr></thead>
+  <table class="tickets ticket-list">
+    <thead><tr><th>Anliegen</th>{% for c in ccols.columns() %}<th>{{ c.1 }}</th>{% endfor %}<th></th></tr></thead>
     <tbody>
     {% for r in rows %}
-    <tr class="{% if r.last_from_visitor && r.status != "ended" %}needs-reply{% endif %}">
-      <td><strong>{{ r.visitor }}</strong>{% if r.present %} <span class="dot dot-online" title="ist im Chat"></span>{% endif %}<br><span class="muted small">{{ r.email }}</span></td>
-      <td class="subject"><a href="/tickets/{{ r.ticket_id }}">#{{ r.ticket_id }} {{ r.subject }}</a>
-        {% if !r.last.is_empty() %}<div class="muted small">{% if r.last_from_visitor %}💬 {% else %}↩ {% endif %}{{ r.last }}</div>{% endif %}
-        {% if !r.page_url.is_empty() %}<div class="muted small">Seite: {{ r.page_url }}</div>{% endif %}</td>
-      <td><span class="chat-status chat-{{ r.status }}">{{ r.status_label }}</span></td>
-      <td>{% if r.mine %}<strong>du</strong>{% else %}{{ r.agent }}{% endif %}</td>
-      <td class="muted nowrap">{{ r.since }}</td>
+    <tr data-href="/tickets/{{ r.ticket_id }}" class="{% if r.last_from_visitor && r.status != "ended" %}needs-reply{% endif %}">
+      <td class="t-main">
+        <div class="t-title"><span class="chat-status chat-{{ r.status }}">{{ r.status_label }}</span><a class="t-subject" href="/tickets/{{ r.ticket_id }}">{{ r.subject }}</a></div>
+        <div class="t-meta"><span class="t-id">#{{ r.ticket_id }}</span>{% for m in ccols.meta() %}{% match m %}
+          {% when "visitor" %}<span>{{ r.visitor }}{% if r.present %} <span class="dot dot-online" title="ist im Chat"></span>{% endif %}</span>
+          {% when "email" %}{% if !r.email.is_empty() %}<span>{{ r.email }}</span>{% endif %}
+          {% when "last" %}{% if !r.last.is_empty() %}<span class="t-clip">{% if r.last_from_visitor %}💬 {% else %}↩ {% endif %}{{ r.last }}</span>{% endif %}
+          {% when "page" %}{% if !r.page_url.is_empty() %}<span class="t-clip">{{ r.page_url }}</span>{% endif %}
+          {% when "status" %}<span>{{ r.status_label }}</span>
+          {% when "agent" %}{% if r.agent.is_empty() %}<span>kein Agent</span>{% else %}<span class="who"><span class="avatar xxs" aria-hidden="true">{{ r.agent_initials }}</span>{% if r.mine %}du{% else %}{{ r.agent }}{% endif %}</span>{% endif %}
+          {% when "since" %}<span>seit {{ r.since }}</span>
+          {% when "updated" %}<span>aktualisiert {{ r.updated }}</span>
+          {% else %}{% endmatch %}{% endfor %}</div>
+      </td>
+      {% for c in ccols.columns() %}{% match c.0 %}
+      {% when "visitor" %}<td><div>{{ r.visitor }}{% if r.present %} <span class="dot dot-online" title="ist im Chat"></span>{% endif %}</div></td>
+      {% when "email" %}<td>{% if r.email.is_empty() %}<span class="muted">–</span>{% else %}{{ r.email }}{% endif %}</td>
+      {% when "last" %}<td class="muted"><span class="t-clip">{{ r.last }}</span></td>
+      {% when "page" %}<td class="muted"><span class="t-clip">{{ r.page_url }}</span></td>
+      {% when "status" %}<td><span class="chat-status chat-{{ r.status }}">{{ r.status_label }}</span></td>
+      {% when "agent" %}<td>{% if r.agent.is_empty() %}<span class="muted small">–</span>{% else %}<span class="who"><span class="avatar xs" aria-hidden="true">{{ r.agent_initials }}</span>{% if r.mine %}du{% else %}{{ r.agent }}{% endif %}</span>{% endif %}</td>
+      {% when "since" %}<td class="muted nowrap">{{ r.since }}</td>
+      {% when "updated" %}<td class="muted nowrap">{{ r.updated }}</td>
+      {% else %}<td></td>
+      {% endmatch %}{% endfor %}
       <td class="nowrap">
         {% if r.status == "waiting" %}
         <form method="post" action="/chats/{{ r.id }}/accept" class="inline"><button class="btn primary">Annehmen</button></form>
-        {% else %}
-        <a class="btn" href="/tickets/{{ r.ticket_id }}">Öffnen</a>
         {% endif %}
       </td>
     </tr>

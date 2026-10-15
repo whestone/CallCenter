@@ -157,12 +157,14 @@ struct ChatRow {
     status: String,
     status_label: &'static str,
     agent: String,
+    agent_initials: String,
     mine: bool,
     since: String,
     last: String,
     last_from_visitor: bool,
     present: bool,
     page_url: String,
+    updated: String,
 }
 
 #[derive(Template)]
@@ -173,15 +175,32 @@ struct ChatsPage {
     snippet: String,
     demo_url: String,
     online: bool,
+    ccols: super::list_prefs::ListPrefs,
+    status_opts: Vec<Opt>,
+    return_to: String,
 }
 
-async fn chats_index(State(st): State<AppState>, WebAgent(me): WebAgent) -> WebResult<Html<String>> {
-    let sessions = chat::open_sessions(&st.db).await?;
+#[derive(Deserialize)]
+struct ChatsQuery {
+    status: Option<String>,
+}
+
+async fn chats_index(State(st): State<AppState>, WebAgent(me): WebAgent, Query(q): Query<ChatsQuery>) -> WebResult<Html<String>> {
+    let ccols = super::list_prefs::load_for(&st.db, me.id, &super::list_prefs::CHATS).await?;
+    let status = if ccols.filter("status") { q.status.unwrap_or_default() } else { String::new() };
+    let status_opts = [("", "Alle Status"), ("waiting", "wartet"), ("active", "läuft"), ("ended", "beendet")]
+        .iter()
+        .map(|(v, l)| Opt { value: v.to_string(), label: l.to_string(), selected: status == *v })
+        .collect();
+    let mut sessions = chat::open_sessions(&st.db).await?;
+    if !status.is_empty() {
+        sessions.retain(|s| s.status == status);
+    }
     let now = Utc::now();
     let mut rows = Vec::new();
     for s in sessions {
-        let (subject, visitor, email): (String, String, Option<String>) = sqlx::query_as(
-            "SELECT t.subject, u.name, u.email FROM tickets t JOIN users u ON u.id = $2 WHERE t.id = $1",
+        let (subject, visitor, email, updated_at): (String, String, Option<String>, chrono::DateTime<Utc>) = sqlx::query_as(
+            "SELECT t.subject, u.name, u.email, t.updated_at FROM tickets t JOIN users u ON u.id = $2 WHERE t.id = $1",
         )
         .bind(s.ticket_id)
         .bind(s.visitor_id)
@@ -206,6 +225,7 @@ async fn chats_index(State(st): State<AppState>, WebAgent(me): WebAgent) -> WebR
             visitor,
             email: email.unwrap_or_default(),
             status_label: chat::status_label(&s.status),
+            agent_initials: initials(&agent),
             agent,
             mine: s.agent_id == Some(me.id),
             since: fmt_rel(s.created_at, now),
@@ -213,6 +233,7 @@ async fn chats_index(State(st): State<AppState>, WebAgent(me): WebAgent) -> WebR
             last_from_visitor: last_role == "end-user",
             present: chat::visitor_present(&s, now),
             page_url: s.page_url.clone(),
+            updated: fmt_rel(updated_at, now),
             status: s.status,
         });
     }
@@ -223,6 +244,9 @@ async fn chats_index(State(st): State<AppState>, WebAgent(me): WebAgent) -> WebR
         snippet: format!(r#"<script src="{base}/static/chat-widget.js" async></script>"#),
         demo_url: format!("{base}/chat/demo"),
         online: me.availability == "online",
+        return_to: with_query("/chats", &[("status", &status)]),
+        ccols,
+        status_opts,
     })
 }
 

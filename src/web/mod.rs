@@ -203,6 +203,16 @@ pub fn id_opts<'a>(items: impl IntoIterator<Item = (i64, &'a str)>, selected: Op
     out
 }
 
+/// Pfad mit Query-String aus den nicht leeren Parametern (z. B. für `return_to`).
+pub fn with_query(base: &str, params: &[(&str, &str)]) -> String {
+    let set: Vec<(&str, &str)> = params.iter().copied().filter(|(_, v)| !v.trim().is_empty()).collect();
+    if set.is_empty() {
+        base.to_string()
+    } else {
+        format!("{base}?{}", serde_urlencoded::to_string(&set).unwrap_or_default())
+    }
+}
+
 pub fn initials(name: &str) -> String {
     name.split_whitespace().filter_map(|w| w.chars().next()).take(2).collect::<String>().to_uppercase()
 }
@@ -249,6 +259,16 @@ pub struct TicketRow {
     pub subject: String,
     /// Betreff als HTML (maskiert; in der Suche mit hervorgehobenen Treffern).
     pub subject_html: String,
+    /// Textausschnitt mit Treffern (nur in der Suche).
+    pub snippet: String,
+    /// Letzte öffentliche Antwort eines Agenten (relativ), leer = noch keine.
+    pub last_reply: String,
+    /// Letzte öffentliche Nachricht des Kunden (relativ).
+    pub last_customer: String,
+    pub due: String,
+    pub solved: String,
+    /// „gut“ / „schlecht“ oder leer.
+    pub satisfaction: &'static str,
     pub status: String,
     pub status_label: &'static str,
     pub priority: String,
@@ -279,6 +299,23 @@ pub async fn ticket_rows(db: &PgPool, tickets: &[Ticket]) -> AppResult<Vec<Ticke
         .collect();
     let policies: HashMap<i64, SlaPolicy> =
         sla::load_policies_with_schedule(db).await?.into_iter().map(|p| (p.id, p)).collect();
+    let ticket_ids: Vec<i64> = tickets.iter().map(|t| t.id).collect();
+    #[allow(clippy::type_complexity)]
+    let last: HashMap<i64, (Option<DateTime<Utc>>, Option<DateTime<Utc>>)> =
+        sqlx::query_as::<_, (i64, Option<DateTime<Utc>>, Option<DateTime<Utc>>)>(
+            "SELECT c.ticket_id,
+                    max(c.created_at) FILTER (WHERE u.role <> 'end-user'),
+                    max(c.created_at) FILTER (WHERE u.role = 'end-user')
+             FROM ticket_comments c JOIN users u ON u.id = c.author_id
+             WHERE c.public AND c.ticket_id = ANY($1)
+             GROUP BY c.ticket_id",
+        )
+        .bind(&ticket_ids)
+        .fetch_all(db)
+        .await?
+        .into_iter()
+        .map(|(id, agent, customer)| (id, (agent, customer)))
+        .collect();
     Ok(tickets
         .iter()
         .map(|t| {
@@ -295,6 +332,16 @@ pub async fn ticket_rows(db: &PgPool, tickets: &[Ticket]) -> AppResult<Vec<Ticke
             TicketRow {
                 id: t.id,
                 subject_html: crate::markdown::escape(&t.subject),
+                snippet: String::new(),
+                last_reply: last.get(&t.id).and_then(|l| l.0).map(|d| fmt_rel(d, now)).unwrap_or_default(),
+                last_customer: last.get(&t.id).and_then(|l| l.1).map(|d| fmt_rel(d, now)).unwrap_or_default(),
+                due: t.due_at.map(fmt_dt).unwrap_or_default(),
+                solved: t.solved_at.map(|d| fmt_rel(d, now)).unwrap_or_default(),
+                satisfaction: match t.satisfaction_score.as_deref() {
+                    Some("good") => "gut",
+                    Some("bad") => "schlecht",
+                    _ => "",
+                },
                 subject: t.subject.clone(),
                 status: t.status.clone(),
                 status_label: status_label(&t.status),

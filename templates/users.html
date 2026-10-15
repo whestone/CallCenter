@@ -4,13 +4,21 @@
 <div class="page">
   <div class="pane-head">
     <h1>Kunden</h1>
-    <form method="get" action="/users" class="inline-search">
-      <input type="search" name="q" value="{{ q }}" placeholder="Name, E-Mail oder Telefon">
-      <button class="btn">Suchen</button>
-    </form>
+    <div class="pane-head-actions">
+      <span class="muted">{{ users.len() }} Kunden</span>
+      {% let lp = ucols %}{% include "list_settings.html" %}
+    </div>
   </div>
   <div class="two-col">
     <div>
+      {% if ucols.filter("q") || ucols.filter("org") %}
+      <form class="filter-bar" method="get" action="/users"
+            hx-get="/users" hx-trigger="change, keyup changed delay:400ms from:input[name=q]"
+            hx-target="body" hx-push-url="true">
+        {% if ucols.filter("q") %}<input type="search" name="q" value="{{ q }}" placeholder="Name, E-Mail oder Telefon" aria-label="Kunden suchen">{% endif %}
+        {% if ucols.filter("org") %}<select name="org" aria-label="Organisation">{% for o in filter_org_opts %}<option value="{{ o.value }}"{% if o.selected %} selected{% endif %}>{{ o.label }}</option>{% endfor %}</select>{% endif %}
+      </form>
+      {% endif %}
       {% include "user_table.html" %}
     </div>
     <form class="card" method="post" action="/users">

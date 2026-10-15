@@ -55,6 +55,7 @@ pub fn router() -> Router<AppState> {
 struct AgentRow {
     id: i64,
     name: String,
+    initials: String,
     email: String,
     role_label: &'static str,
     groups: String,
@@ -63,6 +64,7 @@ struct AgentRow {
     availability_label: &'static str,
     load: String,
     skills: String,
+    updated: String,
 }
 
 struct GroupCheck {
@@ -78,35 +80,71 @@ struct AgentsPage {
     tab: &'static str,
     agents: Vec<AgentRow>,
     groups: Vec<GroupCheck>,
+    acols: super::list_prefs::ListPrefs,
+    q: String,
+    role_opts: Vec<Opt>,
+    availability_opts: Vec<Opt>,
+    return_to: String,
+}
+
+#[derive(Deserialize)]
+struct AgentsQuery {
+    q: Option<String>,
+    role: Option<String>,
+    availability: Option<String>,
+}
+
+fn choice_opts(items: &[(&str, &str)], selected: &str) -> Vec<Opt> {
+    items.iter().map(|(v, l)| Opt { value: v.to_string(), label: l.to_string(), selected: selected == *v }).collect()
 }
 
 async fn all_groups(db: &PgPool) -> AppResult<Vec<Group>> {
     Ok(sqlx::query_as("SELECT * FROM agent_groups ORDER BY name").fetch_all(db).await?)
 }
 
-async fn agents_index(State(st): State<AppState>, WebAdmin(me): WebAdmin) -> WebResult<Html<String>> {
+async fn agents_index(
+    State(st): State<AppState>,
+    WebAdmin(me): WebAdmin,
+    super::extract::Query(aq): super::extract::Query<AgentsQuery>,
+) -> WebResult<Html<String>> {
+    let acols = super::list_prefs::load_for(&st.db, me.id, &super::list_prefs::AGENTS).await?;
+    let pick = |key: &str, v: Option<String>| if acols.filter(key) { v.unwrap_or_default().trim().to_string() } else { String::new() };
+    let q = pick("q", aq.q);
+    let role = pick("role", aq.role);
+    let availability = pick("availability", aq.availability);
     #[allow(clippy::type_complexity)]
-    let rows: Vec<(i64, String, Option<String>, String, bool, Option<String>, String, i32, i64, Option<String>)> = sqlx::query_as(
+    let rows: Vec<(i64, String, Option<String>, String, bool, Option<String>, String, i32, i64, Option<String>, chrono::DateTime<chrono::Utc>)> = sqlx::query_as(
         "SELECT u.id, u.name, u.email, u.role, u.active,
                 (SELECT string_agg(g.name, ', ' ORDER BY g.name) FROM group_memberships m
                  JOIN agent_groups g ON g.id = m.group_id WHERE m.user_id = u.id),
                 u.availability, u.capacity,
                 (SELECT count(*) FROM tickets t WHERE t.assignee_id = u.id AND t.status IN ('new', 'open')),
                 (SELECT string_agg(s.name, ', ' ORDER BY s.name) FROM user_skills us
-                 JOIN skills s ON s.id = us.skill_id WHERE us.user_id = u.id)
-         FROM users u WHERE u.role IN ('agent', 'admin') AND u.email <> $1 ORDER BY u.active DESC, u.name",
+                 JOIN skills s ON s.id = us.skill_id WHERE us.user_id = u.id),
+                u.updated_at
+         FROM users u WHERE u.role IN ('agent', 'admin') AND u.email <> $1
+           AND ($2 = '' OR u.name ILIKE '%' || $2 || '%' OR u.email ILIKE '%' || $2 || '%')
+           AND ($3 = '' OR u.role = $3)
+           AND ($4 = '' OR u.availability = $4)
+         ORDER BY u.active DESC, u.name",
     )
     .bind(crate::automations::SYSTEM_EMAIL)
+    .bind(&q)
+    .bind(&role)
+    .bind(&availability)
     .fetch_all(&st.db)
     .await?;
+    let now = chrono::Utc::now();
     page(AgentsPage {
         nav: Nav::new(&me, "admin"),
         tab: "agents",
         agents: rows
             .into_iter()
-            .map(|(id, name, email, role, active, groups, availability, capacity, load, skills)| AgentRow {
+            .map(|(id, name, email, role, active, groups, availability, capacity, load, skills, updated)| AgentRow {
                 id,
+                updated: fmt_rel(updated, now),
                 skills: skills.unwrap_or_default(),
+                initials: initials(&name),
                 name,
                 email: email.unwrap_or_default(),
                 role_label: role_label(&role),
@@ -122,6 +160,14 @@ async fn agents_index(State(st): State<AppState>, WebAdmin(me): WebAdmin) -> Web
             .into_iter()
             .map(|g| GroupCheck { id: g.id, name: g.name, checked: false })
             .collect(),
+        return_to: with_query("/admin/agents", &[("q", &q), ("role", &role), ("availability", &availability)]),
+        role_opts: choice_opts(&[("", "Alle Rollen"), ("agent", "Agent"), ("admin", "Administrator")], &role),
+        availability_opts: choice_opts(
+            &[("", "Jede Erreichbarkeit"), ("online", "Online"), ("away", "Abwesend"), ("offline", "Offline")],
+            &availability,
+        ),
+        q,
+        acols,
     })
 }
 

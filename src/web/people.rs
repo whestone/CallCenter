@@ -27,7 +27,10 @@ pub fn router() -> Router<AppState> {
 #[derive(Deserialize)]
 struct SearchQuery {
     q: Option<String>,
+    org: Option<String>,
 }
+
+const OPEN_STATUSES: &str = "('new','open','pending','hold')";
 
 // ---------------------------------------------------------------------------
 // Kunden
@@ -36,9 +39,14 @@ struct SearchQuery {
 struct UserRow {
     id: i64,
     name: String,
+    initials: String,
     email: String,
     phone: String,
     org: String,
+    org_id: i64,
+    open: i64,
+    created: String,
+    updated: String,
 }
 
 #[derive(Template)]
@@ -48,6 +56,9 @@ struct UsersPage {
     q: String,
     users: Vec<UserRow>,
     org_opts: Vec<Opt>,
+    filter_org_opts: Vec<Opt>,
+    ucols: super::list_prefs::ListPrefs,
+    return_to: String,
 }
 
 async fn user_rows(db: &PgPool, users: &[User]) -> AppResult<Vec<UserRow>> {
@@ -56,14 +67,29 @@ async fn user_rows(db: &PgPool, users: &[User]) -> AppResult<Vec<UserRow>> {
         .await?
         .into_iter()
         .collect();
+    let ids: Vec<i64> = users.iter().map(|u| u.id).collect();
+    let open: HashMap<i64, i64> = sqlx::query_as::<_, (i64, i64)>(&format!(
+        "SELECT requester_id, count(*) FROM tickets WHERE requester_id = ANY($1) AND status IN {OPEN_STATUSES} GROUP BY requester_id"
+    ))
+    .bind(&ids)
+    .fetch_all(db)
+    .await?
+    .into_iter()
+    .collect();
+    let now = Utc::now();
     Ok(users
         .iter()
         .map(|u| UserRow {
             id: u.id,
             name: u.name.clone(),
+            initials: initials(&u.name),
             email: u.email.clone().unwrap_or_default(),
             phone: u.phone.clone().unwrap_or_default(),
             org: u.organization_id.and_then(|id| orgs.get(&id).cloned()).unwrap_or_default(),
+            org_id: u.organization_id.unwrap_or_default(),
+            open: open.get(&u.id).copied().unwrap_or_default(),
+            created: fmt_rel(u.created_at, now),
+            updated: fmt_rel(u.updated_at, now),
         })
         .collect())
 }
@@ -74,19 +100,38 @@ async fn org_opts(db: &PgPool, selected: Option<i64>) -> AppResult<Vec<Opt>> {
 }
 
 async fn users_index(State(st): State<AppState>, WebAgent(me): WebAgent, Query(q): Query<SearchQuery>) -> WebResult<Html<String>> {
-    let query = q.q.unwrap_or_default();
-    let users: Vec<User> = if query.trim().is_empty() {
-        sqlx::query_as("SELECT * FROM users WHERE role = 'end-user' ORDER BY updated_at DESC LIMIT 100")
-            .fetch_all(&st.db)
-            .await?
+    let ucols = super::list_prefs::load_for(&st.db, me.id, &super::list_prefs::USERS).await?;
+    // Ausgeblendete Filter wirken nicht.
+    let query = if ucols.filter("q") { q.q.unwrap_or_default() } else { String::new() };
+    let org = if ucols.filter("org") { q.org.as_deref().and_then(|v| v.parse::<i64>().ok()) } else { None };
+    let mut users: Vec<User> = if query.trim().is_empty() {
+        sqlx::query_as(
+            "SELECT * FROM users WHERE role = 'end-user' AND ($1::bigint IS NULL OR organization_id = $1)
+             ORDER BY updated_at DESC LIMIT 100",
+        )
+        .bind(org)
+        .fetch_all(&st.db)
+        .await?
     } else {
         service::search_users(&st.db, &query, 100, true).await?
     };
+    if let Some(org) = org {
+        users.retain(|u| u.organization_id == Some(org));
+    }
+    let org_param = org.map(|o| o.to_string()).unwrap_or_default();
+    let return_to = with_query("/users", &[("q", &query), ("org", &org_param)]);
     page(UsersPage {
         nav: Nav::new(&me, "users"),
         q: query,
         users: user_rows(&st.db, &users).await?,
         org_opts: org_opts(&st.db, None).await?,
+        filter_org_opts: {
+            let mut o = org_opts(&st.db, org).await?;
+            o[0].label = "Alle Organisationen".into();
+            o
+        },
+        ucols,
+        return_to,
     })
 }
 
@@ -261,35 +306,63 @@ async fn anonymize_user(State(st): State<AppState>, crate::auth::WebAdmin(me): c
 struct OrgRow {
     id: i64,
     name: String,
+    initials: String,
     domains: String,
+    notes: String,
     users: i64,
     open_tickets: i64,
+    created: String,
+    updated: String,
 }
 
 #[derive(Template)]
 #[template(path = "organizations.html")]
 struct OrgsPage {
     nav: Nav,
+    q: String,
     orgs: Vec<OrgRow>,
     can_admin: bool,
+    ocols: super::list_prefs::ListPrefs,
+    return_to: String,
 }
 
-async fn orgs_index(State(st): State<AppState>, WebAgent(me): WebAgent) -> WebResult<Html<String>> {
-    let rows: Vec<(i64, String, Vec<String>, i64, i64)> = sqlx::query_as(
-        "SELECT o.id, o.name, o.domain_names,
-                (SELECT count(*) FROM users u WHERE u.organization_id = o.id),
-                (SELECT count(*) FROM tickets t WHERE t.organization_id = o.id AND t.status IN ('new','open','pending','hold'))
-         FROM organizations o ORDER BY o.name",
-    )
+async fn orgs_index(State(st): State<AppState>, WebAgent(me): WebAgent, Query(q): Query<SearchQuery>) -> WebResult<Html<String>> {
+    let ocols = super::list_prefs::load_for(&st.db, me.id, &super::list_prefs::ORGS).await?;
+    let query = if ocols.filter("q") { q.q.unwrap_or_default().trim().to_string() } else { String::new() };
+    #[allow(clippy::type_complexity)]
+    let rows: Vec<(i64, String, Vec<String>, String, i64, i64, DateTime<Utc>, DateTime<Utc>)> = sqlx::query_as(&format!(
+        "SELECT o.id, o.name, o.domain_names, o.notes,
+                (SELECT count(*) FROM users u WHERE u.organization_id = o.id AND u.role = 'end-user'),
+                (SELECT count(*) FROM tickets t WHERE t.organization_id = o.id AND t.status IN {OPEN_STATUSES}),
+                o.created_at, o.updated_at
+         FROM organizations o
+         WHERE $1 = '' OR o.name ILIKE '%' || $1 || '%' OR array_to_string(o.domain_names, ' ') ILIKE '%' || $1 || '%'
+         ORDER BY o.name"
+    ))
+    .bind(&query)
     .fetch_all(&st.db)
     .await?;
+    let now = Utc::now();
     page(OrgsPage {
         nav: Nav::new(&me, "orgs"),
+        return_to: with_query("/organizations", &[("q", &query)]),
+        q: query,
         orgs: rows
             .into_iter()
-            .map(|(id, name, domains, users, open_tickets)| OrgRow { id, name, domains: domains.join(", "), users, open_tickets })
+            .map(|(id, name, domains, notes, users, open_tickets, created, updated)| OrgRow {
+                id,
+                initials: initials(&name),
+                name,
+                domains: domains.join(", "),
+                notes,
+                users,
+                open_tickets,
+                created: fmt_rel(created, now),
+                updated: fmt_rel(updated, now),
+            })
             .collect(),
         can_admin: me.is_admin(),
+        ocols,
     })
 }
 
@@ -332,6 +405,7 @@ struct OrgPage {
     users: Vec<UserRow>,
     rows: Vec<TicketRow>,
     cols: super::list_prefs::ListPrefs,
+    ucols: super::list_prefs::ListPrefs,
 }
 
 async fn show_org(State(st): State<AppState>, WebAgent(me): WebAgent, Path(id): Path<i64>) -> WebResult<Html<String>> {
@@ -359,6 +433,7 @@ async fn show_org(State(st): State<AppState>, WebAgent(me): WebAgent, Path(id): 
         users: user_rows(&st.db, &users).await?,
         rows: ticket_rows(&st.db, &tickets).await?,
         cols: super::list_prefs::load(&st.db, me.id).await?,
+        ucols: super::list_prefs::load_for(&st.db, me.id, &super::list_prefs::USERS).await?,
     })
 }
 

@@ -2,25 +2,56 @@
 {% block title %}Organisationen{% endblock %}
 {% block content %}
 <div class="page">
-  <div class="pane-head"><h1>Organisationen</h1></div>
+  <div class="pane-head">
+    <h1>Organisationen</h1>
+    <div class="pane-head-actions">
+      <span class="muted">{{ orgs.len() }} Organisationen</span>
+      {% let lp = ocols %}{% include "list_settings.html" %}
+    </div>
+  </div>
   <div class="two-col">
-    <div class="table-wrap">
+    <div>
+      {% if ocols.filter("q") %}
+      <form class="filter-bar" method="get" action="/organizations"
+            hx-get="/organizations" hx-trigger="keyup changed delay:400ms from:input[name=q], search"
+            hx-target="body" hx-push-url="true">
+        <input type="search" name="q" value="{{ q }}" placeholder="Name oder Domain" aria-label="Organisationen suchen">
+      </form>
+      {% endif %}
       {% if orgs.is_empty() %}
-      <div class="empty">Noch keine Organisationen.</div>
+      <div class="empty">Keine Organisationen gefunden.</div>
       {% else %}
-      <table class="tickets">
-        <thead><tr><th>Name</th><th>Domains</th><th>Benutzer</th><th>Offene Tickets</th></tr></thead>
+      <div class="table-wrap">
+      <table class="tickets ticket-list">
+        <thead><tr><th>Name</th>{% for c in ocols.columns() %}<th>{{ c.1 }}</th>{% endfor %}</tr></thead>
         <tbody>
         {% for o in orgs %}
-          <tr>
-            <td class="subject"><a href="/organizations/{{ o.id }}">{{ o.name }}</a></td>
-            <td class="muted">{{ o.domains }}</td>
-            <td>{{ o.users }}</td>
-            <td>{{ o.open_tickets }}</td>
+          <tr data-href="/organizations/{{ o.id }}">
+            <td class="t-main">
+              <div class="t-title"><span class="avatar xs org" aria-hidden="true">{{ o.initials }}</span><a class="t-subject" href="/organizations/{{ o.id }}">{{ o.name }}</a></div>
+              <div class="t-meta">{% for m in ocols.meta() %}{% match m %}
+                {% when "domains" %}{% if !o.domains.is_empty() %}<span>{{ o.domains }}</span>{% endif %}
+                {% when "notes" %}{% if !o.notes.is_empty() %}<span class="t-clip">{{ o.notes }}</span>{% endif %}
+                {% when "users" %}<span>{{ o.users }} Kunden</span>
+                {% when "open" %}{% if o.open_tickets > 0 %}<span>{{ o.open_tickets }} offen</span>{% endif %}
+                {% when "created" %}<span>erstellt {{ o.created }}</span>
+                {% when "updated" %}<span>aktualisiert {{ o.updated }}</span>
+                {% else %}{% endmatch %}{% endfor %}</div>
+            </td>
+            {% for c in ocols.columns() %}{% match c.0 %}
+            {% when "domains" %}<td class="muted">{{ o.domains }}</td>
+            {% when "notes" %}<td class="muted"><span class="t-clip">{{ o.notes }}</span></td>
+            {% when "users" %}<td>{{ o.users }}</td>
+            {% when "open" %}<td>{% if o.open_tickets > 0 %}<span class="count-pill">{{ o.open_tickets }}</span>{% else %}<span class="muted">0</span>{% endif %}</td>
+            {% when "created" %}<td class="muted nowrap">{{ o.created }}</td>
+            {% when "updated" %}<td class="muted nowrap">{{ o.updated }}</td>
+            {% else %}<td></td>
+            {% endmatch %}{% endfor %}
           </tr>
         {% endfor %}
         </tbody>
       </table>
+      </div>
       {% endif %}
     </div>
     {% if can_admin %}

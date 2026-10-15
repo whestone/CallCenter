@@ -1,0 +1,34 @@
+{# Popup „Liste anpassen“ – erwartet `lp` (ListPrefs) und `return_to`. #}
+<button type="button" class="btn" data-open-dialog="list-settings-dialog">⚙ Anpassen</button>
+<dialog id="list-settings-dialog" class="modal" aria-labelledby="list-settings-title">
+  <form method="post" action="/me/list-prefs">
+    <input type="hidden" name="return_to" value="{{ return_to }}">
+    <input type="hidden" name="list" value="{{ lp.list() }}">
+    <header class="modal-head">
+      <h3 id="list-settings-title">Liste anpassen</h3>
+      <button type="button" class="icon-btn" data-close-dialog aria-label="Schließen">✕</button>
+    </header>
+    <div class="modal-body ls-cols">
+      <section>
+        <h4>Filter</h4>
+        {% for c in lp.filter_choices() %}<label class="switch"><input type="checkbox" name="filter" value="{{ c.key }}"{% if c.on %} checked{% endif %}><span class="switch-track" aria-hidden="true"></span>{{ c.label }}</label>{% endfor %}
+      </section>
+      <section>
+        <h4>Unter dem {{ lp.main() }}</h4>
+        <ul class="sortable" data-zone="meta" data-sort-group="fields" aria-label="Angaben unter dem {{ lp.main() }} – Reihenfolge und Bereich per Ziehen">
+          {% for c in lp.meta_choices() %}<li class="sort-item" draggable="true"><span class="drag-handle" aria-hidden="true">⠿</span><input type="hidden" name="order" value="meta:{{ c.key }}"><label class="switch"><input type="checkbox" name="field" value="{{ c.key }}"{% if c.on %} checked{% endif %}><span class="switch-track" aria-hidden="true"></span>{{ c.label }}</label></li>{% endfor %}
+        </ul>
+        <h4>Spalten</h4>
+        <ul class="sortable" data-zone="col" data-sort-group="fields" aria-label="Spalten – Reihenfolge und Bereich per Ziehen">
+          {% for c in lp.column_choices() %}<li class="sort-item" draggable="true"><span class="drag-handle" aria-hidden="true">⠿</span><input type="hidden" name="order" value="col:{{ c.key }}"><label class="switch"><input type="checkbox" name="field" value="{{ c.key }}"{% if c.on %} checked{% endif %}><span class="switch-track" aria-hidden="true"></span>{{ c.label }}</label></li>{% endfor %}
+        </ul>
+      </section>
+    </div>
+    <footer class="modal-foot">
+      <button class="btn" type="submit" name="reset" value="1">Standard wiederherstellen</button>
+      <span class="spacer"></span>
+      <button class="btn" type="button" data-close-dialog>Abbrechen</button>
+      <button class="btn primary" type="submit">Übernehmen</button>
+    </footer>
+  </form>
+</dialog>

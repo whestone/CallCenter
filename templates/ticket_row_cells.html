@@ -1,7 +1,8 @@
 <td class="t-main">
-  <div class="t-title"><span class="status-pill s-{{ r.status }}">{{ r.status_label }}</span><a class="t-subject" href="/tickets/{{ r.id }}">{{ r.subject }}</a></div>
-  <div class="t-meta"><span class="t-id">#{{ r.id }}</span>{% for m in cols.meta() %}{% match m %}
-    {% when "requester" %}<span>{{ r.requester }}{% if !r.org.is_empty() %} · {{ r.org }}{% endif %}</span>
+  <div class="t-title">{% if cols.in_meta("status") %}<span class="status-pill s-{{ r.status }}">{{ r.status_label }}</span>{% endif %}<a class="t-subject" href="/tickets/{{ r.id }}">{{ r.subject_html|safe }}</a></div>
+  <div class="t-meta">{% if cols.in_meta("id") %}<span class="t-id">#{{ r.id }}</span>{% endif %}{% for m in cols.meta() %}{% match m %}
+    {% when "requester" %}<span>{{ r.requester }}</span>
+    {% when "org" %}{% if !r.org.is_empty() %}<span>{{ r.org }}</span>{% endif %}
     {% when "channel" %}<span>{{ r.channel_label }}</span>
     {% when "group" %}{% if r.group != "–" %}<span>{{ r.group }}</span>{% endif %}
     {% when "tags" %}{% for t in r.tags %}<span class="chip-item chip-tag chip-sm">{{ t }}</span>{% endfor %}
@@ -9,12 +10,21 @@
     {% when "type" %}{% if !r.type_label.is_empty() %}<span>{{ r.type_label }}</span>{% endif %}
     {% when "assignee" %}{% if r.assignee_initials.is_empty() %}<span>nicht zugewiesen</span>{% else %}<span class="who"><span class="avatar xxs" aria-hidden="true">{{ r.assignee_initials }}</span>{{ r.assignee }}</span>{% endif %}
     {% when "sla" %}{% if !r.sla_text.is_empty() %}<span><span class="{{ r.sla_class }}">{{ r.sla_text }}</span></span>{% endif %}
+    {% when "last_reply" %}<span>{% if r.last_reply.is_empty() %}noch keine Antwort{% else %}beantwortet {{ r.last_reply }}{% endif %}</span>
+    {% when "last_customer" %}{% if !r.last_customer.is_empty() %}<span>Kunde schrieb {{ r.last_customer }}</span>{% endif %}
+    {% when "due" %}{% if !r.due.is_empty() %}<span>fällig {{ r.due }}</span>{% endif %}
+    {% when "solved" %}{% if !r.solved.is_empty() %}<span>gelöst {{ r.solved }}</span>{% endif %}
+    {% when "satisfaction" %}{% if !r.satisfaction.is_empty() %}<span>Bewertung: {{ r.satisfaction }}</span>{% endif %}
     {% when "created" %}<span>erstellt {{ r.created }}</span>
     {% when "updated" %}<span>aktualisiert {{ r.updated }}</span>
     {% else %}{% endmatch %}{% endfor %}</div>
+  {% if !r.snippet.is_empty() %}<div class="hit-snippet">{{ r.snippet|safe }}</div>{% endif %}
 </td>
 {% for c in cols.columns() %}{% match c.0 %}
-{% when "requester" %}<td><div>{{ r.requester }}</div>{% if !r.org.is_empty() %}<div class="muted small">{{ r.org }}</div>{% endif %}</td>
+{% when "status" %}<td><span class="status-pill s-{{ r.status }}">{{ r.status_label }}</span></td>
+{% when "id" %}<td class="muted nowrap">#{{ r.id }}</td>
+{% when "requester" %}<td>{{ r.requester }}</td>
+{% when "org" %}<td>{% if r.org.is_empty() %}<span class="muted">–</span>{% else %}{{ r.org }}{% endif %}</td>
 {% when "channel" %}<td class="nowrap">{{ r.channel_label }}</td>
 {% when "group" %}<td>{% if r.group == "–" %}<span class="muted">–</span>{% else %}{{ r.group }}{% endif %}</td>
 {% when "tags" %}<td class="t-tags">{% for t in r.tags %}<span class="chip-item chip-tag chip-sm">{{ t }}</span>{% endfor %}</td>
@@ -22,6 +32,11 @@
 {% when "type" %}<td>{% if r.type_label.is_empty() %}<span class="muted">–</span>{% else %}{{ r.type_label }}{% endif %}</td>
 {% when "assignee" %}<td>{% if r.assignee_initials.is_empty() %}<span class="muted small">nicht zugewiesen</span>{% else %}<span class="who"><span class="avatar xs" aria-hidden="true">{{ r.assignee_initials }}</span>{{ r.assignee }}</span>{% endif %}</td>
 {% when "sla" %}<td>{% if !r.sla_text.is_empty() %}<span class="{{ r.sla_class }}">{{ r.sla_text }}</span>{% endif %}</td>
+{% when "last_reply" %}<td class="muted nowrap">{% if r.last_reply.is_empty() %}–{% else %}{{ r.last_reply }}{% endif %}</td>
+{% when "last_customer" %}<td class="muted nowrap">{% if r.last_customer.is_empty() %}–{% else %}{{ r.last_customer }}{% endif %}</td>
+{% when "due" %}<td class="muted nowrap">{% if r.due.is_empty() %}–{% else %}{{ r.due }}{% endif %}</td>
+{% when "solved" %}<td class="muted nowrap">{% if r.solved.is_empty() %}–{% else %}{{ r.solved }}{% endif %}</td>
+{% when "satisfaction" %}<td>{% if r.satisfaction.is_empty() %}<span class="muted">–</span>{% else %}{{ r.satisfaction }}{% endif %}</td>
 {% when "created" %}<td class="muted nowrap">{{ r.created }}</td>
 {% when "updated" %}<td class="muted nowrap">{{ r.updated }}</td>
 {% else %}<td></td>

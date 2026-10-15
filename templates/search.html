@@ -20,25 +20,13 @@
   </section>
   {% else %}
 
-  <h3>Tickets ({% if more %}mehr als {{ hits.len() }}{% else %}{{ hits.len() }}{% endif %})</h3>
+  <div class="list-toolbar">
+    <h3>Tickets ({% if more %}mehr als {{ rows.len() }}{% else %}{{ rows.len() }}{% endif %})</h3>
+    <span class="spacer"></span>
+    {% let lp = cols %}{% include "list_settings.html" %}
+  </div>
   {% if more %}<p class="muted small">Es gibt mehr Treffer – bitte mit weiteren Wörtern oder Filtern eingrenzen.</p>{% endif %}
-  {% if hits.is_empty() %}
-  <div class="empty">Keine Tickets gefunden.</div>
-  {% else %}
-  <ul class="search-hits">
-    {% for h in hits %}
-    <li>
-      <div class="hit-head">
-        <span class="status-badge s-{{ h.row.status }}" title="{{ h.row.status_label }}">{{ h.row.status_label }}</span>
-        <a class="hit-title" href="/tickets/{{ h.row.id }}"><span class="muted">#{{ h.row.id }}</span> {{ h.row.subject_html|safe }}</a>
-        {% if !h.row.priority.is_empty() %}<span class="prio p-{{ h.row.priority }}">{{ h.row.priority_label }}</span>{% endif %}
-      </div>
-      {% if !h.snippet.is_empty() %}<div class="hit-snippet">{{ h.snippet|safe }}</div>{% endif %}
-      <div class="hit-meta muted small">{{ h.row.requester }} · {% if h.row.assignee.is_empty() %}nicht zugewiesen{% else %}{{ h.row.assignee }}{% endif %} · {{ h.row.channel_label }} · aktualisiert {{ h.row.updated }}</div>
-    </li>
-    {% endfor %}
-  </ul>
-  {% endif %}
+  {% include "ticket_table.html" %}
 
   {% if !people.is_empty() || !orgs.is_empty() || !articles.is_empty() %}
   <div class="search-side-results">

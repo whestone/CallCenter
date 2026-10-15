@@ -29,11 +29,6 @@ async fn direct_ticket(db: &PgPool, q: &str) -> AppResult<Option<i64>> {
     Ok(sqlx::query_scalar("SELECT id FROM tickets WHERE id = $1").bind(id).fetch_optional(db).await?)
 }
 
-pub struct Hit {
-    pub row: TicketRow,
-    pub snippet: String,
-}
-
 pub struct PersonHit {
     pub id: i64,
     pub name: String,
@@ -112,7 +107,9 @@ struct ResultsPage {
     nav: Nav,
     q: String,
     sort_opts: Vec<Opt>,
-    hits: Vec<Hit>,
+    rows: Vec<TicketRow>,
+    cols: super::list_prefs::ListPrefs,
+    return_to: String,
     more: bool,
     people: Vec<PersonHit>,
     orgs: Vec<OrgHit>,
@@ -156,13 +153,13 @@ async fn results(State(st): State<AppState>, WebAgent(me): WebAgent, Query(p): Q
     tickets.truncate(search::LIMIT);
     let terms = search::text_terms(&tokens);
     let mut snippets = search::snippets(db, &tickets, &terms).await?;
-    let hits = ticket_rows(db, &tickets)
+    let rows = ticket_rows(db, &tickets)
         .await?
         .into_iter()
         .map(|mut row| {
-            let snippet = snippets.remove(&row.id).unwrap_or_default();
+            row.snippet = snippets.remove(&row.id).unwrap_or_default();
             row.subject_html = search::highlight(&row.subject, &terms);
-            Hit { row, snippet }
+            row
         })
         .collect();
     Ok(page(ResultsPage {
@@ -172,8 +169,10 @@ async fn results(State(st): State<AppState>, WebAgent(me): WebAgent, Query(p): Q
             .map(|(k, l)| Opt { value: k.to_string(), label: l.to_string(), selected: *k == sort })
             .collect(),
         problems: search::problems(&tokens),
+        return_to: with_query("/search", &[("q", &q), ("sort", &sort)]),
         q,
-        hits,
+        rows,
+        cols: super::list_prefs::load(db, me.id).await?,
         more,
         people,
         orgs,

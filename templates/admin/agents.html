@@ -5,24 +5,59 @@
   <h1>Verwaltung</h1>
   {% include "admin/tabs.html" %}
   <div class="two-col">
+    <div>
+    <div class="list-toolbar">
+      {% if acols.filter("q") || acols.filter("role") || acols.filter("availability") %}
+      <form class="filter-bar" method="get" action="/admin/agents"
+            hx-get="/admin/agents" hx-trigger="change, keyup changed delay:400ms from:input[name=q]"
+            hx-target="body" hx-push-url="true">
+        {% if acols.filter("q") %}<input type="search" name="q" value="{{ q }}" placeholder="Name oder E-Mail" aria-label="Team durchsuchen">{% endif %}
+        {% if acols.filter("role") %}<select name="role" aria-label="Rolle">{% for o in role_opts %}<option value="{{ o.value }}"{% if o.selected %} selected{% endif %}>{{ o.label }}</option>{% endfor %}</select>{% endif %}
+        {% if acols.filter("availability") %}<select name="availability" aria-label="Erreichbarkeit">{% for o in availability_opts %}<option value="{{ o.value }}"{% if o.selected %} selected{% endif %}>{{ o.label }}</option>{% endfor %}</select>{% endif %}
+      </form>
+      {% endif %}
+      <span class="spacer"></span>
+      {% let lp = acols %}{% include "list_settings.html" %}
+    </div>
+    {% if agents.is_empty() %}
+    <div class="empty">Niemand gefunden.</div>
+    {% else %}
     <div class="table-wrap">
-    <table class="tickets">
-      <thead><tr><th>Name</th><th>E-Mail</th><th>Rolle</th><th>Gruppen</th><th>Fähigkeiten</th><th>Erreichbarkeit</th><th>Offen / Kapazität</th><th>Konto</th></tr></thead>
+    <table class="tickets ticket-list">
+      <thead><tr><th>Name</th>{% for c in acols.columns() %}<th>{{ c.1 }}</th>{% endfor %}</tr></thead>
       <tbody>
       {% for a in agents %}
-        <tr>
-          <td class="subject"><a href="/admin/agents/{{ a.id }}">{{ a.name }}</a></td>
-          <td>{{ a.email }}</td>
-          <td>{{ a.role_label }}</td>
-          <td class="muted">{{ a.groups }}</td>
-          <td class="muted">{{ a.skills }}</td>
-          <td class="nowrap"><span class="dot dot-{{ a.availability }}"></span> {{ a.availability_label }}</td>
-          <td>{{ a.load }}</td>
-          <td>{% if a.active %}aktiv{% else %}<span class="muted">deaktiviert</span>{% endif %}</td>
+        <tr data-href="/admin/agents/{{ a.id }}"{% if !a.active %} class="row-inactive"{% endif %}>
+          <td class="t-main">
+            <div class="t-title"><span class="avatar xs" aria-hidden="true">{{ a.initials }}<span class="dot dot-{{ a.availability }} avatar-dot"></span></span><a class="t-subject" href="/admin/agents/{{ a.id }}">{{ a.name }}</a></div>
+            <div class="t-meta">{% for m in acols.meta() %}{% match m %}
+              {% when "email" %}{% if !a.email.is_empty() %}<span>{{ a.email }}</span>{% endif %}
+              {% when "role" %}<span>{{ a.role_label }}</span>
+              {% when "groups" %}{% if !a.groups.is_empty() %}<span>{{ a.groups }}</span>{% endif %}
+              {% when "skills" %}{% if !a.skills.is_empty() %}<span>{{ a.skills }}</span>{% endif %}
+              {% when "availability" %}<span>{{ a.availability_label }}</span>
+              {% when "load" %}<span>{{ a.load }} offen</span>
+              {% when "active" %}{% if !a.active %}<span>deaktiviert</span>{% endif %}
+              {% when "updated" %}<span>aktualisiert {{ a.updated }}</span>
+              {% else %}{% endmatch %}{% endfor %}</div>
+          </td>
+          {% for c in acols.columns() %}{% match c.0 %}
+          {% when "email" %}<td>{{ a.email }}</td>
+          {% when "role" %}<td>{{ a.role_label }}</td>
+          {% when "groups" %}<td class="muted">{% if a.groups.is_empty() %}–{% else %}{{ a.groups }}{% endif %}</td>
+          {% when "skills" %}<td class="muted">{% if a.skills.is_empty() %}–{% else %}{{ a.skills }}{% endif %}</td>
+          {% when "availability" %}<td class="nowrap"><span class="dot dot-{{ a.availability }}"></span> {{ a.availability_label }}</td>
+          {% when "load" %}<td class="nowrap">{{ a.load }}</td>
+          {% when "active" %}<td>{% if a.active %}aktiv{% else %}<span class="muted">deaktiviert</span>{% endif %}</td>
+          {% when "updated" %}<td class="muted nowrap">{{ a.updated }}</td>
+          {% else %}<td></td>
+          {% endmatch %}{% endfor %}
         </tr>
       {% endfor %}
       </tbody>
     </table>
+    </div>
+    {% endif %}
     </div>
     <form class="card" method="post" action="/admin/agents">
       <h3>Neues Teammitglied</h3>

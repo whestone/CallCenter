@@ -645,7 +645,11 @@ table.ticket-list tbody tr:has(input[name=ticket_id]:checked) td { background: v
 .t-subject { font-weight: 600; color: var(--text); overflow: hidden; text-overflow: ellipsis; }
 .t-subject:hover { color: var(--accent); text-decoration: none; }
 .t-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 0; margin-top: 3px; font-size: 12.5px; color: var(--muted); }
-.t-meta > span:not(.chip-item) + span:not(.chip-item)::before { content: "·"; margin: 0 6px; opacity: .6; }
+.t-meta > span:not(.chip-item) + span:not(.chip-item):not(.prio-dot)::before { content: "·"; margin: 0 6px; opacity: .6; }
+/* Priorität: ::before ist der farbige Punkt, der Trenner kommt daher über ::after davor */
+.t-meta > .prio-dot { font-size: inherit; gap: 5px; }
+.t-meta > span:not(.chip-item) + .prio-dot { margin-left: 6px; }
+.t-meta > span:not(.chip-item) + .prio-dot::after { content: "·"; order: -1; margin-right: 1px; opacity: .6; color: var(--muted); font-weight: 400; }
 .t-meta > .chip-item { margin-left: 6px; }
 .t-id { font-variant-numeric: tabular-nums; }
 .status-pill { flex: none; border-radius: 999px; font-size: 11px; height: 20px; }
@@ -816,3 +820,13 @@ label.switch input:focus-visible + .switch-track { box-shadow: var(--focus-ring)
 .sort-item.dragging .drag-handle { cursor: grabbing; }
 .sortable[data-sort-group] { min-height: 40px; border-radius: var(--radius); }
 .sortable[data-sort-group]:not(:has(.sort-item)) { border: 1px dashed var(--border); background: var(--hover); }
+
+/* Listen allgemein (Kunden, Organisationen, Chats, Team) – gleiche Bausteine wie die Ticketliste */
+.list-toolbar { display: flex; align-items: center; gap: var(--space-2); margin-bottom: 12px; }
+.list-toolbar .filter-bar { margin-bottom: 0; }
+.count-pill { display: inline-block; min-width: 22px; padding: 1px 8px; border-radius: var(--radius-full); background: var(--tint-blue); color: var(--accent-dark); font-size: var(--fs-xs); font-weight: 600; text-align: center; }
+.t-clip { display: inline-block; max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: bottom; }
+.avatar.org { border-radius: var(--radius); background: var(--tint-green); color: var(--success-strong); }
+.avatar { position: relative; }
+.avatar-dot { position: absolute; right: -2px; bottom: -2px; width: 9px; height: 9px; border: 2px solid var(--panel); box-sizing: content-box; }
+tr.row-inactive .t-subject, tr.row-inactive .avatar { opacity: .55; }

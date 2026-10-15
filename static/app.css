@@ -668,17 +668,11 @@ table.ticket-list tbody tr:has(input[name=ticket_id]:checked) td { background: v
 .bulk-bar { border-radius: 10px; }
 .t-title .status-pill { min-width: 78px; }
 
-/* Ticketliste anpassen (Filter/Felder pro Nutzer) */
+/* Ticketliste anpassen (Popup) */
 .pane-head-actions { display: flex; align-items: center; gap: 12px; }
-.list-settings { position: relative; }
-.list-settings > summary { list-style: none; }
-.list-settings > summary::-webkit-details-marker { display: none; }
-.list-settings-panel { position: absolute; right: 0; top: calc(100% + 6px); z-index: 30; width: min(440px, calc(100vw - 32px)); padding: 14px; background: var(--panel); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 12px 32px var(--shadow); }
-.ls-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-.ls-cols fieldset { border: 0; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 4px; }
-.ls-cols legend { font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin-bottom: 6px; }
-.ls-cols .check { font-weight: 400; }
-.ls-actions { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line); }
+.ls-cols { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-2) var(--space-5); }
+.ls-cols h4 { margin: 0 0 var(--space-2); }
+@media (max-width: 520px) { .ls-cols { grid-template-columns: 1fr; } }
 
 /* ===========================================================================
    Einheitliche Bausteine (gelten überall, nutzen nur Werte aus tokens.css)
@@ -787,3 +781,24 @@ dialog.confirm-dialog::backdrop { background: rgba(10, 16, 24, .45); backdrop-fi
   * { transition: none !important; }
 }
 table.tickets:not(.ticket-list) th { white-space: normal; }
+
+/* Popup (Modal) – allgemeiner Baustein */
+dialog.modal { width: min(560px, calc(100vw - 32px)); max-height: calc(100vh - 48px); padding: 0; border: 1px solid var(--border); border-radius: var(--radius-xl); background: var(--panel); color: var(--text); box-shadow: var(--shadow-lg); overflow: hidden; }
+dialog.modal[open] { animation: modal-in .16s ease-out; }
+dialog.modal::backdrop { background: rgba(10, 16, 24, .45); backdrop-filter: blur(2px); }
+dialog.modal > form { display: flex; flex-direction: column; max-height: inherit; }
+.modal-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); padding: var(--space-4) var(--space-5); border-bottom: 1px solid var(--line); }
+.modal-head h3 { margin: 0; }
+.modal-body { padding: var(--space-4) var(--space-5); overflow-y: auto; }
+.modal-foot { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-3) var(--space-5); border-top: 1px solid var(--line); background: var(--panel-2); }
+.spacer { flex: 1; }
+@keyframes modal-in { from { opacity: 0; transform: translateY(6px) scale(.98); } to { opacity: 1; transform: none; } }
+
+/* Schalter (Checkbox als Kippschalter) – allgemeiner Baustein */
+label.switch { display: flex; align-items: center; gap: var(--space-3); margin: 0; padding: 7px 0; font-size: var(--fs-md); font-weight: 400; color: var(--text); cursor: pointer; }
+label.switch input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.switch-track { position: relative; flex: none; width: 34px; height: 20px; border-radius: var(--radius-full); background: var(--border); transition: background var(--ease); }
+.switch-track::after { content: ""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; box-shadow: var(--shadow-sm); transition: transform var(--ease); }
+label.switch input:checked + .switch-track { background: var(--accent); }
+label.switch input:checked + .switch-track::after { transform: translateX(14px); }
+label.switch input:focus-visible + .switch-track { box-shadow: var(--focus-ring); }

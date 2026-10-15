@@ -574,7 +574,7 @@ document.addEventListener("keydown", (event) => {
 window.ccListIdle = () =>
   !document.querySelector("input[name=ticket_id]:checked, tr.kb-focus") &&
   !document.activeElement?.matches("input, select, textarea") &&
-  !document.querySelector("dialog[open], details.list-settings[open]");
+  !document.querySelector("dialog[open]");
 
 // ---------------------------------------------------------------------------
 // Suchfeld in der Kopfzeile: Vorschläge per Tastatur bedienen, schließen
@@ -684,3 +684,29 @@ document.addEventListener("click", (event) => {
 });
 document.addEventListener("DOMContentLoaded", () => applyTheme(currentTheme()));
 document.addEventListener("htmx:afterSettle", () => applyTheme(currentTheme()));
+
+// ---------------------------------------------------------------------------
+// Popups: [data-open-dialog="id"] öffnet, [data-close-dialog] oder Klick daneben schließt
+// ---------------------------------------------------------------------------
+document.addEventListener("click", (event) => {
+  const opener = event.target.closest("[data-open-dialog]");
+  if (opener) {
+    document.getElementById(opener.dataset.openDialog)?.showModal();
+    return;
+  }
+  if (event.target.closest("[data-close-dialog]")) {
+    event.target.closest("dialog")?.close();
+    return;
+  }
+  if (event.target.matches("dialog.modal")) event.target.close();
+});
+
+// ---------------------------------------------------------------------------
+// Nach einem Update (neue Version des Servers) einmal komplett neu laden, damit
+// Stylesheets und Skripte im Seitenkopf aktuell sind – htmx tauscht nur den Inhalt.
+// ---------------------------------------------------------------------------
+window.ccVersion = document.getElementById("app-version")?.dataset.v;
+document.addEventListener("htmx:afterSettle", () => {
+  const v = document.getElementById("app-version")?.dataset.v;
+  if (v && window.ccVersion && v !== window.ccVersion) location.reload();
+});

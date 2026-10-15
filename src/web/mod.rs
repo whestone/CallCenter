@@ -149,6 +149,15 @@ pub struct Nav {
     pub section: &'static str,
     pub availability: String,
     pub availability_opts: Vec<Opt>,
+    /// Version der Oberfläche (ändert sich bei jedem Serverstart) – erzwingt nach
+    /// Updates ein vollständiges Neuladen und frische Stylesheets/Skripte.
+    pub version: &'static str,
+}
+
+/// Kennung dieses Serverlaufs für Stylesheet-/Skript-Adressen.
+pub fn asset_version() -> &'static str {
+    static VERSION: std::sync::OnceLock<String> = std::sync::OnceLock::new();
+    VERSION.get_or_init(|| format!("{:x}", Utc::now().timestamp()))
 }
 
 impl Nav {
@@ -160,6 +169,7 @@ impl Nav {
             section,
             availability: user.availability.clone(),
             availability_opts: enum_opts(&AVAILABILITIES, availability_label, Some(&user.availability), None),
+            version: asset_version(),
         }
     }
 }

@@ -8,6 +8,7 @@ document.addEventListener("click", (event) => {
     document.getElementById("requester-picked").hidden = false;
     document.getElementById("requester-fields").hidden = true;
     document.getElementById("requester-results").innerHTML = "";
+    showCustomerTickets(hit.dataset.pickRequester);
     return;
   }
   // "als Wartend/Gelöst": Status-Auswahl mitsetzen, damit der Wert sicher übertragen wird.
@@ -21,8 +22,24 @@ document.addEventListener("click", (event) => {
     document.getElementById("requester_id").value = "";
     document.getElementById("requester-picked").hidden = true;
     document.getElementById("requester-fields").hidden = false;
+    showCustomerTickets(null);
   }
 });
+
+// Neues Ticket / Anruf: offene Tickets des gewählten Kunden rechts anzeigen,
+// damit nichts doppelt erfasst wird.
+function showCustomerTickets(id) {
+  const side = document.getElementById("customer-tickets");
+  if (!side) return;
+  if (!id) {
+    const empty = document.createElement("div");
+    empty.className = "card muted small customer-tickets-empty";
+    empty.textContent = side.dataset.empty || "";
+    side.replaceChildren(empty);
+    return;
+  }
+  if (window.htmx) htmx.ajax("GET", `/requesters/${encodeURIComponent(id)}/tickets`, { target: side, swap: "innerHTML" });
+}
 
 // Massenbearbeitung: "alle auswählen" und Zähler der markierten Tickets.
 function updateBulkCount() {

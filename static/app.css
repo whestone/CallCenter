@@ -655,3 +655,18 @@ mark { background: #ffe58a; color: inherit; padding: 0 1px; border-radius: 2px; 
 .rte code { background: var(--chip); padding: 1px 4px; border-radius: 4px; font-size: .92em; }
 .rte a { text-decoration: underline; }
 .composer:has(input[name=public][value="0"]:checked) .rte { background: var(--tint-orange); }
+
+/* Neues Ticket / Anruf: offene Tickets des Kunden rechts */
+.new-ticket-page { max-width: 1280px; }
+.new-ticket-layout { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 16px; align-items: start; }
+.new-ticket-side { position: sticky; top: 12px; }
+@media (max-width: 1000px) { .new-ticket-layout { grid-template-columns: 1fr; } .new-ticket-side { position: static; order: -1; } }
+.customer-tickets h3 { margin-bottom: 8px; }
+.dup-hint { padding: 6px 10px; margin-bottom: 8px; border-radius: var(--radius); background: var(--tint-orange); border: 1px solid var(--tint-orange-border); color: var(--warn-strong); font-weight: 600; font-size: 13px; }
+.customer-ticket-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.customer-ticket-list li { padding-bottom: 8px; border-bottom: 1px solid var(--line); }
+.customer-ticket-list li:last-child { border-bottom: 0; padding-bottom: 0; }
+.ct-head { display: flex; gap: 6px; align-items: baseline; font-weight: 600; }
+.ct-last { margin: 3px 0 2px; overflow-wrap: anywhere; }
+.ct-recent { margin-top: 10px; }
+.ct-recent summary { cursor: pointer; color: var(--muted); font-size: 13px; margin-bottom: 8px; }

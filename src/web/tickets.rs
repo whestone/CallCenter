@@ -30,6 +30,7 @@ pub fn router() -> Router<AppState> {
         .route("/tickets/{id}/links", post(add_link))
         .route("/tickets/{id}/links/{other}/delete", post(remove_link))
         .route("/requesters/lookup", get(requester_lookup))
+        .route("/requesters/{id}/tickets", get(requester_tickets))
 }
 
 // ---------------------------------------------------------------------------
@@ -1118,4 +1119,91 @@ async fn requester_lookup(
             .collect();
     }
     page(RequesterResults { query, hits })
+}
+
+/// Ticket eines Kunden für die Seitenleiste beim Erfassen.
+struct CustomerTicket {
+    id: i64,
+    subject: String,
+    status: String,
+    status_label: &'static str,
+    channel_label: &'static str,
+    updated: String,
+    last: String,
+}
+
+#[derive(Template)]
+#[template(path = "customer_tickets.html")]
+struct CustomerTickets {
+    id: i64,
+    name: String,
+    org: String,
+    open: Vec<CustomerTicket>,
+    recent: Vec<CustomerTicket>,
+}
+
+/// htmx-Fragment: offene und kürzlich gelöste Tickets eines Kunden, damit beim
+/// Erfassen keine doppelten Tickets entstehen.
+async fn requester_tickets(
+    State(st): State<AppState>,
+    WebAgent(_): WebAgent,
+    Path(id): Path<i64>,
+) -> WebResult<Html<String>> {
+    let db = &st.db;
+    let user: User = sqlx::query_as("SELECT * FROM users WHERE id = $1")
+        .bind(id)
+        .fetch_optional(db)
+        .await?
+        .ok_or(AppError::NotFound)?;
+    let org: Option<String> = sqlx::query_scalar("SELECT name FROM organizations WHERE id = $1")
+        .bind(user.organization_id)
+        .fetch_optional(db)
+        .await?;
+    let tickets: Vec<Ticket> = sqlx::query_as(
+        "SELECT * FROM tickets WHERE requester_id = $1
+           AND (status IN ('new', 'open', 'pending', 'hold') OR solved_at > now() - interval '14 days')
+         ORDER BY status IN ('solved', 'closed'), updated_at DESC LIMIT 20",
+    )
+    .bind(id)
+    .fetch_all(db)
+    .await?;
+    // Letzte öffentliche Nachricht als Kurzinfo, worum es zuletzt ging.
+    let last: HashMap<i64, String> = sqlx::query_as::<_, (i64, String)>(
+        "SELECT DISTINCT ON (ticket_id) ticket_id, body FROM ticket_comments
+         WHERE ticket_id = ANY($1) ORDER BY ticket_id, id DESC",
+    )
+    .bind(tickets.iter().map(|t| t.id).collect::<Vec<_>>())
+    .fetch_all(db)
+    .await?
+    .into_iter()
+    .collect();
+    let now = Utc::now();
+    let view = |t: &Ticket| CustomerTicket {
+        id: t.id,
+        subject: t.subject.clone(),
+        status: t.status.clone(),
+        status_label: status_label(&t.status),
+        channel_label: channel_label(&t.channel),
+        updated: fmt_rel(t.updated_at, now),
+        last: last
+            .get(&t.id)
+            .map(|b| {
+                let plain = crate::markdown::to_plain(b).split_whitespace().collect::<Vec<_>>().join(" ");
+                let mut short: String = plain.chars().take(110).collect();
+                if plain.chars().count() > 110 {
+                    short.push('…');
+                }
+                short
+            })
+            .unwrap_or_default(),
+    };
+    let (recent, open): (Vec<&Ticket>, Vec<&Ticket>) =
+        tickets.iter().partition(|t| matches!(t.status.as_str(), "solved" | "closed"));
+    page(CustomerTickets {
+        id: user.id,
+        name: user.name.clone(),
+        org: org.unwrap_or_default(),
+        open: open.into_iter().map(view).collect(),
+        recent: recent.into_iter().map(view).collect(),
+    })
 }

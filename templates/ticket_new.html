@@ -1,8 +1,9 @@
 {% extends "base.html" %}
 {% block title %}{% if is_call %}Anruf erfassen{% else %}Neues Ticket{% endif %}{% endblock %}
 {% block content %}
-<div class="page narrow-page">
+<div class="page new-ticket-page">
   <h1>{% if is_call %}📞 Anruf erfassen{% else %}Neues Ticket{% endif %}</h1>
+  <div class="new-ticket-layout">
   <form method="post" action="/tickets" class="form-grid">
     <fieldset class="card">
       <legend>{% if is_call %}Anrufer{% else %}Anfragender{% endif %}</legend>
@@ -77,5 +78,11 @@
       <button class="btn primary" type="submit">Ticket anlegen</button>
     </div>
   </form>
+  <aside id="customer-tickets" class="new-ticket-side" aria-live="polite"
+         data-empty="Sobald der {% if is_call %}Anrufer{% else %}Kunde{% endif %} feststeht, erscheinen hier seine offenen Tickets – so entsteht kein doppeltes Ticket."{% if !requester_id.is_empty() %}
+         hx-get="/requesters/{{ requester_id }}/tickets" hx-trigger="load" hx-swap="innerHTML"{% endif %}>
+    <div class="card muted small customer-tickets-empty">Sobald der {% if is_call %}Anrufer{% else %}Kunde{% endif %} feststeht, erscheinen hier seine offenen Tickets – so entsteht kein doppeltes Ticket.</div>
+  </aside>
+  </div>
 </div>
 {% endblock %}

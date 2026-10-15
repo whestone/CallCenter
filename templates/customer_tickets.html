@@ -1,0 +1,33 @@
+<div class="card customer-tickets">
+  <h3><a href="/users/{{ id }}" target="_blank" rel="noopener">{{ name }}</a>{% if !org.is_empty() %} <span class="muted small">· {{ org }}</span>{% endif %}</h3>
+  {% if open.is_empty() %}
+  <p class="muted">Keine offenen Tickets – du kannst neu erfassen.</p>
+  {% else %}
+  <div class="dup-hint">⚠ {{ open.len() }} offene{% if open.len() == 1 %}s Ticket{% else %} Tickets{% endif %} – gehört das Anliegen vielleicht dazu?</div>
+  <ul class="customer-ticket-list">
+    {% for t in open %}
+    <li>
+      <div class="ct-head"><span class="status-badge s-{{ t.status }}" title="{{ t.status_label }}">{{ t.status_label }}</span>
+        <a href="/tickets/{{ t.id }}" target="_blank" rel="noopener" title="In neuem Tab öffnen">#{{ t.id }} {{ t.subject }}</a></div>
+      {% if !t.last.is_empty() %}<div class="ct-last muted small">{{ t.last }}</div>{% endif %}
+      <div class="ct-meta muted small">{{ t.channel_label }} · aktualisiert {{ t.updated }} ·
+        <a href="/tickets/{{ t.id }}" hx-confirm="Dieses neue Ticket verwerfen und stattdessen Ticket #{{ t.id }} öffnen?">stattdessen dort ergänzen →</a></div>
+    </li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+  {% if !recent.is_empty() %}
+  <details class="ct-recent"{% if open.is_empty() %} open{% endif %}>
+    <summary>Kürzlich gelöst ({{ recent.len() }})</summary>
+    <ul class="customer-ticket-list">
+      {% for t in recent %}
+      <li>
+        <div class="ct-head"><span class="status-badge s-{{ t.status }}" title="{{ t.status_label }}">{{ t.status_label }}</span>
+          <a href="/tickets/{{ t.id }}" target="_blank" rel="noopener">#{{ t.id }} {{ t.subject }}</a></div>
+        <div class="ct-meta muted small">{{ t.updated }}{% if t.status == "closed" %} · <a href="/tickets/new?channel=web&amp;followup={{ t.id }}">Folgeticket</a>{% endif %}</div>
+      </li>
+      {% endfor %}
+    </ul>
+  </details>
+  {% endif %}
+</div>

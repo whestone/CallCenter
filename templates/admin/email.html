@@ -50,6 +50,25 @@
       {% endif %}
     </section>
 
+    <div>
+    <form class="card" method="post" action="/admin/email/smtp" id="smtp">
+      <h3>Versand (SMTP) <a class="help-q" href="/hilfe#hilfe-smtp" title="SMTP in der Hilfe" aria-label="SMTP in der Hilfe">?</a></h3>
+      <label>Server<input type="text" name="smtp.host" value="{{ smtp_host }}" placeholder="smtp.example.com" required autocomplete="off"></label>
+      <div class="form-row">
+        <label>Verschlüsselung
+          <select name="smtp.security">{% for o in security_opts %}<option value="{{ o.value }}"{% if o.selected %} selected{% endif %}>{{ o.label }}</option>{% endfor %}</select>
+        </label>
+        <label class="narrow-field">Port<input type="number" name="smtp.port" value="{{ smtp_port }}" min="1" max="65535" placeholder="Standard"></label>
+      </div>
+      <label>Benutzer<input type="text" name="smtp.user" value="{{ smtp_user }}" autocomplete="off"></label>
+      <label>Passwort<input type="password" name="smtp.password" value="" autocomplete="new-password"{% if smtp_has_password %} placeholder="gespeichert – leer lassen = unverändert"{% endif %}></label>
+      <label>Absenderadresse<input type="email" name="smtp.from" value="{{ smtp_from }}" placeholder="support@example.com"></label>
+      <div class="form-actions">
+        <button class="btn primary" type="submit">Speichern</button>
+        {% if smtp_in_admin %}<button class="btn danger" type="submit" formaction="/admin/email/smtp/delete" formnovalidate hx-confirm="SMTP-Zugang entfernen?">Entfernen</button>{% endif %}
+      </div>
+    </form>
+
     <form class="card" method="post" action="/admin/email">
       <h3>Vorlagen <a class="help-q" href="/hilfe#hilfe-email" title="Platzhalter in der Hilfe" aria-label="Platzhalter in der Hilfe">?</a></h3>
       {% for t in templates %}
@@ -59,6 +78,7 @@
       {% endfor %}
       <button class="btn primary wide" type="submit">Vorlagen speichern</button>
     </form>
+    </div>
   </div>
 </div>
 {% endblock %}

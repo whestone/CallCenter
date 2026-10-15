@@ -1,8 +1,9 @@
 //! E-Mail-Kanal: Vorlagen, Postausgang mit SMTP-Versand, Eingang per Webhook,
 //! Passwort-Zurücksetzen.
 //!
-//! SMTP wird über Umgebungsvariablen konfiguriert (siehe `.env.example`). Ohne
-//! Konfiguration landen Mails im Postausgang mit Status „nicht gesendet“.
+//! SMTP wird unter Verwaltung → E-Mail eingerichtet (Tabelle `settings`, Schlüssel
+//! `smtp.*`); ohne Eintrag dort gelten die Umgebungsvariablen aus `.env.example`.
+//! Ohne Konfiguration landen Mails im Postausgang mit Status „nicht gesendet“.
 
 use std::{collections::HashMap, time::Duration};
 
@@ -157,25 +158,89 @@ pub struct SmtpConfig {
     pub from: String,
     /// "starttls" (Standard), "tls" (implizit, Port 465) oder "none" (nur lokale Relays)
     pub security: String,
+    /// Herkunft: "admin" (Verwaltung) oder "env" (Umgebungsvariablen).
+    pub source: &'static str,
 }
 
-pub fn smtp_config() -> Option<SmtpConfig> {
-    let var = |k: &str| std::env::var(k).ok().map(|v| v.trim().to_string()).filter(|v| !v.is_empty());
-    let host = var("SMTP_HOST")?;
-    let security = var("SMTP_SECURITY").unwrap_or_else(|| "starttls".into()).to_lowercase();
-    let default_port = match security.as_str() {
+/// Felder der SMTP-Einstellungen in der Verwaltung (Schlüssel in `settings`).
+pub const SMTP_KEYS: [&str; 6] = ["smtp.host", "smtp.port", "smtp.security", "smtp.user", "smtp.password", "smtp.from"];
+
+pub fn default_port(security: &str) -> u16 {
+    match security {
         "tls" => 465,
         "none" => 25,
         _ => 587,
-    };
+    }
+}
+
+fn build_smtp(var: impl Fn(&str) -> Option<String>, source: &'static str) -> Option<SmtpConfig> {
+    let host = var("host")?;
+    let security = var("security").unwrap_or_else(|| "starttls".into()).to_lowercase();
     Some(SmtpConfig {
-        port: var("SMTP_PORT").and_then(|p| p.parse().ok()).unwrap_or(default_port),
-        user: var("SMTP_USER"),
-        password: var("SMTP_PASSWORD"),
-        from: var("SMTP_FROM").unwrap_or_else(|| format!("support@{host}")),
+        port: var("port").and_then(|p| p.parse().ok()).unwrap_or_else(|| default_port(&security)),
+        user: var("user"),
+        password: var("password"),
+        from: var("from").unwrap_or_else(|| format!("support@{host}")),
         security,
         host,
+        source,
     })
+}
+
+/// SMTP-Zugang aus der Verwaltung, ersatzweise aus den Umgebungsvariablen `SMTP_*`.
+pub fn smtp_from(settings: &HashMap<String, String>) -> Option<SmtpConfig> {
+    let clean = |v: Option<&String>| v.map(|v| v.trim().to_string()).filter(|v| !v.is_empty());
+    build_smtp(|k| clean(settings.get(&format!("smtp.{k}"))), "admin").or_else(|| {
+        build_smtp(|k| clean(std::env::var(format!("SMTP_{}", k.to_uppercase())).ok().as_ref()), "env")
+    })
+}
+
+pub async fn smtp_config<'e, E>(ex: E) -> AppResult<Option<SmtpConfig>>
+where
+    E: sqlx::Executor<'e, Database = sqlx::Postgres>,
+{
+    Ok(smtp_from(&settings(ex).await?))
+}
+
+/// SMTP-Zugang speichern. Leeres Passwort = bisheriges behalten.
+pub async fn save_smtp(db: &PgPool, values: &HashMap<&str, String>) -> AppResult<()> {
+    let host = values.get("smtp.host").map(|v| v.trim()).unwrap_or_default();
+    if host.is_empty() || host.contains(char::is_whitespace) {
+        return Err(AppError::invalid("Bitte einen SMTP-Server angeben"));
+    }
+    if let Some(port) = values.get("smtp.port").map(|v| v.trim()).filter(|v| !v.is_empty()) {
+        if port.parse::<u16>().ok().filter(|p| *p > 0).is_none() {
+            return Err(AppError::invalid("Port muss eine Zahl zwischen 1 und 65535 sein"));
+        }
+    }
+    if !matches!(values.get("smtp.security").map(String::as_str).unwrap_or("starttls"), "starttls" | "tls" | "none") {
+        return Err(AppError::invalid("Unbekannte Verschlüsselung"));
+    }
+    if let Some(from) = values.get("smtp.from").map(|v| v.trim()).filter(|v| !v.is_empty()) {
+        if from.parse::<lettre::Address>().is_err() {
+            return Err(AppError::invalid("Absenderadresse ist keine gültige E-Mail-Adresse"));
+        }
+    }
+    let mut tx = db.begin().await?;
+    for key in SMTP_KEYS {
+        let value = values.get(key).map(|v| v.trim().to_string()).unwrap_or_default();
+        if key == "smtp.password" && value.is_empty() {
+            continue;
+        }
+        sqlx::query("INSERT INTO settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2")
+            .bind(key)
+            .bind(value)
+            .execute(&mut *tx)
+            .await?;
+    }
+    tx.commit().await?;
+    Ok(())
+}
+
+/// SMTP-Zugang aus der Verwaltung entfernen (danach gelten ggf. wieder die Umgebungsvariablen).
+pub async fn clear_smtp(db: &PgPool) -> AppResult<()> {
+    sqlx::query("DELETE FROM settings WHERE key = ANY($1)").bind(&SMTP_KEYS[..]).execute(db).await?;
+    Ok(())
 }
 
 fn transport(cfg: &SmtpConfig) -> anyhow::Result<AsyncSmtpTransport<Tokio1Executor>> {
@@ -201,14 +266,15 @@ pub async fn send_pending(db: &PgPool) -> AppResult<usize> {
     if pending.is_empty() {
         return Ok(0);
     }
-    let Some(cfg) = smtp_config() else {
+    let settings = settings(db).await?;
+    let Some(cfg) = smtp_from(&settings) else {
         sqlx::query("UPDATE email_outbox SET status = 'skipped', error = 'SMTP nicht konfiguriert' WHERE status = 'pending'")
             .execute(db)
             .await?;
         return Ok(0);
     };
     let mailer = transport(&cfg).map_err(AppError::Internal)?;
-    let from_name = settings(db).await?.get("email.from_name").cloned().unwrap_or_default();
+    let from_name = settings.get("email.from_name").cloned().unwrap_or_default();
     let mut sent = 0;
     for (id, to, subject, body, attempts) in pending {
         let result: Result<(), String> = match build_message(&from_name, &cfg.from, &to, &subject, &body) {

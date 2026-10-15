@@ -229,7 +229,7 @@ pub async fn import(db: &PgPool, raw: &[u8]) -> anyhow::Result<bool> {
     }
     let sender = msg.from().and_then(|a| a.first()).ok_or_else(|| anyhow!("Kein Absender"))?;
     let address = sender.address().unwrap_or_default().trim().to_lowercase();
-    let own = email::smtp_config().map(|c| c.from.to_lowercase());
+    let own = email::smtp_config(db).await.map_err(|e| anyhow!("{e:?}"))?.map(|c| c.from.to_lowercase());
     if own.as_deref() == Some(address.as_str()) {
         return Ok(false);
     }

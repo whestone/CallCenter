@@ -168,7 +168,7 @@ Gruppe, Bearbeiter, Organisation, Tag) × Filter; als Balken und Tabelle, CSV, f
 
 ### E-Mail (Admin → E-Mail)
 - Kunden erhalten öffentliche Antworten und Trigger-Benachrichtigungen per Mail; Betreff mit `[#123]`
-- Versand per SMTP (`SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM`, `SMTP_SECURITY`);
+- Versand per SMTP, einzurichten unter Verwaltung → E-Mail (ersatzweise `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM`, `SMTP_SECURITY` in der `.env`);
   ohne Konfiguration landen Mails im Postausgang mit Status „nicht gesendet“
 - Eingang: `POST /api/v2/inbound/email?secret=…` mit JSON `{from, from_name, subject, text}`
   (z. B. von Mailgun/Postmark weitergeleitet). Antworten mit `[#123]` vom Anfragenden werden dem Ticket

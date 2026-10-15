@@ -726,9 +726,23 @@ document.addEventListener("htmx:afterSettle", () => {
 
 // ---------------------------------------------------------------------------
 // Sortierbare Listen (ul.sortable > li.sort-item): Reihenfolge per Ziehen,
-// per Tastatur mit Alt+↑/↓ auf dem Element. Nur innerhalb derselben Liste.
+// per Tastatur mit Alt+↑/↓ auf dem Element. Listen mit gleichem data-sort-group
+// tauschen Elemente aus; das versteckte Feld name="order" erhält dann den Bereich
+// der Zielliste (data-zone) als Präfix, z. B. „col:sla“.
 // ---------------------------------------------------------------------------
 let dragItem = null;
+function sortTarget(list) {
+  if (!dragItem || !list) return false;
+  if (list === dragItem.parentElement) return true;
+  const group = list.dataset.sortGroup;
+  return !!group && group === dragItem.parentElement.dataset.sortGroup;
+}
+function syncZone(item) {
+  const zone = item.parentElement?.dataset.zone;
+  const input = item.querySelector('input[name="order"]');
+  if (!zone || !input) return;
+  input.value = `${zone}:${input.value.split(":").pop()}`;
+}
 document.addEventListener("dragstart", (event) => {
   const item = event.target.closest?.(".sortable > .sort-item");
   if (!item) return;
@@ -738,17 +752,27 @@ document.addEventListener("dragstart", (event) => {
   event.dataTransfer.setData("text/plain", "");
 });
 document.addEventListener("dragover", (event) => {
-  if (!dragItem) return;
   const list = event.target.closest?.(".sortable");
-  if (list !== dragItem.parentElement) return;
+  if (!sortTarget(list)) return;
   event.preventDefault();
   const over = event.target.closest(".sort-item");
-  if (!over || over === dragItem) return;
+  if (over === dragItem) return;
+  if (!over) {
+    // Leere Fläche der Liste: ans Ende.
+    if (dragItem.parentElement !== list) list.appendChild(dragItem);
+    syncZone(dragItem);
+    return;
+  }
   const box = over.getBoundingClientRect();
   const after = event.clientY > box.top + box.height / 2;
   list.insertBefore(dragItem, after ? over.nextSibling : over);
+  syncZone(dragItem);
+});
+document.addEventListener("drop", (event) => {
+  if (dragItem && event.target.closest?.(".sortable")) event.preventDefault();
 });
 document.addEventListener("dragend", () => {
+  if (dragItem) syncZone(dragItem);
   dragItem?.classList.remove("dragging");
   dragItem = null;
 });
@@ -757,8 +781,20 @@ document.addEventListener("keydown", (event) => {
   const item = event.target.closest?.(".sortable > .sort-item");
   if (!item) return;
   event.preventDefault();
-  const sibling = event.key === "ArrowUp" ? item.previousElementSibling : item.nextElementSibling;
-  if (!sibling) return;
-  item.parentElement.insertBefore(item, event.key === "ArrowUp" ? sibling : sibling.nextSibling);
+  const up = event.key === "ArrowUp";
+  const sibling = up ? item.previousElementSibling : item.nextElementSibling;
+  if (sibling) {
+    item.parentElement.insertBefore(item, up ? sibling : sibling.nextSibling);
+  } else {
+    // Am Rand: in die vorige/nächste Liste derselben Gruppe wechseln.
+    const group = item.parentElement.dataset.sortGroup;
+    if (!group) return;
+    const lists = [...document.querySelectorAll(`.sortable[data-sort-group="${group}"]`)];
+    const next = lists[lists.indexOf(item.parentElement) + (up ? -1 : 1)];
+    if (!next) return;
+    if (up) next.appendChild(item);
+    else next.insertBefore(item, next.firstElementChild);
+    syncZone(item);
+  }
   event.target.focus();
 });

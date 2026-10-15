@@ -24,7 +24,8 @@ pub const FILTERS: [(&str, &str); 6] = [
     ("channel", "Kanal"),
 ];
 
-/// Felder: (Schlüssel, Bezeichnung, standardmäßig sichtbar, Spalte statt Angabe unter dem Betreff).
+/// Felder: (Schlüssel, Bezeichnung, standardmäßig sichtbar, standardmäßig als Spalte statt unter dem Betreff).
+/// Jedes Feld lässt sich in beiden Bereichen anzeigen; der Nutzer kann es verschieben.
 pub const FIELDS: [(&str, &str, bool, bool); 10] = [
     ("requester", "Kunde & Firma", true, false),
     ("channel", "Kanal", true, false),
@@ -48,6 +49,9 @@ struct Stored {
     /// Reihenfolge aller Felder; `None` = Standard.
     #[serde(default)]
     order: Option<Vec<String>>,
+    /// Felder, die als Spalte statt unter dem Betreff stehen; `None` = Standard.
+    #[serde(default)]
+    columns: Option<Vec<String>>,
 }
 
 #[derive(Debug, Clone)]
@@ -56,6 +60,8 @@ pub struct ListPrefs {
     fields: HashSet<String>,
     /// Alle Feld-Schlüssel in der gewünschten Reihenfolge.
     order: Vec<&'static str>,
+    /// Felder, die als eigene Spalte erscheinen (die übrigen unter dem Betreff).
+    as_column: HashSet<&'static str>,
 }
 
 impl Default for ListPrefs {
@@ -64,6 +70,7 @@ impl Default for ListPrefs {
             hidden_filters: HashSet::new(),
             fields: FIELDS.iter().filter(|f| f.2).map(|f| f.0.to_string()).collect(),
             order: FIELDS.iter().map(|f| f.0).collect(),
+            as_column: FIELDS.iter().filter(|f| f.3).map(|f| f.0).collect(),
         }
     }
 }
@@ -90,7 +97,7 @@ impl ListPrefs {
     }
 
     fn ordered(&self, column: bool) -> impl Iterator<Item = &'static (&'static str, &'static str, bool, bool)> + '_ {
-        self.order.iter().filter_map(|k| field(k)).filter(move |f| f.3 == column)
+        self.order.iter().filter_map(|k| field(k)).filter(move |f| self.as_column.contains(f.0) == column)
     }
 
     /// Sichtbare Spalten in Anzeigereihenfolge.
@@ -139,6 +146,9 @@ pub async fn load(db: &PgPool, user_id: i64) -> AppResult<ListPrefs> {
         }
         prefs.order = keys;
     }
+    if let Some(columns) = s.columns {
+        prefs.as_column = columns.iter().filter_map(|k| field(k)).map(|f| f.0).collect();
+    }
     Ok(prefs)
 }
 
@@ -161,12 +171,21 @@ async fn save(
     let checked = |name: &str| -> HashSet<&str> { pairs.iter().filter(|(k, _)| k == name).map(|(_, v)| v.as_str()).collect() };
     let filters = checked("filter");
     let fields = checked("field");
-    // Reihenfolge = Reihenfolge der Felder im Formular (per Ziehen sortiert).
-    let order: Vec<&str> = pairs.iter().filter(|(k, v)| k == "order" && field(v).is_some()).map(|(_, v)| v.as_str()).collect();
+    // Reihenfolge = Reihenfolge der Felder im Formular (per Ziehen sortiert), jeweils
+    // mit Bereich: „col:sla“ = Spalte, „meta:tags“ = unter dem Betreff.
+    let placed: Vec<(&str, bool)> = pairs
+        .iter()
+        .filter(|(k, _)| k == "order")
+        .filter_map(|(_, v)| {
+            let (zone, key) = v.split_once(':').unwrap_or(("", v.as_str()));
+            field(key).map(|f| (f.0, zone == "col"))
+        })
+        .collect();
     let stored = json!({
         "hidden_filters": FILTERS.iter().map(|f| f.0).filter(|k| !filters.contains(k)).collect::<Vec<_>>(),
         "fields": FIELDS.iter().map(|f| f.0).filter(|k| fields.contains(k)).collect::<Vec<_>>(),
-        "order": order,
+        "order": placed.iter().map(|(k, _)| *k).collect::<Vec<_>>(),
+        "columns": placed.iter().filter(|(_, col)| *col).map(|(k, _)| *k).collect::<Vec<_>>(),
     });
     sqlx::query(
         "INSERT INTO user_prefs (user_id, ticket_list, updated_at) VALUES ($1, $2, now())

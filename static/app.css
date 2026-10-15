@@ -661,6 +661,9 @@ table.ticket-list tbody tr:has(input[name=ticket_id]:checked) td { background: v
 .prio-dot.p-low::before { background: var(--border); }
 .who { display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; }
 .avatar.xs { width: 24px; height: 24px; font-size: 10px; background: var(--tint-blue); color: var(--accent-dark); }
+.avatar.xxs { width: 18px; height: 18px; font-size: 8.5px; background: var(--tint-blue); color: var(--accent-dark); }
+.t-meta .who { gap: 5px; }
+.t-tags .chip-item { margin: 2px 4px 2px 0; }
 
 /* Filterleiste als Pillen; gesetzte Filter sind hervorgehoben */
 .filter-bar input[type=search], .filter-bar select { border-radius: 999px; padding: 6px 12px; font-size: 13px; }
@@ -811,3 +814,5 @@ label.switch input:focus-visible + .switch-track { box-shadow: var(--focus-ring)
 .drag-handle { cursor: grab; color: var(--muted); font-size: 16px; line-height: 1; padding: 4px 2px; user-select: none; }
 .sort-item.dragging { opacity: .5; background: var(--tint-blue); }
 .sort-item.dragging .drag-handle { cursor: grabbing; }
+.sortable[data-sort-group] { min-height: 40px; border-radius: var(--radius); }
+.sortable[data-sort-group]:not(:has(.sort-item)) { border: 1px dashed var(--border); background: var(--hover); }

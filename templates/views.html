@@ -23,12 +23,12 @@
               </section>
               <section>
                 <h4>Unter dem Betreff</h4>
-                <ul class="sortable" aria-label="Angaben unter dem Betreff, Reihenfolge per Ziehen">
-                  {% for c in cols.meta_choices() %}<li class="sort-item" draggable="true"><span class="drag-handle" aria-hidden="true">⠿</span><input type="hidden" name="order" value="{{ c.key }}"><label class="switch"><input type="checkbox" name="field" value="{{ c.key }}"{% if c.on %} checked{% endif %}><span class="switch-track" aria-hidden="true"></span>{{ c.label }}</label></li>{% endfor %}
+                <ul class="sortable" data-zone="meta" data-sort-group="fields" aria-label="Angaben unter dem Betreff – Reihenfolge und Bereich per Ziehen">
+                  {% for c in cols.meta_choices() %}<li class="sort-item" draggable="true"><span class="drag-handle" aria-hidden="true">⠿</span><input type="hidden" name="order" value="meta:{{ c.key }}"><label class="switch"><input type="checkbox" name="field" value="{{ c.key }}"{% if c.on %} checked{% endif %}><span class="switch-track" aria-hidden="true"></span>{{ c.label }}</label></li>{% endfor %}
                 </ul>
                 <h4>Spalten</h4>
-                <ul class="sortable" aria-label="Spalten, Reihenfolge per Ziehen">
-                  {% for c in cols.column_choices() %}<li class="sort-item" draggable="true"><span class="drag-handle" aria-hidden="true">⠿</span><input type="hidden" name="order" value="{{ c.key }}"><label class="switch"><input type="checkbox" name="field" value="{{ c.key }}"{% if c.on %} checked{% endif %}><span class="switch-track" aria-hidden="true"></span>{{ c.label }}</label></li>{% endfor %}
+                <ul class="sortable" data-zone="col" data-sort-group="fields" aria-label="Spalten – Reihenfolge und Bereich per Ziehen">
+                  {% for c in cols.column_choices() %}<li class="sort-item" draggable="true"><span class="drag-handle" aria-hidden="true">⠿</span><input type="hidden" name="order" value="col:{{ c.key }}"><label class="switch"><input type="checkbox" name="field" value="{{ c.key }}"{% if c.on %} checked{% endif %}><span class="switch-track" aria-hidden="true"></span>{{ c.label }}</label></li>{% endfor %}
                 </ul>
               </section>
             </div>

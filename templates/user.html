@@ -47,7 +47,6 @@
         </label>
         {% if is_end_user %}
         <label>Portal-Passwort setzen<input type="password" name="portal_password" minlength="8" placeholder="leer lassen = unverändert" autocomplete="new-password"></label>
-        <p class="muted small">Damit kann sich der Kunde unter <a href="/portal">/portal</a> anmelden.</p>
         {% endif %}
         {% if can_admin %}
         <input type="hidden" name="active_field" value="1">
@@ -59,14 +58,12 @@
     {% if is_end_user %}
     <form class="card merge-card" method="post" action="/users/{{ id }}/merge" hx-confirm="{{ name }} wirklich in den anderen Kunden überführen? Dieser Datensatz wird danach gelöscht.">
       <h3>Doppelt angelegt?</h3>
-      <p class="muted small">Tickets und Kontaktdaten von {{ name }} werden auf den Zielkunden übertragen, dieser Eintrag wird gelöscht.</p>
       <label>Zielkunde (ID, E-Mail oder Telefon)<input type="text" name="target" required></label>
       <button class="btn wide" type="submit">Zusammenführen</button>
     </form>
     {% if can_admin && active %}
     <div class="card">
       <h3>Datenschutz (DSGVO)</h3>
-      <p class="muted small">Auskunft: alle gespeicherten Daten als Datei. Löschen: Name, Kontaktdaten, Nachrichten und Anhänge des Kunden werden entfernt; die Tickets bleiben anonym für Statistiken erhalten.</p>
       <a class="btn wide" href="/users/{{ id }}/export.json" hx-boost="false">⬇ Datenauskunft herunterladen</a>
       <form method="post" action="/users/{{ id }}/anonymize" hx-confirm="Alle personenbezogenen Daten von {{ name }} unwiderruflich löschen?">
         <button class="btn danger wide" type="submit">Kundendaten löschen (anonymisieren)</button>

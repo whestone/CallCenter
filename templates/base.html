@@ -50,6 +50,7 @@
             {% for o in nav.availability_opts %}<option value="{{ o.value }}"{% if o.selected %} selected{% endif %}>{{ o.label }}</option>{% endfor %}
           </select>
         </form>
+        <a class="icon-btn help-link" href="/hilfe" title="Hilfe" aria-label="Hilfe">?</a>
         <button type="button" class="icon-btn" data-theme-toggle aria-label="Design umschalten" title="Design umschalten">◐</button>
         <a class="bell" href="/notifications" title="Benachrichtigungen" hx-get="/notifications/badge" hx-trigger="load, every 30s" hx-swap="innerHTML"><span aria-hidden="true">🔔</span></a>
         <a class="avatar" href="/me" title="{{ nav.name }} – Mein Profil">{{ nav.initials }}</a>

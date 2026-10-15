@@ -30,7 +30,6 @@
           </label>
         </div>
         <div id="requester-results"></div>
-        <p class="muted small">Bekannte Kunden werden beim Tippen vorgeschlagen. Unbekannte werden beim Speichern neu angelegt.</p>
       </div>
     </fieldset>
 
@@ -38,7 +37,7 @@
       <legend>Anliegen</legend>
       {% if !followup.is_empty() %}<p class="small">↪ Folgeticket zu <a href="/tickets/{{ followup }}">#{{ followup }}</a></p>{% endif %}
       <label>Betreff<input type="text" name="subject" value="{{ subject_prefill }}" required></label>
-      <label>CC <span class="muted small">(optional, E-Mail-Adressen mit Komma getrennt)</span><input type="text" name="cc" autocomplete="off"></label>
+      <label>CC<input type="text" name="cc" autocomplete="off" placeholder="weitere E-Mail-Adressen (optional)"></label>
       <label>{% if is_call %}Gesprächsnotiz{% else %}Beschreibung{% endif %}
         <textarea name="description" rows="7" required></textarea>
       </label>
@@ -79,9 +78,9 @@
     </div>
   </form>
   <aside id="customer-tickets" class="new-ticket-side" aria-live="polite"
-         data-empty="Sobald der {% if is_call %}Anrufer{% else %}Kunde{% endif %} feststeht, erscheinen hier seine offenen Tickets – so entsteht kein doppeltes Ticket."{% if !requester_id.is_empty() %}
+         data-empty="Noch kein {% if is_call %}Anrufer{% else %}Kunde{% endif %} gewählt."{% if !requester_id.is_empty() %}
          hx-get="/requesters/{{ requester_id }}/tickets" hx-trigger="load" hx-swap="innerHTML"{% endif %}>
-    <div class="card muted small customer-tickets-empty">Sobald der {% if is_call %}Anrufer{% else %}Kunde{% endif %} feststeht, erscheinen hier seine offenen Tickets – so entsteht kein doppeltes Ticket.</div>
+    <div class="card muted small customer-tickets-empty">Noch kein {% if is_call %}Anrufer{% else %}Kunde{% endif %} gewählt.</div>
   </aside>
   </div>
 </div>

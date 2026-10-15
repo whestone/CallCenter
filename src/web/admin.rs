@@ -282,7 +282,6 @@ struct SkillsPage {
     nav: Nav,
     tab: &'static str,
     skills: Vec<SkillRow>,
-    timeout: i64,
     error: String,
 }
 
@@ -310,7 +309,6 @@ async fn skills_page(db: &PgPool, me: &User, error: String) -> AppResult<SkillsP
                 open_tickets,
             })
             .collect(),
-        timeout: crate::routing::skill_timeout_minutes(),
         error,
     })
 }
@@ -697,7 +695,6 @@ struct RuleKind {
     b_col: Option<&'static str>,
     b_label: &'static str,
     b_default: &'static str,
-    help: &'static str,
 }
 
 const KINDS: [RuleKind; 5] = [
@@ -712,7 +709,6 @@ const KINDS: [RuleKind; 5] = [
         b_col: Some("execution"),
         b_label: "Sortierung",
         b_default: "{ \"sort_by\": \"updated_at\", \"sort_order\": \"desc\" }",
-        help: "Ansichten filtern Tickets mit Bedingungen. \"all\" = alle müssen zutreffen, \"any\" = mindestens eine. Wert \"current_user\" steht für den angemeldeten Agenten. Sortierfelder: created_at, updated_at, priority, status, id, due_at.",
     },
     RuleKind {
         key: "macros",
@@ -725,7 +721,6 @@ const KINDS: [RuleKind; 5] = [
         b_col: None,
         b_label: "",
         b_default: "",
-        help: "Makros wenden Aktionen per Klick auf ein Ticket an. Platzhalter in Kommentaren: {{ticket.id}}, {{ticket.subject}}, {{ticket.status}}, {{ticket.priority}}, {{current_user.name}}.",
     },
     RuleKind {
         key: "triggers",
@@ -738,7 +733,6 @@ const KINDS: [RuleKind; 5] = [
         b_col: Some("actions"),
         b_label: "Aktionen",
         b_default: "[\n  { \"field\": \"add_tags\", \"value\": \"neu\" }\n]",
-        help: "Trigger laufen bei jedem Anlegen (update_type = Create) oder Ändern (Change) eines Tickets, in Reihenfolge der Position. Zusätzliche Operatoren: changed, changed_to, changed_from, not_changed.",
     },
     RuleKind {
         key: "automations",
@@ -751,7 +745,6 @@ const KINDS: [RuleKind; 5] = [
         b_col: Some("actions"),
         b_label: "Aktionen",
         b_default: "[\n  { \"field\": \"add_tags\", \"value\": \"nachfassen\" }\n]",
-        help: "Automationen laufen jede Minute zeitgesteuert über alle nicht geschlossenen Tickets (z. B. „Wartend seit 3 Tagen → Erinnerung“). Je Ticketstand greift eine Automation höchstens einmal; ändert sich das Ticket danach, kann sie erneut greifen. Zeitbedingungen: Stunden seit Erstellung / Aktualisierung / Lösung.",
     },    RuleKind {
         key: "sla",
         table: "sla_policies",
@@ -763,7 +756,6 @@ const KINDS: [RuleKind; 5] = [
         b_col: Some("metrics"),
         b_label: "Zielzeiten",
         b_default: "[\n  { \"priority\": \"urgent\", \"metric\": \"first_reply_time\", \"target\": 30 },\n  { \"priority\": \"urgent\", \"metric\": \"full_resolution_time\", \"target\": 240 }\n]",
-        help: "Die erste passende Richtlinie (nach Position) gilt für ein Ticket. Metriken: first_reply_time, full_resolution_time. Tickets ohne Priorität zählen als normal.",
     },
 ];
 
@@ -786,7 +778,6 @@ struct RulesPage {
     tab: &'static str,
     title: &'static str,
     singular: &'static str,
-    help: &'static str,
     rules: Vec<RuleRow>,
     personal: bool,
     base: String,
@@ -807,7 +798,6 @@ async fn rules_index(State(st): State<AppState>, WebAdmin(me): WebAdmin, Path(ke
         tab: k.key,
         title: k.title,
         singular: k.singular,
-        help: k.help,
         rules: rows
             .into_iter()
             .map(|(id, title, description, position, active)| RuleRow { id, title, description, position, active })
@@ -823,7 +813,6 @@ struct RuleEditPage {
     nav: Nav,
     tab: &'static str,
     singular: &'static str,
-    help: &'static str,
     action: String,
     is_new: bool,
     error: String,
@@ -998,7 +987,6 @@ fn edit_page(me: &User, k: &'static RuleKind, id: Option<i64>, form: RuleForm, e
         nav: Nav::new(me, "admin"),
         tab: k.key,
         singular: k.singular,
-        help: k.help,
         action: match id {
             Some(id) => format!("/admin/rules/{}/{id}", k.key),
             None => format!("/admin/rules/{}", k.key),
@@ -1192,13 +1180,11 @@ async fn update_rule(
 // Persönliche Makros
 // ---------------------------------------------------------------------------
 
-const MY_MACROS_HELP: &str = "Persönliche Makros sind nur für dich sichtbar und erscheinen im Ticket unter „Makro anwenden“ nach den gemeinsamen. Platzhalter: {{ticket.id}}, {{ticket.subject}}, {{current_user.name}} …";
 
 fn personal_page(me: &User, id: Option<i64>, form: RuleForm, error: String, meta_json: String) -> AppResult<RuleEditPage> {
     let mut p = edit_page(me, kind("macros")?, id, form, error, meta_json);
     p.personal = true;
     p.nav = Nav::new(me, "me");
-    p.help = MY_MACROS_HELP;
     p.action = match id {
         Some(id) => format!("/me/macros/{id}"),
         None => "/me/macros".into(),
@@ -1218,7 +1204,6 @@ async fn my_macros(State(st): State<AppState>, WebAgent(me): WebAgent) -> WebRes
         tab: "macros",
         title: "Meine Makros",
         singular: "Makro",
-        help: MY_MACROS_HELP,
         rules: rows
             .into_iter()
             .map(|(id, title, description, position, active)| RuleRow { id, title, description, position, active })

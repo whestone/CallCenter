@@ -14,7 +14,6 @@
 
   <section class="card">
     <h3>API-Tokens</h3>
-    <p class="muted small">Für Integrationen (z. B. Telefonanlage, Skripte). Ein Token handelt mit deinen Rechten. Verwendung:
       <code>Authorization: Bearer &lt;token&gt;</code> oder HTTP Basic mit <code>{{ email }}/token</code> als Benutzer und dem Token als Passwort.</p>
     {% if !new_token.is_empty() %}
     <div class="alert info token-once">
@@ -49,7 +48,6 @@
   <section class="card">
     <h3>Zwei-Faktor-Anmeldung {% if twofa_enabled %}<span class="pill pill-ok">aktiv</span>{% else %}<span class="pill">aus</span>{% endif %}</h3>
     {% if twofa_enabled %}
-    <p class="muted small">Bei der Anmeldung wird zusätzlich ein Code aus Ihrer Authenticator-App abgefragt. Die API akzeptiert dann nur noch API-Tokens, keine Passwörter.</p>
     <form method="post" action="/me/2fa/disable" class="inline-form">
       <input type="password" name="password" placeholder="Passwort zur Bestätigung" required autocomplete="current-password" aria-label="Passwort">
       <button class="btn danger" type="submit">Ausschalten</button>
@@ -71,7 +69,6 @@
       </div>
     </div>
     {% else %}
-    <p class="muted small">Schützt Ihr Konto zusätzlich mit einem Code aus einer Authenticator-App auf dem Smartphone.</p>
     <form method="post" action="/me/2fa/setup"><button class="btn primary" type="submit">Einrichten</button></form>
     {% endif %}
   </section>

@@ -12,4 +12,5 @@
   <a href="/admin/telephony" class="{% if tab == "telephony" %}active{% endif %}">Telefonie</a>
   <a href="/admin/webhooks" class="{% if tab == "webhooks" %}active{% endif %}">Webhooks</a>
   <a href="/admin/rules/sla" class="{% if tab == "sla" %}active{% endif %}">SLA</a>
+  <a class="tab-help help-q" title="Hilfe zu dieser Seite" aria-label="Hilfe zu dieser Seite" href="/hilfe#{% if tab == "groups" %}hilfe-gruppen{% else if tab == "skills" %}hilfe-faehigkeiten{% else if tab == "fields" %}hilfe-felder{% else if tab == "hours" %}hilfe-zeiten{% else if tab == "email" %}hilfe-email{% else if tab == "telephony" %}hilfe-telefonie{% else if tab == "webhooks" %}hilfe-webhooks{% else if tab == "agents" %}hilfe-gruppen{% else %}hilfe-regeln{% endif %}">?</a>
 </nav>

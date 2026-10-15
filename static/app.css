@@ -678,3 +678,18 @@ mark { background: #ffe58a; color: inherit; padding: 0 1px; border-radius: 2px; 
 .kb-dialog-head h3 { margin: 4px 0 8px; }
 .kb-dialog-body { max-height: 60vh; overflow-y: auto; padding: 12px 14px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--bg); line-height: 1.55; }
 .kb-dialog .confirm-actions { justify-content: flex-end; }
+
+/* Hilfe: dezente „?“-Links und Hilfeseite */
+.help-q { display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; border: 1px solid var(--border); color: var(--muted); font-size: 11px; font-weight: 700; text-decoration: none; vertical-align: middle; text-transform: none; letter-spacing: 0; }
+.help-q:hover { color: var(--accent); border-color: var(--accent); text-decoration: none; }
+.tabs .tab-help { margin-left: auto; align-self: center; padding: 0; border: 1px solid var(--border); }
+.help-link { display: inline-grid; place-items: center; font-weight: 700; text-decoration: none; }
+.help-link:hover { text-decoration: none; }
+.help-page { max-width: 900px; }
+.help-toc { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 12px 0 16px; }
+.help-section { margin-bottom: 14px; scroll-margin-top: 12px; line-height: 1.55; }
+.help-section h2 { font-size: 16px; text-transform: none; letter-spacing: 0; color: var(--text); margin: 0 0 8px; }
+.help-section h3 { font-size: 14px; margin: 14px 0 4px; scroll-margin-top: 12px; }
+.help-section ul { margin: 0; padding-left: 20px; }
+.help-section li { margin-bottom: 4px; }
+.help-section :target, .help-section:target { outline: 2px solid var(--tint-blue-border); outline-offset: 4px; border-radius: 4px; }

@@ -46,6 +46,7 @@ pub fn router() -> Router<AppState> {
         .route("/login/2fa", post(login_2fa))
         .route("/logout", post(logout))
         .route("/me/availability", post(set_availability))
+        .route("/hilfe", get(help_page))
         .merge(lists::router())
         .merge(tickets::router())
         .merge(people::router())
@@ -428,4 +429,16 @@ async fn set_availability(
         .and_then(|r| r.split_once("://").and_then(|(_, rest)| rest.find('/').map(|i| rest[i..].to_string())))
         .unwrap_or_else(|| "/views".into());
     Ok(see_other(&back))
+}
+
+#[derive(Template)]
+#[template(path = "help.html")]
+struct HelpPage {
+    nav: Nav,
+    base_url: String,
+}
+
+/// Hilfe für Agenten: Erklärungen gehören hierher statt in die Arbeitsoberfläche.
+async fn help_page(crate::auth::WebAgent(me): crate::auth::WebAgent) -> WebResult<Html<String>> {
+    page(HelpPage { nav: Nav::new(&me, "help"), base_url: crate::email::public_url() })
 }

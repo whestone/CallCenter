@@ -4,7 +4,6 @@
 <div class="page">
   <h1>Verwaltung</h1>
   {% include "admin/tabs.html" %}
-  <p class="muted small">Webhooks senden bei Ticket-Ereignissen eine JSON-Nachricht (<code>POST</code>) an andere Systeme, z. B. CRM, Slack-Bot oder Telefonanlage. Jede Nachricht ist mit HMAC-SHA256 signiert (Header <code>X-CallCenter-Signature: sha256=…</code>, Schlüssel = Secret). Fehlgeschlagene Zustellungen werden bis zu 5-mal mit wachsendem Abstand wiederholt.</p>
   <div class="two-col">
     <section>
       {% if hooks.is_empty() %}<div class="empty">Noch keine Webhooks.</div>{% endif %}

@@ -137,7 +137,6 @@
           <button type="button" data-fmt="ol" title="Nummerierte Liste">1. Liste</button>
           <button type="button" data-fmt="link" title="Link einfügen">🔗 Link</button>
           <button type="button" data-fmt="code" title="Code">&lt;/&gt;</button>
-          <span class="muted small format-hint">@Name erwähnt Kollegen · Strg+Enter sendet</span>
         </div>
         <div class="mention-wrap">
           <textarea name="comment" id="comment" rows="5" placeholder="Antwort schreiben …" aria-label="Antwort" data-mentions data-rte>{{ draft }}</textarea>
@@ -206,7 +205,7 @@
       <a class="btn wide" href="/tickets/new?channel=phone&requester_id={{ requester_id }}">📞 Neues Anruf-Ticket</a>
     </div>
     <div class="card">
-      <h4>Verknüpfte Tickets{% if !links.is_empty() %} ({{ links.len() }}){% endif %}</h4>
+      <h4>Verknüpfte Tickets{% if !links.is_empty() %} ({{ links.len() }}){% endif %} <a class="help-q" href="/hilfe#verknuepfen" title="Hilfe" aria-label="Hilfe">?</a></h4>
       {% if !links.is_empty() %}
       <ul class="mini-list link-list">
         {% for l in links %}
@@ -217,14 +216,12 @@
         {% endfor %}
       </ul>
       {% endif %}
-      {% if incident_count > 0 %}<p class="muted small">Wird dieses Problem gelöst, werden alle offenen Vorfälle mitgelöst – die öffentliche Antwort geht an alle Betroffenen.</p>{% endif %}
       {% if !closed %}
       <div class="link-add">
         <input type="text" name="target" form="link-form" placeholder="Ticket-Nr., z. B. 12" aria-label="Ticket-Nummer zum Verknüpfen" inputmode="numeric" required>
         <select name="kind" form="link-form" aria-label="Art der Verknüpfung">{% for o in link_kinds %}<option value="{{ o.value }}"{% if o.selected %} selected{% endif %}>{{ o.label }}</option>{% endfor %}</select>
         <button class="btn" type="submit" form="link-form">Verknüpfen</button>
       </div>
-      <p class="muted small">„verwandt“ = einfach verbunden. „Vorfall von …“: das andere Ticket ist die Ursache (wird zum Problem) – löst man es, werden alle Vorfälle mitgelöst.</p>
       {% endif %}
     </div>
     {% if !time_total.is_empty() %}
@@ -258,8 +255,7 @@
     {% endif %}
     {% if !closed %}
     <div class="card">
-      <h4>Zusammenführen</h4>
-      <p class="muted small">Doppelte Anfrage? Dieses Ticket wird geschlossen, sein Verlauf als interne Notiz ins Ziel übernommen.</p>
+      <h4>Zusammenführen <a class="help-q" href="/hilfe#verknuepfen" title="Hilfe" aria-label="Hilfe">?</a></h4>
       <div class="inline-merge">
         <input type="text" name="target" form="merge-form" placeholder="Ziel-Ticket, z. B. 12" aria-label="Zielticket" inputmode="numeric">
         <button class="btn" type="submit" form="merge-form">Zusammenführen</button>

@@ -23,7 +23,6 @@
       <div class="tile-hint">{{ imap }}{% if !imap_status.is_empty() %}<br>{{ imap_status }}{% endif %}</div>
     </div>
   </div>
-  <p class="muted small">Konfiguration über <code>.env</code>: <code>SMTP_HOST</code>, <code>SMTP_PORT</code>, <code>SMTP_USER</code>, <code>SMTP_PASSWORD</code>, <code>SMTP_FROM</code>, <code>SMTP_SECURITY</code> (starttls / tls / none), <code>PUBLIC_URL</code>, <code>INBOUND_EMAIL_SECRET</code>, für den Postfach-Abruf <code>IMAP_HOST</code>, <code>IMAP_PORT</code>, <code>IMAP_USER</code>, <code>IMAP_PASSWORD</code>, <code>IMAP_FOLDER</code>, <code>IMAP_POLL_SECONDS</code>.</p>
 
   <div class="two-col">
     <section>
@@ -52,8 +51,7 @@
     </section>
 
     <form class="card" method="post" action="/admin/email">
-      <h3>Vorlagen</h3>
-      <p class="muted small">Platzhalter: <code>{{ "{{" }}ticket.id}}</code>, <code>{{ "{{" }}ticket.subject}}</code>, <code>{{ "{{" }}requester.name}}</code>, <code>{{ "{{" }}comment}}</code>, <code>{{ "{{" }}portal_link}}</code>, <code>{{ "{{" }}signature}}</code>. Die Ticketnummer im Betreff ordnet Antworten der Kunden zu.</p>
+      <h3>Vorlagen <a class="help-q" href="/hilfe#hilfe-email" title="Platzhalter in der Hilfe" aria-label="Platzhalter in der Hilfe">?</a></h3>
       {% for t in templates %}
       <label>{{ t.label }}
         {% if t.multiline %}<textarea name="{{ t.key }}" rows="5">{{ t.value }}</textarea>{% else %}<input type="text" name="{{ t.key }}" value="{{ t.value }}">{% endif %}

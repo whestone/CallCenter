@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+{% block title %}Hilfe{% endblock %}
+{% block content %}
+<div class="page help-page">
+  <h1>Hilfe</h1>
+  <nav class="help-toc" aria-label="Inhalt">
+    <a href="#tickets">Tickets bearbeiten</a>
+    <a href="#erfassen">Ticket / Anruf erfassen</a>
+    <a href="#verknuepfen">Verknüpfen &amp; Zusammenführen</a>
+    <a href="#suche">Suche</a>
+    <a href="#tastatur">Tastenkürzel</a>
+    <a href="#benachrichtigungen">Benachrichtigungen</a>
+    <a href="#kunden">Kunden &amp; Firmen</a>
+    <a href="#chat">Live-Chat</a>
+    <a href="#wissen">Wissensdatenbank</a>
+    <a href="#profil">Profil &amp; Sicherheit</a>
+    {% if nav.is_admin %}<a href="#verwaltung">Verwaltung</a>{% endif %}
+  </nav>
+
+  <section class="card help-section" id="tickets">
+    <h2>Tickets bearbeiten</h2>
+    <ul>
+      <li><strong>Antworten:</strong> „Öffentliche Antwort“ geht an den Kunden (und Personen in CC), „Interne Notiz“ sehen nur Kollegen. Formatierung über die Leiste oder Strg+B / Strg+I; Strg+Enter sendet.</li>
+      <li><strong>Erwähnen:</strong> <code>@Name</code> tippen und Kollegen aus der Liste wählen – er wird benachrichtigt (auch per E-Mail).</li>
+      <li><strong>Absenden mit Status:</strong> Der Knopf sendet mit dem angezeigten Status; über ▾ wählt man einen anderen (z. B. „Wartend“, „Gelöst“). Geänderte Felder sind markiert und werden erst beim Absenden gespeichert.</li>
+      <li><strong>Gleichzeitiges Arbeiten:</strong> Oben im Ticket steht, wer es gerade geöffnet hat oder schreibt. Hat ein Kollege inzwischen geantwortet, wird die eigene Antwort nicht verschickt, sondern mit Hinweis wieder angezeigt.</li>
+      <li><strong>Makros</strong> wenden vorbereitete Antworten und Feldänderungen an; eigene Makros unter Profil → Meine Makros.</li>
+      <li><strong>Zeiterfassung:</strong> Die Uhr neben „Absenden“ läuft mit, solange das Ticket sichtbar ist. Der Wert kann überschrieben oder geleert werden und wird beim Absenden gebucht.</li>
+      <li><strong>Hilfe-Artikel:</strong> Passende Artikel stehen rechts. Klick auf den Titel zeigt den Artikel, „einfügen“ übernimmt seinen Text in die Antwort.</li>
+      <li><strong>Telefonnummer</strong> anklicken, um den Kunden anzurufen.</li>
+    </ul>
+  </section>
+
+  <section class="card help-section" id="erfassen">
+    <h2>Ticket oder Anruf erfassen</h2>
+    <ul>
+      <li>Telefon, E-Mail oder Name eintippen – bekannte Kunden werden vorgeschlagen. Unbekannte werden beim Speichern neu angelegt.</li>
+      <li>Sobald der Kunde feststeht, stehen rechts seine offenen und kürzlich gelösten Tickets. Gehört das Anliegen dazu, besser dort ergänzen als ein neues Ticket anlegen.</li>
+      <li><strong>CC:</strong> weitere E-Mail-Adressen, mit Komma getrennt; sie erhalten öffentliche Antworten ebenfalls.</li>
+    </ul>
+  </section>
+
+  <section class="card help-section" id="verknuepfen">
+    <h2>Verknüpfen &amp; Zusammenführen</h2>
+    <ul>
+      <li><strong>Verknüpfen</strong> (Ticket rechts): Ticketnummer eingeben und Art wählen.
+        <ul>
+          <li><em>verwandt</em> – die Tickets sind einfach miteinander verbunden.</li>
+          <li><em>ist Vorfall von …</em> – das andere Ticket ist die Ursache und wird zum „Problem“. Wird das Problem gelöst, werden alle offenen Vorfälle mitgelöst und deren Kunden erhalten die Lösungsantwort.</li>
+          <li><em>hat Vorfall …</em> – dasselbe in umgekehrter Richtung.</li>
+        </ul>
+        Mit ✕ wird eine Verknüpfung wieder aufgehoben.</li>
+      <li><strong>Zusammenführen</strong> bei doppelten Anfragen: Das aktuelle Ticket wird geschlossen, sein Verlauf als interne Notiz ins Ziel übernommen.</li>
+      <li><strong>Folgeticket:</strong> Zu geschlossenen Tickets legt man ein Folgeticket an; antwortet ein Kunde per E-Mail auf ein geschlossenes Ticket, entsteht es automatisch.</li>
+    </ul>
+  </section>
+
+  <section class="card help-section" id="suche">
+    <h2>Suche</h2>
+    <ul>
+      <li>Beim Tippen im Suchfeld erscheinen Vorschläge (Tickets, Kunden, Firmen, Artikel); mit ↑/↓ auswählen. <code>#12</code> + Enter öffnet Ticket 12.</li>
+      <li><code>drucker toner</code> – alle Wörter müssen vorkommen · <code>"kein internet"</code> – genaue Phrase · <code>-status:closed</code> / <code>-drucker</code> – ausschließen</li>
+      <li><code>status:</code> new, open, pending, hold, solved, closed, unsolved · <code>priority:</code> · <code>type:</code> · <code>channel:</code> · <code>tag:</code></li>
+      <li><code>assignee:me</code> / <code>none</code> / Name · <code>requester:"Max Mustermann"</code> · <code>group:</code> · <code>organization:</code></li>
+      <li><code>created&gt;2026-10-01</code> · <code>updated&lt;7d</code> · <code>solved:heute</code> – Operatoren <code>: &gt; &lt; &gt;= &lt;=</code>, Werte JJJJ-MM-TT, TT.MM.JJJJ, <code>7d</code>, <code>heute</code>, <code>gestern</code></li>
+    </ul>
+  </section>
+
+  <section class="card help-section" id="tastatur">
+    <h2>Tastenkürzel</h2>
+    <dl class="kv">
+      <dt><kbd>?</kbd></dt><dd>Übersicht der Tastenkürzel</dd>
+      <dt><kbd>g</kbd> dann <kbd>t</kbd> / <kbd>k</kbd> / <kbd>w</kbd> / <kbd>b</kbd></dt><dd>Tickets / Kunden / Wissen / Benachrichtigungen</dd>
+      <dt><kbd>n</kbd> · <kbd>a</kbd> · <kbd>/</kbd></dt><dd>Neues Ticket · Anruf erfassen · Suche</dd>
+      <dt><kbd>j</kbd> / <kbd>k</kbd> · <kbd>o</kbd> · <kbd>x</kbd></dt><dd>In Listen: nächstes/vorheriges Ticket · öffnen · auswählen</dd>
+      <dt><kbd>r</kbd> · <kbd>i</kbd></dt><dd>Im Ticket: Antwort · interne Notiz schreiben</dd>
+      <dt><kbd>Strg</kbd>+<kbd>Enter</kbd></dt><dd>Absenden</dd>
+    </dl>
+  </section>
+
+  <section class="card help-section" id="benachrichtigungen">
+    <h2>Benachrichtigungen</h2>
+    <p>Die Glocke oben zeigt neue Meldungen: wenn dich jemand mit @Name erwähnt, dir ein Ticket zugewiesen wird, ein Kunde auf dein Ticket antwortet oder ein SLA-Ziel bald abläuft bzw. verletzt ist. Erwähnungen und SLA-Meldungen kommen zusätzlich per E-Mail. Öffnest du das Ticket, gelten seine Meldungen als gelesen.</p>
+  </section>
+
+  <section class="card help-section" id="kunden">
+    <h2>Kunden &amp; Firmen</h2>
+    <ul>
+      <li><strong>Portalzugang:</strong> Mit einem Passwort kann sich der Kunde im Kundenportal (<code>/portal</code>) anmelden und seine Anfragen sehen.</li>
+      <li><strong>Zusammenführen:</strong> Tickets und Kontaktdaten eines doppelten Kunden werden auf den Zielkunden übertragen, der doppelte Eintrag wird gelöscht.</li>
+      <li><strong>Datenschutz:</strong> „Auskunft“ lädt alle gespeicherten Daten des Kunden als Datei herunter. „Löschen“ anonymisiert Name, Kontaktdaten, Nachrichten und Anhänge unwiderruflich; die Tickets bleiben anonym für Statistiken erhalten.</li>
+      <li><strong>Firmen:</strong> Kunden mit den eingetragenen E-Mail-Domains werden der Firma automatisch zugeordnet.</li>
+    </ul>
+  </section>
+
+  <section class="card help-section" id="chat">
+    <h2>Live-Chat</h2>
+    <ul>
+      <li>Auf der eigenen Webseite vor <code>&lt;/body&gt;</code> einbinden: <code>&lt;script src="{{ base_url }}/static/chat-widget.js" async&gt;&lt;/script&gt;</code> – Demo: <a href="/chat/demo" target="_blank" rel="noopener" hx-boost="false">/chat/demo</a>.</li>
+      <li>Besucher geben Name, E-Mail und Frage ein; daraus wird ein Ticket mit Kanal „Chat“. Wartende Chats zählt die Seitenleiste; „Annehmen“ weist den Chat dir zu.</li>
+      <li>Antworten im Ticket sieht der Besucher sofort. Verlässt er den Chat oder wird er beendet, gehen weitere Antworten per E-Mail.</li>
+      <li>Live gechattet wird nur, wenn mindestens ein Agent „Online“ ist – sonst wird die Nachricht zur normalen Anfrage.</li>
+    </ul>
+  </section>
+
+  <section class="card help-section" id="wissen">
+    <h2>Wissensdatenbank</h2>
+    <p>Veröffentlichte Artikel stehen im Hilfe-Center des Kundenportals (<a href="/portal/help" target="_blank" rel="noopener">/portal/help</a>) und werden Kunden beim Anlegen einer Anfrage vorgeschlagen. Entwürfe sehen nur Agenten. Absätze und Aufzählungen bleiben wie eingegeben erhalten.</p>
+  </section>
+
+  <section class="card help-section" id="profil">
+    <h2>Profil &amp; Sicherheit</h2>
+    <ul>
+      <li><strong>API-Tokens</strong> für Integrationen (Telefonanlage, Skripte) handeln mit deinen Rechten. Verwendung: <code>Authorization: Bearer &lt;token&gt;</code> oder HTTP Basic mit <code>E-Mail/token</code> als Benutzer und dem Token als Passwort. Ein Token wird nur einmal angezeigt.</li>
+      <li><strong>Zwei-Faktor-Anmeldung:</strong> Bei der Anmeldung wird zusätzlich ein Code aus einer Authenticator-App abgefragt. Ist sie aktiv, akzeptiert die API nur noch Tokens, keine Passwörter.</li>
+      <li><strong>Design:</strong> ◐ oben rechts wechselt zwischen „wie System“, dunkel und hell.</li>
+    </ul>
+  </section>
+
+  {% if nav.is_admin %}
+  <section class="card help-section" id="verwaltung">
+    <h2>Verwaltung</h2>
+    <h3 id="hilfe-gruppen">Gruppen &amp; automatische Zuweisung</h3>
+    <p>Die automatische Zuweisung verteilt neue, nicht zugewiesene Tickets einer Gruppe an Mitglieder mit Status „Online“, deren offene Tickets unter ihrer Kapazität liegen – reihum oder an den am wenigsten Ausgelasteten. Ist gerade niemand frei, bleibt das Ticket in der Warteschlange und wird nachverteilt.</p>
+    <h3 id="hilfe-faehigkeiten">Fähigkeiten</h3>
+    <p>Trägt ein Ticket einen der Tags einer Fähigkeit (z. B. <code>englisch</code>), bekommen es zuerst nur Agenten mit dieser Fähigkeit (Team → Agent). Ist nach <code>SKILL_TIMEOUT_MINUTES</code> (Standard 30) niemand Passendes frei, wird normal verteilt. Tags setzt man von Hand, per Makro oder per Trigger.</p>
+    <h3 id="hilfe-felder">Ticketfelder</h3>
+    <p>Schlüssel und Typ sind später nicht änderbar. Eigene Felder stehen in Ansichten, Triggern und der API als <code>custom_fields.&lt;schlüssel&gt;</code> zur Verfügung; Pflichtfelder müssen vor dem Lösen ausgefüllt sein.</p>
+    <h3 id="hilfe-regeln">Ansichten, Makros, Trigger, Automationen, SLA</h3>
+    <ul>
+      <li><strong>Ansichten</strong> filtern Tickets mit Bedingungen („alle“ müssen, „mindestens eine“ muss zutreffen).</li>
+      <li><strong>Makros</strong> wenden Aktionen per Klick an. Platzhalter: <code>{{ "{{" }}ticket.id}}</code>, <code>{{ "{{" }}ticket.subject}}</code>, <code>{{ "{{" }}ticket.status}}</code>, <code>{{ "{{" }}current_user.name}}</code>.</li>
+      <li><strong>Trigger</strong> laufen bei jedem Anlegen oder Ändern eines Tickets in Reihenfolge der Position.</li>
+      <li><strong>Automationen</strong> laufen jede Minute zeitgesteuert (z. B. „wartend seit 3 Tagen → Erinnerung“), je Ticketstand höchstens einmal.</li>
+      <li><strong>SLA-Richtlinien:</strong> Die erste passende Richtlinie gilt; Zielzeiten optional in Geschäftszeiten. Vor Ablauf (<code>SLA_WARN_MINUTES</code>, Standard 30) und bei Verletzung wird benachrichtigt.</li>
+    </ul>
+    <h3 id="hilfe-zeiten">Geschäftszeiten</h3>
+    <p>Gilt für SLA-Zielzeiten, die in Geschäftszeiten gerechnet werden: Außerhalb der Öffnungszeiten und an Feiertagen läuft die Uhr nicht.</p>
+    <h3 id="hilfe-email">E-Mail</h3>
+    <p>Versand per SMTP, Eingang per IMAP-Abruf oder Webhook – Einstellungen in der <code>.env</code> (<code>SMTP_*</code>, <code>IMAP_*</code>, <code>INBOUND_EMAIL_SECRET</code>, <code>PUBLIC_URL</code>). In Vorlagen: <code>{{ "{{" }}ticket.id}}</code>, <code>{{ "{{" }}ticket.subject}}</code>, <code>{{ "{{" }}requester.name}}</code>, <code>{{ "{{" }}comment}}</code>, <code>{{ "{{" }}portal_link}}</code>, <code>{{ "{{" }}signature}}</code>.</p>
+    <h3 id="hilfe-telefonie">Telefonie</h3>
+    <p>Eingehende Anrufe erscheinen bei Online-Agenten als Banner; Gespräche werden im Ticket protokolliert, verpasste Anrufe werden zu Rückruf-Tickets. Anbieter: sipgate (Push-URL), Twilio (Status-Callback) oder allgemeiner JSON-Webhook; aktiv mit <code>TELEPHONY_SECRET</code>. Der Simulator erzeugt Testanrufe ohne Anbieter. Durchwahlen pflegt man unter Team.</p>
+    <h3 id="hilfe-webhooks">Webhooks</h3>
+    <p>Bei Ticket-Ereignissen wird eine JSON-Nachricht per <code>POST</code> verschickt, signiert mit HMAC-SHA256 (Header <code>X-CallCenter-Signature: sha256=…</code>, Schlüssel = Secret). Fehlgeschlagene Zustellungen werden bis zu 5-mal wiederholt.</p>
+  </section>
+  {% endif %}
+</div>
+{% endblock %}

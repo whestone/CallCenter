@@ -5,7 +5,6 @@
   <h1>Verwaltung</h1>
   {% include "admin/tabs.html" %}
   {% if !notice.is_empty() %}<div class="alert info">{{ notice }}</div>{% endif %}
-  <p class="muted small">SLA-Zielzeiten können in Geschäftszeiten gerechnet werden (Einstellung je SLA-Richtlinie). Dann zählen Nächte, Wochenenden und Feiertage nicht mit: Ein Ticket von Freitag 17 Uhr mit 2 Stunden Ziel ist erst Montag 9 Uhr fällig.</p>
   <div class="two-col">
     <form class="card" method="post" action="/admin/hours">
       <h3>Geschäftszeiten</h3>

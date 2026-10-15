@@ -150,7 +150,6 @@ struct TicketPage {
     links: Vec<LinkView>,
     link_kinds: Vec<Opt>,
     skills: String,
-    incident_count: usize,
     followup_source: i64,
     cc: String,
     time_total: String,
@@ -546,7 +545,6 @@ async fn render_ticket(st: &AppState, me: &User, id: i64, draft: Draft) -> WebRe
             .iter()
             .map(|(v, l)| Opt { value: v.to_string(), label: l.to_string(), selected: *v == "related" })
             .collect(),
-        incident_count: incidents.len(),
         followup_source: t.followup_source_id.unwrap_or(0),
         cc: cc_emails.join(", "),
         time_total: if time_total > 0 { fmt_seconds(time_total) } else { String::new() },

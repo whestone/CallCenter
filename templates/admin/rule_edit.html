@@ -12,7 +12,6 @@
   <form class="card rule-form" method="post" action="{{ action }}" data-rule-form>
     <h3>{% if is_new %}Neue(r) {{ singular }}{% else %}{{ singular }} bearbeiten{% endif %}</h3>
     {% if !error.is_empty() %}<div class="alert">{{ error }}</div>{% endif %}
-    <p class="muted small">{{ help }}</p>
     <div class="row3">
       <label>Titel<input type="text" name="title" value="{{ title }}" required></label>
       <label>Beschreibung<input type="text" name="description" value="{{ description }}"></label>

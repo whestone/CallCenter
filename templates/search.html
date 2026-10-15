@@ -16,17 +16,7 @@
   <section class="card search-help">
     <h3>Schnellsuchen</h3>
     <div class="chips">{% for e in examples %}<a class="chip" href="/search?q={{ e.0|urlencode }}">{{ e.1 }}</a>{% endfor %}</div>
-    <h3>So funktioniert die Suche</h3>
-    <dl class="kv search-syntax">
-      <dt>Wörter</dt><dd><code>drucker toner</code> – alle Wörter müssen vorkommen (Betreff, Text, Kommentare, Anfragender)</dd>
-      <dt>Phrase</dt><dd><code>"kein internet"</code></dd>
-      <dt>Ausschließen</dt><dd><code>-tag:spam</code> · <code>-status:closed</code> · <code>-drucker</code></dd>
-      <dt>Ticketnummer</dt><dd><code>#12</code> öffnet das Ticket direkt</dd>
-      <dt>Status / Priorität</dt><dd><code>status:open</code> (new, open, pending, hold, solved, closed, unsolved) · <code>priority:urgent</code></dd>
-      <dt>Zuordnung</dt><dd><code>assignee:me</code> / <code>none</code> / Name · <code>requester:"Max Mustermann"</code> · <code>group:support</code> · <code>organization:acme</code></dd>
-      <dt>Weitere</dt><dd><code>tag:vip</code> · <code>channel:phone</code> · <code>type:incident</code></dd>
-      <dt>Datum</dt><dd><code>created&gt;2026-10-01</code> · <code>updated&lt;7d</code> · <code>solved:heute</code> (Operatoren <code>: &gt; &lt; &gt;= &lt;=</code>; Werte JJJJ-MM-TT, TT.MM.JJJJ, <code>7d</code>, <code>heute</code>, <code>gestern</code>)</dd>
-    </dl>
+    <p><a href="/hilfe#suche">Suchsyntax (Filter, Datum, Ausschließen) ?</a></p>
   </section>
   {% else %}
 

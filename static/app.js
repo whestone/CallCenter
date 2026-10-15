@@ -175,7 +175,8 @@ document.addEventListener("click", (event) => {
   if (!area) return;
   area.value = (area.value.trim() ? area.value.trimEnd() + "\n\n" : "") + btn.dataset.insert;
   area.dispatchEvent(new Event("input", { bubbles: true }));
-  area.focus();
+  area.dispatchEvent(new Event("cc:replace"));
+  (area._editor || area).focus();
 });
 
 // Status-Menü am Absenden-Button schließen, wenn daneben geklickt wird.
@@ -261,7 +262,8 @@ document.addEventListener("click", (event) => {
   const btn = event.target.closest("[data-fmt]");
   if (!btn) return;
   const area = document.querySelector("textarea[name=comment]");
-  if (area) applyFormat(area, btn.dataset.fmt);
+  if (area?._editor) window.ccEditorFormat(area._editor, btn.dataset.fmt);
+  else if (area) applyFormat(area, btn.dataset.fmt);
 });
 document.addEventListener("keydown", (event) => {
   if (!(event.ctrlKey || event.metaKey) || !event.target.matches("textarea[name=comment]")) return;
@@ -483,7 +485,7 @@ document.addEventListener("keydown", (event) => {
       if (area) {
         const radio = document.querySelector(`.composer-tabs input[name=public][value="${key === "i" ? 0 : 1}"]`);
         if (radio && !radio.checked) radio.click();
-        area.focus();
+        (area._editor || area).focus();
       }
       break;
     }

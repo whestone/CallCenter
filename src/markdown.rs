@@ -46,6 +46,12 @@ pub fn inline(text: &str) -> String {
     while i < chars.len() {
         let c = chars[i];
         let prev_alnum = i > 0 && chars[i - 1].is_alphanumeric();
+        // \* \` \_ \[ \\ : Zeichen wörtlich (der Editor maskiert so getippte Sternchen usw.)
+        if c == '\\' && chars.get(i + 1).is_some_and(|n| matches!(n, '*' | '`' | '_' | '[' | '\\')) {
+            out.push_str(&escape(&chars[i + 1].to_string()));
+            i += 2;
+            continue;
+        }
         // `Code`
         if c == '`' {
             if let Some(end) = find(&chars, i + 1, &['`']) {
@@ -200,9 +206,81 @@ pub fn render(text: &str) -> String {
     out
 }
 
+/// Formatierten Kommentar als lesbaren Klartext (für E-Mails): ohne Sternchen,
+/// Listen mit „- “, Links als „Text (URL)“.
+pub fn to_plain(text: &str) -> String {
+    let html = render(text)
+        .replace("<br>", "\n")
+        .replace("</p>", "\n\n")
+        .replace("</li>", "\n")
+        .replace("</ul>", "\n")
+        .replace("</ol>", "\n");
+    let mut out = String::new();
+    let mut rest = html.as_str();
+    let mut ol_counter: Option<u32> = None;
+    while let Some(start) = rest.find('<') {
+        out.push_str(&rest[..start]);
+        let Some(end) = rest[start..].find('>') else { break };
+        let tag = &rest[start + 1..start + end];
+        let after = &rest[start + end + 1..];
+        if tag == "ol" {
+            ol_counter = Some(0);
+        } else if tag == "ul" {
+            ol_counter = None;
+        } else if tag == "li" {
+            match ol_counter.as_mut() {
+                Some(n) => {
+                    *n += 1;
+                    out.push_str(&format!("{n}. "));
+                }
+                None => out.push_str("- "),
+            }
+        } else if tag == "blockquote" {
+            out.push_str("> ");
+        } else if let Some(href) = tag.strip_prefix("a href=\"").and_then(|t| t.split('"').next()) {
+            // Linktext übernehmen, URL dahinter, falls sie nicht schon der Text ist.
+            if let Some(close) = after.find("</a>") {
+                let label = &after[..close];
+                if label == href {
+                    out.push_str(label);
+                } else {
+                    out.push_str(&format!("{label} ({href})"));
+                }
+                rest = &after[close + 4..];
+                continue;
+            }
+        }
+        rest = after;
+    }
+    out.push_str(rest);
+    let out = out
+        .replace("&lt;", "<")
+        .replace("&gt;", ">")
+        .replace("&quot;", "\"")
+        .replace("&#39;", "'")
+        .replace("&amp;", "&");
+    // Mehrfache Leerzeilen zusammenfassen.
+    let mut lines: Vec<&str> = Vec::new();
+    for line in out.lines() {
+        if line.trim().is_empty() && lines.last().is_none_or(|l| l.trim().is_empty()) {
+            continue;
+        }
+        lines.push(line.trim_end());
+    }
+    lines.join("\n").trim().to_string()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn plain_text() {
+        assert_eq!(
+            to_plain("Hallo **Max**,\n\n- eins\n- zwei\n\n1. a\n2. b\n\nSiehe [Hilfe](https://x.de/h) & https://y.de\n2 \\* 3 <b>"),
+            "Hallo Max,\n\n- eins\n- zwei\n\n1. a\n2. b\n\nSiehe Hilfe (https://x.de/h) & https://y.de\n2 * 3 <b>"
+        );
+    }
 
     #[test]
     fn escapes_html() {

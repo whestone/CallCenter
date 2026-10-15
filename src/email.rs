@@ -127,6 +127,9 @@ async fn queue_one(conn: &mut PgConnection, t: &Ticket, mail: &TicketMail<'_>, n
         TicketMail::Reply { body } => (get("email.reply_body"), *body),
         TicketMail::Notification { body } => (get("email.notify_body"), *body),
     };
+    // E-Mails sind Klartext: Formatierung (fett, Listen, Links) lesbar umsetzen.
+    let comment = crate::markdown::to_plain(comment);
+    let comment = comment.as_str();
     // Ohne echten Namen (nur E-Mail-Adresse bekannt) neutral anreden.
     let name = if name.contains('@') { String::new() } else { name };
     let id = t.id.to_string();

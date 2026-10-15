@@ -140,6 +140,11 @@
 
   function enhance(area) {
     if (area._editor) return;
+    // Reste aus einem wiederhergestellten Seitenschnappschuss (Zurück-Taste) entfernen,
+    // sonst stünden zwei Editoren untereinander.
+    const stale = [...area.parentElement.querySelectorAll(":scope > .rte")];
+    if (stale.some((e) => "mentions" in e.dataset)) area.setAttribute("data-mentions", "");
+    stale.forEach((e) => e.remove());
     const editor = document.createElement("div");
     editor.className = "rte";
     editor.contentEditable = "true";
@@ -179,6 +184,21 @@
   }
   document.addEventListener("DOMContentLoaded", enhanceAll);
   document.addEventListener("htmx:afterSettle", enhanceAll);
+  document.addEventListener("htmx:historyRestore", enhanceAll);
+  // Bevor htmx die Seite für „Zurück“ speichert: Editor wieder zur einfachen Textarea
+  // machen (samt Entwurf), damit der Schnappschuss sauber ist.
+  document.addEventListener("htmx:beforeHistorySave", () => {
+    document.querySelectorAll(".rte").forEach((editor) => {
+      const area = editor._area;
+      if (!area) return editor.remove();
+      sync(editor);
+      area.textContent = area.value;
+      if ("mentions" in editor.dataset) area.setAttribute("data-mentions", "");
+      area.hidden = false;
+      area._editor = null;
+      editor.remove();
+    });
+  });
   if (document.readyState !== "loading") enhanceAll();
 
   // Vor dem Absenden sicherstellen, dass die Textarea den letzten Stand hat.

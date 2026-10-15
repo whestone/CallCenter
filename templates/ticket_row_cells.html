@@ -1,10 +1,13 @@
 <td class="t-main">
   <div class="t-title"><span class="status-pill s-{{ r.status }}">{{ r.status_label }}</span><a class="t-subject" href="/tickets/{{ r.id }}">{{ r.subject }}</a></div>
-  <div class="t-meta"><span class="t-id">#{{ r.id }}</span>{% if cols.show("requester") %}<span>{{ r.requester }}{% if !r.org.is_empty() %} · {{ r.org }}{% endif %}</span>{% endif %}{% if cols.show("channel") %}<span>{{ r.channel_label }}</span>{% endif %}{% if cols.show("group") && r.group != "–" %}<span>{{ r.group }}</span>{% endif %}{% if cols.show("tags") %}{% for t in r.tags %}<span class="chip-item chip-tag chip-sm">{{ t }}</span>{% endfor %}{% endif %}</div>
+  <div class="t-meta"><span class="t-id">#{{ r.id }}</span>{% for m in cols.meta() %}{% match m %}{% when "requester" %}<span>{{ r.requester }}{% if !r.org.is_empty() %} · {{ r.org }}{% endif %}</span>{% when "channel" %}<span>{{ r.channel_label }}</span>{% when "group" %}{% if r.group != "–" %}<span>{{ r.group }}</span>{% endif %}{% when "tags" %}{% for t in r.tags %}<span class="chip-item chip-tag chip-sm">{{ t }}</span>{% endfor %}{% else %}{% endmatch %}{% endfor %}</div>
 </td>
-{% if cols.show("priority") %}<td>{% if r.priority.is_empty() %}<span class="muted">–</span>{% else %}<span class="prio-dot p-{{ r.priority }}">{{ r.priority_label }}</span>{% endif %}</td>{% endif %}
-{% if cols.show("type") %}<td>{% if r.type_label.is_empty() %}<span class="muted">–</span>{% else %}{{ r.type_label }}{% endif %}</td>{% endif %}
-{% if cols.show("assignee") %}<td>{% if r.assignee_initials.is_empty() %}<span class="muted small">nicht zugewiesen</span>{% else %}<span class="who"><span class="avatar xs" aria-hidden="true">{{ r.assignee_initials }}</span>{{ r.assignee }}</span>{% endif %}</td>{% endif %}
-{% if cols.show("sla") %}<td>{% if !r.sla_text.is_empty() %}<span class="{{ r.sla_class }}">{{ r.sla_text }}</span>{% endif %}</td>{% endif %}
-{% if cols.show("created") %}<td class="muted nowrap">{{ r.created }}</td>{% endif %}
-{% if cols.show("updated") %}<td class="muted nowrap">{{ r.updated }}</td>{% endif %}
+{% for c in cols.columns() %}{% match c.0 %}
+{% when "priority" %}<td>{% if r.priority.is_empty() %}<span class="muted">–</span>{% else %}<span class="prio-dot p-{{ r.priority }}">{{ r.priority_label }}</span>{% endif %}</td>
+{% when "type" %}<td>{% if r.type_label.is_empty() %}<span class="muted">–</span>{% else %}{{ r.type_label }}{% endif %}</td>
+{% when "assignee" %}<td>{% if r.assignee_initials.is_empty() %}<span class="muted small">nicht zugewiesen</span>{% else %}<span class="who"><span class="avatar xs" aria-hidden="true">{{ r.assignee_initials }}</span>{{ r.assignee }}</span>{% endif %}</td>
+{% when "sla" %}<td>{% if !r.sla_text.is_empty() %}<span class="{{ r.sla_class }}">{{ r.sla_text }}</span>{% endif %}</td>
+{% when "created" %}<td class="muted nowrap">{{ r.created }}</td>
+{% when "updated" %}<td class="muted nowrap">{{ r.updated }}</td>
+{% else %}<td></td>
+{% endmatch %}{% endfor %}

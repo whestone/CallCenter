@@ -45,12 +45,17 @@ struct Stored {
     /// Sichtbare Felder; `None` = Standard.
     #[serde(default)]
     fields: Option<Vec<String>>,
+    /// Reihenfolge aller Felder; `None` = Standard.
+    #[serde(default)]
+    order: Option<Vec<String>>,
 }
 
 #[derive(Debug, Clone)]
 pub struct ListPrefs {
     hidden_filters: HashSet<String>,
     fields: HashSet<String>,
+    /// Alle Feld-Schlüssel in der gewünschten Reihenfolge.
+    order: Vec<&'static str>,
 }
 
 impl Default for ListPrefs {
@@ -58,8 +63,13 @@ impl Default for ListPrefs {
         ListPrefs {
             hidden_filters: HashSet::new(),
             fields: FIELDS.iter().filter(|f| f.2).map(|f| f.0.to_string()).collect(),
+            order: FIELDS.iter().map(|f| f.0).collect(),
         }
     }
+}
+
+fn field(key: &str) -> Option<&'static (&'static str, &'static str, bool, bool)> {
+    FIELDS.iter().find(|f| f.0 == key)
 }
 
 pub struct Choice {
@@ -79,17 +89,30 @@ impl ListPrefs {
         self.fields.contains(key)
     }
 
+    fn ordered(&self, column: bool) -> impl Iterator<Item = &'static (&'static str, &'static str, bool, bool)> + '_ {
+        self.order.iter().filter_map(|k| field(k)).filter(move |f| f.3 == column)
+    }
+
     /// Sichtbare Spalten in Anzeigereihenfolge.
     pub fn columns(&self) -> Vec<(&'static str, &'static str)> {
-        FIELDS.iter().filter(|f| f.3 && self.show(f.0)).map(|f| (f.0, f.1)).collect()
+        self.ordered(true).filter(|f| self.show(f.0)).map(|f| (f.0, f.1)).collect()
+    }
+
+    /// Sichtbare Angaben unter dem Betreff in Anzeigereihenfolge.
+    pub fn meta(&self) -> Vec<&'static str> {
+        self.ordered(false).filter(|f| self.show(f.0)).map(|f| f.0).collect()
     }
 
     pub fn filter_choices(&self) -> Vec<Choice> {
         FILTERS.iter().map(|(key, label)| Choice { key, label, on: self.filter(key) }).collect()
     }
 
-    pub fn field_choices(&self) -> Vec<Choice> {
-        FIELDS.iter().map(|(key, label, _, _)| Choice { key, label, on: self.show(key) }).collect()
+    pub fn meta_choices(&self) -> Vec<Choice> {
+        self.ordered(false).map(|f| Choice { key: f.0, label: f.1, on: self.show(f.0) }).collect()
+    }
+
+    pub fn column_choices(&self) -> Vec<Choice> {
+        self.ordered(true).map(|f| Choice { key: f.0, label: f.1, on: self.show(f.0) }).collect()
     }
 }
 
@@ -104,6 +127,17 @@ pub async fn load(db: &PgPool, user_id: i64) -> AppResult<ListPrefs> {
     prefs.hidden_filters = s.hidden_filters.into_iter().collect();
     if let Some(fields) = s.fields {
         prefs.fields = fields.into_iter().filter(|f| FIELDS.iter().any(|d| d.0 == f)).collect();
+    }
+    if let Some(order) = s.order {
+        // Gespeicherte Reihenfolge, neu hinzugekommene Felder hinten anhängen.
+        let mut keys: Vec<&'static str> = order.iter().filter_map(|k| field(k)).map(|f| f.0).collect();
+        keys.dedup();
+        for f in FIELDS.iter() {
+            if !keys.contains(&f.0) {
+                keys.push(f.0);
+            }
+        }
+        prefs.order = keys;
     }
     Ok(prefs)
 }
@@ -127,9 +161,12 @@ async fn save(
     let checked = |name: &str| -> HashSet<&str> { pairs.iter().filter(|(k, _)| k == name).map(|(_, v)| v.as_str()).collect() };
     let filters = checked("filter");
     let fields = checked("field");
+    // Reihenfolge = Reihenfolge der Felder im Formular (per Ziehen sortiert).
+    let order: Vec<&str> = pairs.iter().filter(|(k, v)| k == "order" && field(v).is_some()).map(|(_, v)| v.as_str()).collect();
     let stored = json!({
         "hidden_filters": FILTERS.iter().map(|f| f.0).filter(|k| !filters.contains(k)).collect::<Vec<_>>(),
         "fields": FIELDS.iter().map(|f| f.0).filter(|k| fields.contains(k)).collect::<Vec<_>>(),
+        "order": order,
     });
     sqlx::query(
         "INSERT INTO user_prefs (user_id, ticket_list, updated_at) VALUES ($1, $2, now())

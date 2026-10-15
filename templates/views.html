@@ -22,8 +22,14 @@
                 {% for c in cols.filter_choices() %}<label class="switch"><input type="checkbox" name="filter" value="{{ c.key }}"{% if c.on %} checked{% endif %}><span class="switch-track" aria-hidden="true"></span>{{ c.label }}</label>{% endfor %}
               </section>
               <section>
-                <h4>Felder</h4>
-                {% for c in cols.field_choices() %}<label class="switch"><input type="checkbox" name="field" value="{{ c.key }}"{% if c.on %} checked{% endif %}><span class="switch-track" aria-hidden="true"></span>{{ c.label }}</label>{% endfor %}
+                <h4>Unter dem Betreff</h4>
+                <ul class="sortable" aria-label="Angaben unter dem Betreff, Reihenfolge per Ziehen">
+                  {% for c in cols.meta_choices() %}<li class="sort-item" draggable="true"><span class="drag-handle" aria-hidden="true">⠿</span><input type="hidden" name="order" value="{{ c.key }}"><label class="switch"><input type="checkbox" name="field" value="{{ c.key }}"{% if c.on %} checked{% endif %}><span class="switch-track" aria-hidden="true"></span>{{ c.label }}</label></li>{% endfor %}
+                </ul>
+                <h4>Spalten</h4>
+                <ul class="sortable" aria-label="Spalten, Reihenfolge per Ziehen">
+                  {% for c in cols.column_choices() %}<li class="sort-item" draggable="true"><span class="drag-handle" aria-hidden="true">⠿</span><input type="hidden" name="order" value="{{ c.key }}"><label class="switch"><input type="checkbox" name="field" value="{{ c.key }}"{% if c.on %} checked{% endif %}><span class="switch-track" aria-hidden="true"></span>{{ c.label }}</label></li>{% endfor %}
+                </ul>
               </section>
             </div>
             <footer class="modal-foot">

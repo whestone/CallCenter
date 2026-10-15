@@ -691,7 +691,20 @@ document.addEventListener("htmx:afterSettle", () => applyTheme(currentTheme()));
 document.addEventListener("click", (event) => {
   const opener = event.target.closest("[data-open-dialog]");
   if (opener) {
-    document.getElementById(opener.dataset.openDialog)?.showModal();
+    const dlg = document.getElementById(opener.dataset.openDialog);
+    if (!dlg) return;
+    // Stand beim Öffnen merken: Schließen ohne Übernehmen verwirft Änderungen im Popup.
+    dlg._snapshot = dlg.innerHTML;
+    dlg._submitted = false;
+    dlg.addEventListener("submit", () => (dlg._submitted = true), { once: true });
+    dlg.addEventListener(
+      "close",
+      () => {
+        if (!dlg._submitted && dlg._snapshot) dlg.innerHTML = dlg._snapshot;
+      },
+      { once: true },
+    );
+    dlg.showModal();
     return;
   }
   if (event.target.closest("[data-close-dialog]")) {
@@ -709,4 +722,43 @@ window.ccVersion = document.getElementById("app-version")?.dataset.v;
 document.addEventListener("htmx:afterSettle", () => {
   const v = document.getElementById("app-version")?.dataset.v;
   if (v && window.ccVersion && v !== window.ccVersion) location.reload();
+});
+
+// ---------------------------------------------------------------------------
+// Sortierbare Listen (ul.sortable > li.sort-item): Reihenfolge per Ziehen,
+// per Tastatur mit Alt+↑/↓ auf dem Element. Nur innerhalb derselben Liste.
+// ---------------------------------------------------------------------------
+let dragItem = null;
+document.addEventListener("dragstart", (event) => {
+  const item = event.target.closest?.(".sortable > .sort-item");
+  if (!item) return;
+  dragItem = item;
+  item.classList.add("dragging");
+  event.dataTransfer.effectAllowed = "move";
+  event.dataTransfer.setData("text/plain", "");
+});
+document.addEventListener("dragover", (event) => {
+  if (!dragItem) return;
+  const list = event.target.closest?.(".sortable");
+  if (list !== dragItem.parentElement) return;
+  event.preventDefault();
+  const over = event.target.closest(".sort-item");
+  if (!over || over === dragItem) return;
+  const box = over.getBoundingClientRect();
+  const after = event.clientY > box.top + box.height / 2;
+  list.insertBefore(dragItem, after ? over.nextSibling : over);
+});
+document.addEventListener("dragend", () => {
+  dragItem?.classList.remove("dragging");
+  dragItem = null;
+});
+document.addEventListener("keydown", (event) => {
+  if (!event.altKey || (event.key !== "ArrowUp" && event.key !== "ArrowDown")) return;
+  const item = event.target.closest?.(".sortable > .sort-item");
+  if (!item) return;
+  event.preventDefault();
+  const sibling = event.key === "ArrowUp" ? item.previousElementSibling : item.nextElementSibling;
+  if (!sibling) return;
+  item.parentElement.insertBefore(item, event.key === "ArrowUp" ? sibling : sibling.nextSibling);
+  event.target.focus();
 });

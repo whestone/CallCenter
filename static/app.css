@@ -642,3 +642,7 @@ mark { background: #ffe58a; color: inherit; padding: 0 1px; border-radius: 2px; 
 .chip { display: inline-block; padding: 5px 12px; border-radius: 16px; background: var(--tint-blue); color: var(--accent-dark); font-weight: 600; font-size: 13px; }
 .chip:hover { text-decoration: none; background: var(--tint-blue-border); }
 .search-syntax dt { white-space: nowrap; }
+
+/* Telefonnummer als Anruf-Link */
+.phone-link { font: inherit; color: var(--accent); cursor: pointer; padding: 0; }
+.phone-link:hover { text-decoration: underline; }

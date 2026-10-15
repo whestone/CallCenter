@@ -7,12 +7,11 @@
       <div class="avatar">{{ initials }}</div>
       <div>
         <h1>{{ name }}</h1>
-        <span class="muted">Kunde seit {{ created }}{% if !active %} · <strong>deaktiviert</strong>{% endif %}</span>
+        <span class="muted">{% if !phone.is_empty() %}<form method="post" action="/calls/dial" class="inline"><input type="hidden" name="number" value="{{ phone }}"><button class="link phone-link" title="Anrufen">{{ phone }}</button></form> · {% endif %}Kunde seit {{ created }}{% if !active %} · <strong>deaktiviert</strong>{% endif %}</span>
       </div>
     </div>
     {% if is_end_user %}
     <div class="head-actions">
-    {% if !phone.is_empty() %}<form method="post" action="/calls/dial" class="inline"><input type="hidden" name="number" value="{{ phone }}"><button class="btn">📞 Anrufen</button></form>{% endif %}
     <a class="btn primary" href="/tickets/new?channel=phone&requester_id={{ id }}">📞 Neues Anruf-Ticket</a>
     </div>
     {% endif %}

@@ -198,7 +198,7 @@
       </div>
       <dl class="kv">
         <dt>E-Mail</dt><dd>{% if requester_email.is_empty() %}–{% else %}<a href="mailto:{{ requester_email }}">{{ requester_email }}</a>{% endif %}</dd>
-        <dt>Telefon</dt><dd>{% if requester_phone.is_empty() %}–{% else %}{{ requester_phone }} <form method="post" action="/calls/dial" class="inline"><input type="hidden" name="number" value="{{ requester_phone }}"><input type="hidden" name="ticket_id" value="{{ id }}"><button class="link" title="Anrufen">📞 anrufen</button></form>{% endif %}</dd>
+        <dt>Telefon</dt><dd>{% if requester_phone.is_empty() %}–{% else %}<form method="post" action="/calls/dial" class="inline"><input type="hidden" name="number" value="{{ requester_phone }}"><input type="hidden" name="ticket_id" value="{{ id }}"><button class="link phone-link" title="Anrufen">{{ requester_phone }}</button></form>{% endif %}</dd>
       </dl>
       <a class="btn wide" href="/tickets/new?channel=phone&requester_id={{ requester_id }}">📞 Neues Anruf-Ticket</a>
     </div>

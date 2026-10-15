@@ -7,6 +7,9 @@
 <form id="chat-accept-form" method="post" action="/chats/{{ chat_id }}/accept"></form>
 <form id="chat-end-form" method="post" action="/chats/{{ chat_id }}/end?back=ticket" hx-confirm="Chat beenden? Weitere Antworten gehen dann per E-Mail an den Kunden."></form>
 {% endif %}
+{% if !requester_phone.is_empty() %}
+<form id="dial-form" method="post" action="/calls/dial"><input type="hidden" name="number" value="{{ requester_phone }}"><input type="hidden" name="ticket_id" value="{{ id }}"></form>
+{% endif %}
 <form id="link-form" method="post" action="/tickets/{{ id }}/links"></form>
 <form id="unlink-form" method="post" hx-confirm="Verknüpfung aufheben?"></form>
 <form id="merge-form" method="post" action="/tickets/{{ id }}/merge" hx-confirm="Ticket #{{ id }} wirklich zusammenführen und schließen?"></form>
@@ -198,7 +201,7 @@
       </div>
       <dl class="kv">
         <dt>E-Mail</dt><dd>{% if requester_email.is_empty() %}–{% else %}<a href="mailto:{{ requester_email }}">{{ requester_email }}</a>{% endif %}</dd>
-        <dt>Telefon</dt><dd>{% if requester_phone.is_empty() %}–{% else %}<form method="post" action="/calls/dial" class="inline"><input type="hidden" name="number" value="{{ requester_phone }}"><input type="hidden" name="ticket_id" value="{{ id }}"><button class="link phone-link" title="Anrufen">{{ requester_phone }}</button></form>{% endif %}</dd>
+        <dt>Telefon</dt><dd>{% if requester_phone.is_empty() %}–{% else %}<button class="link phone-link" type="submit" form="dial-form" title="Anrufen">{{ requester_phone }}</button>{% endif %}</dd>
       </dl>
       <a class="btn wide" href="/tickets/new?channel=phone&requester_id={{ requester_id }}">📞 Neues Anruf-Ticket</a>
     </div>

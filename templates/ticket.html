@@ -34,9 +34,14 @@
       </div>
       {% if followup_source != 0 %}<p class="small">↪ Folgeticket zu <a href="/tickets/{{ followup_source }}">#{{ followup_source }}</a></p>{% endif %}
 
-      <label>Anfragender
-        <a class="requester-link" href="/users/{{ requester_id }}">{{ requester_name }}</a>
-      </label>
+      <div class="row2">
+        <label>Typ
+          <select name="ticket_type">{% for o in type_opts %}<option value="{{ o.value }}"{% if o.selected %} selected{% endif %}>{{ o.label }}</option>{% endfor %}</select>
+        </label>
+        <label>Priorität
+          <select name="priority">{% for o in priority_opts %}<option value="{{ o.value }}"{% if o.selected %} selected{% endif %}>{{ o.label }}</option>{% endfor %}</select>
+        </label>
+      </div>
       <label>Gruppe
         <select name="group_id">{% for o in group_opts %}<option value="{{ o.value }}"{% if o.selected %} selected{% endif %}>{{ o.label }}</option>{% endfor %}</select>
       </label>
@@ -47,14 +52,6 @@
         <input type="text" name="tags" value="{{ tags }}" placeholder="mit Leerzeichen getrennt">
       </label>
       {% if !skills.is_empty() %}<p class="small skill-need" title="Ergibt sich aus den Tags; die automatische Zuweisung bevorzugt Agenten mit diesen Fähigkeiten">🎯 Benötigt: {{ skills }}</p>{% endif %}
-      <div class="row2">
-        <label>Typ
-          <select name="ticket_type">{% for o in type_opts %}<option value="{{ o.value }}"{% if o.selected %} selected{% endif %}>{{ o.label }}</option>{% endfor %}</select>
-        </label>
-        <label>Priorität
-          <select name="priority">{% for o in priority_opts %}<option value="{{ o.value }}"{% if o.selected %} selected{% endif %}>{{ o.label }}</option>{% endfor %}</select>
-        </label>
-      </div>
 
       <label>CC
         <input type="text" name="cc" value="{{ cc }}" placeholder="E-Mail-Adressen, mit Komma getrennt">

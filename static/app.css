@@ -213,7 +213,6 @@ table.compact td, table.compact th { padding: 4px 8px; }
 .ticket-fields { display: contents; }
 .props { background: var(--panel); border-right: 1px solid var(--border); padding: 16px; }
 .props .meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
-.requester-link { display: block; margin-top: 4px; font-size: 14px; font-weight: 600; }
 .sla-list { list-style: none; padding: 0; margin: 0; }
 .sla-list li { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; }
 .conversation { padding: 16px 24px; min-width: 0; }

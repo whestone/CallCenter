@@ -24,6 +24,7 @@
       </form>
     </details>
 
+    {% if crate::config::flag("portal.registration") %}
     <details class="auth-switch"{% if mode == "register" %} open{% endif %}>
       <summary>Neu hier? Zugang erstellen</summary>
       <form method="post" action="/portal/register">
@@ -33,6 +34,7 @@
         <button class="btn primary wide" type="submit">Zugang erstellen</button>
       </form>
     </details>
+    {% endif %}
     {% if demo %}
     <form method="post" action="/portal/login/demo" class="demo-login">
       <span class="muted small">Demo-Zugang</span>

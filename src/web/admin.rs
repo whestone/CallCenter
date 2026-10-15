@@ -27,7 +27,8 @@ pub fn personal_router() -> Router<AppState> {
 
 pub fn router() -> Router<AppState> {
     Router::new()
-        .route("/admin", get(|| async { Redirect::to("/admin/agents") }))
+        .route("/admin", get(|| async { Redirect::to("/admin/settings") }))
+        .route("/admin/settings", get(settings_index).post(save_settings))
         .route("/admin/agents", get(agents_index).post(create_agent))
         .route("/admin/agents/{id}", get(agent_edit).post(update_agent))
         .route("/admin/fields", get(fields_index).post(create_field))
@@ -46,6 +47,58 @@ pub fn router() -> Router<AppState> {
         .route("/admin/rules/{kind}/new", get(rule_new))
         .route("/admin/rules/{kind}/{id}", get(rule_edit).post(update_rule))
         .route("/admin/rules/{kind}/{id}/delete", post(delete_rule))
+}
+
+// ---------------------------------------------------------------------------
+// Allgemeine Einstellungen
+// ---------------------------------------------------------------------------
+
+struct SettingsSection {
+    name: &'static str,
+    fields: Vec<crate::config::FieldView>,
+}
+
+#[derive(Template)]
+#[template(path = "admin/settings.html")]
+struct SettingsPage {
+    nav: Nav,
+    tab: &'static str,
+    sections: Vec<SettingsSection>,
+    notice: String,
+}
+
+#[derive(Deserialize)]
+struct SettingsQuery {
+    notice: Option<String>,
+}
+
+async fn settings_index(WebAdmin(me): WebAdmin, super::extract::Query(q): super::extract::Query<SettingsQuery>) -> WebResult<Html<String>> {
+    page(SettingsPage {
+        nav: Nav::new(&me, "admin"),
+        tab: "settings",
+        sections: crate::config::GENERAL_SECTIONS
+            .iter()
+            .map(|name| SettingsSection { name, fields: crate::config::fields(name) })
+            .collect(),
+        notice: q.notice.unwrap_or_default(),
+    })
+}
+
+async fn save_settings(
+    State(st): State<AppState>,
+    WebAdmin(_): WebAdmin,
+    Form(pairs): Form<Vec<(String, String)>>,
+) -> WebResult<Response> {
+    let section = pairs.iter().find(|(k, _)| k == "section").map(|(_, v)| v.as_str()).unwrap_or_default();
+    let Some(section) = crate::config::GENERAL_SECTIONS.iter().find(|s| **s == section) else {
+        return Err(AppError::invalid("Unbekannter Abschnitt").into());
+    };
+    let notice = match crate::config::save_section(&st.db, &[section], &pairs).await {
+        Ok(()) => format!("{section}: gespeichert"),
+        Err(AppError::Unprocessable(msg)) => msg,
+        Err(e) => return Err(e.into()),
+    };
+    Ok(see_other(&with_query("/admin/settings", &[("notice", &notice)])))
 }
 
 // ---------------------------------------------------------------------------

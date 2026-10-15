@@ -1,0 +1,14 @@
+{# Ein Einstellungsfeld – erwartet `f` (config::FieldView). #}
+{% if f.kind == "bool" %}
+<label class="switch setting-switch"><input type="checkbox" name="{{ f.key }}" value="true"{% if f.on %} checked{% endif %}><span class="switch-track" aria-hidden="true"></span>{{ f.label }}</label>
+{% else %}
+<label>{{ f.label }}{% if f.from_env %} <span class="pill" title="Wert stammt aus der .env">.env</span>{% endif %}
+  <span class="input-unit">
+  {% if f.kind == "number" %}<input type="number" name="{{ f.key }}" value="{{ f.value }}" min="{{ f.min }}" max="{{ f.max }}" placeholder="{{ f.placeholder }}">
+  {% else if f.kind == "secret" %}<input type="password" name="{{ f.key }}" value="" autocomplete="new-password" placeholder="{{ f.placeholder }}">
+  {% else if f.kind == "url" %}<input type="url" name="{{ f.key }}" value="{{ f.value }}" placeholder="{{ f.placeholder }}">
+  {% else %}<input type="text" name="{{ f.key }}" value="{{ f.value }}" placeholder="{{ f.placeholder }}" autocomplete="off">{% endif %}
+  {% if !f.unit.is_empty() %}<span class="unit">{{ f.unit }}</span>{% endif %}
+  </span>
+</label>
+{% endif %}

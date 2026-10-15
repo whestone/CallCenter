@@ -4,18 +4,27 @@
 <div class="page">
   <h1>Verwaltung</h1>
   {% include "admin/tabs.html" %}
+  {% if !notice.is_empty() %}<div class="alert info">{{ notice }}</div>{% endif %}
   <div class="two-col">
     <section>
-      <h3>Anschluss an die Telefonanlage</h3>
-      {% if !secret_ok %}
-      <div class="notice">Webhooks sind deaktiviert. Setze in der <code>.env</code> <code>TELEPHONY_SECRET</code> (mind. 16 Zeichen) und starte neu.</div>
-      {% endif %}
-      <dl class="kv">
-        <dt>sipgate.io</dt><dd><code>{{ base_url }}/telephony/sipgate?secret=…</code></dd>
-        <dt>Twilio</dt><dd><code>{{ base_url }}/telephony/twilio?secret=…</code></dd>
-        <dt>Allgemein (JSON)</dt><dd><code>POST {{ base_url }}/api/v2/telephony/events?secret=…</code></dd>
-        <dt>Click-to-Call</dt><dd>{% if dial_provider.is_empty() %}Kein Anbieter – Wählen öffnet das Softphone über <code>tel:</code>-Links. Für sipgate <code>SIPGATE_TOKEN_ID</code> und <code>SIPGATE_TOKEN</code> setzen.{% else %}über <strong>{{ dial_provider }}</strong> (Gerät = Durchwahl des Agenten){% endif %}</dd>
-      </dl>
+      <form class="card" method="post" action="/admin/telephony/secret" id="telephony-webhooks">
+        <h3>Anschluss an die Telefonanlage <a class="help-q" href="/hilfe#hilfe-telefonie" title="Telefonie in der Hilfe" aria-label="Telefonie in der Hilfe">?</a>{% if secret_from_env %} <span class="pill" title="Wert stammt aus der .env">.env</span>{% endif %}</h3>
+        {% if secret_ok %}
+        <label>sipgate.io
+          <span class="copy-field"><input type="text" id="tel-sipgate" value="{{ base_url }}/telephony/sipgate?secret={{ secret }}" readonly onclick="this.select()"><button class="btn" type="button" onclick="navigator.clipboard.writeText(document.getElementById('tel-sipgate').value); this.textContent='Kopiert ✓'">Kopieren</button></span>
+        </label>
+        <label>Twilio
+          <span class="copy-field"><input type="text" id="tel-twilio" value="{{ base_url }}/telephony/twilio?secret={{ secret }}" readonly onclick="this.select()"><button class="btn" type="button" onclick="navigator.clipboard.writeText(document.getElementById('tel-twilio').value); this.textContent='Kopiert ✓'">Kopieren</button></span>
+        </label>
+        <label>Allgemein (JSON, POST)
+          <span class="copy-field"><input type="text" id="tel-generic" value="{{ base_url }}/api/v2/telephony/events?secret={{ secret }}" readonly onclick="this.select()"><button class="btn" type="button" onclick="navigator.clipboard.writeText(document.getElementById('tel-generic').value); this.textContent='Kopiert ✓'">Kopieren</button></span>
+        </label>
+        {% endif %}
+        <div class="form-actions">
+          {% if secret_in_admin %}<button class="btn danger" type="submit" formaction="/admin/telephony/secret/delete" hx-confirm="Telefonie-Webhooks deaktivieren? Die bisherigen Adressen funktionieren dann nicht mehr.">Deaktivieren</button>{% endif %}
+          {% if secret_ok %}<button class="btn" type="submit" hx-confirm="Neue Adressen erzeugen? Die bisherigen funktionieren dann nicht mehr.">Neue Adressen erzeugen</button>{% else %}<button class="btn primary" type="submit">Aktivieren</button>{% endif %}
+        </div>
+      </form>
 
       <h3>Letzte Anrufe</h3>
       {% if calls.is_empty() %}
@@ -42,6 +51,14 @@
       {% endif %}
     </section>
     <div>
+      <form class="card" method="post" action="/admin/telephony/sipgate">
+        <h3>Click-to-Call (sipgate){% if !dial_provider.is_empty() %} <span class="pill">aktiv</span>{% endif %}</h3>
+        {% for f in sipgate %}{% include "admin/setting_field.html" %}{% endfor %}
+        <div class="form-actions">
+          {% if sipgate_in_admin %}<button class="btn danger" type="submit" name="remove" value="1" hx-confirm="sipgate-Zugang entfernen?">Entfernen</button>{% endif %}
+          <button class="btn primary" type="submit">Speichern</button>
+        </div>
+      </form>
       <form class="card" method="post" action="/admin/telephony/simulate">
         <h3>Testanruf simulieren</h3>
         <label>Nummer des Anrufers<input type="tel" name="from" required value="+49 30 1234567"></label>

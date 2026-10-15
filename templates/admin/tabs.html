@@ -1,16 +1,9 @@
-<nav class="tabs">
-  <a href="/admin/agents" class="{% if tab == "agents" %}active{% endif %}">Team</a>
-  <a href="/admin/groups" class="{% if tab == "groups" %}active{% endif %}">Gruppen</a>
-  <a href="/admin/skills" class="{% if tab == "skills" %}active{% endif %}">Fähigkeiten</a>
-  <a href="/admin/fields" class="{% if tab == "fields" %}active{% endif %}">Ticketfelder</a>
-  <a href="/admin/rules/views" class="{% if tab == "views" %}active{% endif %}">Ansichten</a>
-  <a href="/admin/rules/macros" class="{% if tab == "macros" %}active{% endif %}">Makros</a>
-  <a href="/admin/rules/triggers" class="{% if tab == "triggers" %}active{% endif %}">Trigger</a>
-  <a href="/admin/rules/automations" class="{% if tab == "automations" %}active{% endif %}">Automationen</a>
-  <a href="/admin/hours" class="{% if tab == "hours" %}active{% endif %}">Geschäftszeiten</a>
-  <a href="/admin/email" class="{% if tab == "email" %}active{% endif %}">E-Mail</a>
-  <a href="/admin/telephony" class="{% if tab == "telephony" %}active{% endif %}">Telefonie</a>
-  <a href="/admin/webhooks" class="{% if tab == "webhooks" %}active{% endif %}">Webhooks</a>
-  <a href="/admin/rules/sla" class="{% if tab == "sla" %}active{% endif %}">SLA</a>
-  <a class="tab-help help-q" title="Hilfe zu dieser Seite" aria-label="Hilfe zu dieser Seite" href="/hilfe#{% if tab == "groups" %}hilfe-gruppen{% else if tab == "skills" %}hilfe-faehigkeiten{% else if tab == "fields" %}hilfe-felder{% else if tab == "hours" %}hilfe-zeiten{% else if tab == "email" %}hilfe-email{% else if tab == "telephony" %}hilfe-telefonie{% else if tab == "webhooks" %}hilfe-webhooks{% else if tab == "agents" %}hilfe-gruppen{% else %}hilfe-regeln{% endif %}">?</a>
+<nav class="admin-nav" aria-label="Verwaltung">
+  <div class="admin-groups">
+    {% for (label, url, active) in crate::web::admin_groups(tab) %}<a href="{{ url }}" class="admin-group{% if active %} active{% endif %}">{{ label }}</a>{% endfor %}
+  </div>
+  <div class="tabs admin-pages">
+    {% for (label, url, active) in crate::web::admin_pages(tab) %}<a href="{{ url }}" class="{% if active %}active{% endif %}">{{ label }}</a>{% endfor %}
+    <a class="tab-help help-q" title="Hilfe zu dieser Seite" aria-label="Hilfe zu dieser Seite" href="/hilfe#{% if tab == "settings" %}hilfe-einstellungen{% else if tab == "groups" %}hilfe-gruppen{% else if tab == "skills" %}hilfe-faehigkeiten{% else if tab == "fields" %}hilfe-felder{% else if tab == "hours" %}hilfe-zeiten{% else if tab == "email" %}hilfe-email{% else if tab == "telephony" %}hilfe-telefonie{% else if tab == "webhooks" %}hilfe-webhooks{% else if tab == "agents" %}hilfe-gruppen{% else %}hilfe-regeln{% endif %}">?</a>
+  </div>
 </nav>

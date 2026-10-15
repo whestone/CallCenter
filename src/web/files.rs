@@ -14,11 +14,11 @@ use super::extract::{Path, State};
 use super::*;
 use crate::{
     auth::{PortalUser, WebAgent},
-    service::{self, Upload, MAX_ATTACHMENTS, MAX_ATTACHMENT_BYTES},
+    service::{self, Upload, UPLOAD_LIMIT_BYTES},
 };
 
 pub fn router() -> Router<AppState> {
-    let upload_limit = DefaultBodyLimit::max(MAX_ATTACHMENTS * MAX_ATTACHMENT_BYTES + 1024 * 1024);
+    let upload_limit = DefaultBodyLimit::max(UPLOAD_LIMIT_BYTES);
     Router::new()
         .route("/tickets/{id}/attachments", post(agent_upload).layer(upload_limit.clone()))
         .route("/attachments/{id}", get(agent_download))

@@ -29,6 +29,9 @@ pub fn router() -> Router<AppState> {
         .route("/calls/{id}/sim-hangup", post(sim_hangup))
         .route("/admin/telephony", get(admin_page))
         .route("/admin/telephony/simulate", post(simulate))
+        .route("/admin/telephony/secret", post(rotate_secret))
+        .route("/admin/telephony/secret/delete", post(clear_secret))
+        .route("/admin/telephony/sipgate", post(save_sipgate))
         .route("/telephony/sipgate", post(sipgate_webhook))
         .route("/telephony/twilio", post(twilio_webhook))
         .route("/api/v2/telephony/events", post(generic_webhook))
@@ -199,13 +202,24 @@ struct AdminPage {
     nav: Nav,
     tab: &'static str,
     secret_ok: bool,
+    secret_in_admin: bool,
+    secret_from_env: bool,
+    secret: String,
     dial_provider: String,
     base_url: String,
+    sipgate: Vec<crate::config::FieldView>,
+    sipgate_in_admin: bool,
+    notice: String,
     calls: Vec<CallView>,
     agents: Vec<ExtensionRow>,
 }
 
-async fn admin_page(State(st): State<AppState>, WebAdmin(me): WebAdmin) -> WebResult<Html<String>> {
+#[derive(Deserialize)]
+struct NoticeQuery {
+    notice: Option<String>,
+}
+
+async fn admin_page(State(st): State<AppState>, WebAdmin(me): WebAdmin, Query(q): Query<NoticeQuery>) -> WebResult<Html<String>> {
     let calls = telephony::recent(&st.db, 50).await?;
     let agents: Vec<(i64, String, Option<String>)> =
         sqlx::query_as("SELECT id, name, extension FROM users WHERE role IN ('agent', 'admin') AND active ORDER BY name")
@@ -215,8 +229,14 @@ async fn admin_page(State(st): State<AppState>, WebAdmin(me): WebAdmin) -> WebRe
         nav: Nav::new(&me, "admin"),
         tab: "telephony",
         secret_ok: telephony_secret().is_some(),
+        secret_in_admin: crate::config::source("telephony.secret") == "admin",
+        secret_from_env: crate::config::source("telephony.secret") == "env",
+        secret: telephony_secret().unwrap_or_default(),
         dial_provider: telephony::dial_provider().unwrap_or("").to_string(),
         base_url: crate::email::public_url(),
+        sipgate: crate::config::fields("Telefonie").into_iter().filter(|f| f.key.starts_with("sipgate.")).collect(),
+        sipgate_in_admin: ["sipgate.token_id", "sipgate.token"].iter().any(|k| crate::config::source(k) == "admin"),
+        notice: q.notice.unwrap_or_default(),
         calls: call_views(&st.db, &calls).await?,
         agents: agents
             .into_iter()
@@ -230,7 +250,36 @@ async fn admin_page(State(st): State<AppState>, WebAdmin(me): WebAdmin) -> WebRe
 // ---------------------------------------------------------------------------
 
 fn telephony_secret() -> Option<String> {
-    std::env::var("TELEPHONY_SECRET").ok().filter(|s| s.trim().len() >= 16)
+    crate::config::opt("telephony.secret").filter(|s| s.len() >= 16)
+}
+
+async fn rotate_secret(State(st): State<AppState>, WebAdmin(_): WebAdmin) -> WebResult<Response> {
+    crate::config::set(&st.db, "telephony.secret", Some(&crate::config::random_secret())).await?;
+    Ok(see_other("/admin/telephony?notice=Neues+Webhook-Geheimnis+erzeugt"))
+}
+
+async fn clear_secret(State(st): State<AppState>, WebAdmin(_): WebAdmin) -> WebResult<Response> {
+    crate::config::set(&st.db, "telephony.secret", None).await?;
+    Ok(see_other("/admin/telephony?notice=Telefonie-Webhooks+deaktiviert"))
+}
+
+async fn save_sipgate(
+    State(st): State<AppState>,
+    WebAdmin(_): WebAdmin,
+    Form(pairs): Form<Vec<(String, String)>>,
+) -> WebResult<Response> {
+    if pairs.iter().any(|(k, _)| k == "remove") {
+        for key in ["sipgate.token_id", "sipgate.token"] {
+            crate::config::set(&st.db, key, None).await?;
+        }
+        return Ok(see_other("/admin/telephony?notice=sipgate-Zugang+entfernt"));
+    }
+    let pairs: Vec<(String, String)> = pairs.into_iter().filter(|(k, _)| k.starts_with("sipgate.")).collect();
+    match crate::config::save_section(&st.db, &["Telefonie"], &pairs).await {
+        Ok(()) => Ok(see_other("/admin/telephony?notice=sipgate-Zugang+gespeichert")),
+        Err(AppError::Unprocessable(msg)) => Ok(see_other(&with_query("/admin/telephony", &[("notice", &msg)]))),
+        Err(e) => Err(e.into()),
+    }
 }
 
 #[derive(Deserialize)]
@@ -240,7 +289,9 @@ struct SecretQuery {
 
 fn check_secret(q: &SecretQuery) -> AppResult<()> {
     let Some(secret) = telephony_secret() else { return Err(AppError::NotFound) };
-    if q.secret.as_deref() == Some(secret.as_str()) { Ok(()) } else { Err(AppError::Unauthorized) }
+    let given = q.secret.as_deref().unwrap_or_default();
+    let same = given.len() == secret.len() && given.bytes().zip(secret.bytes()).fold(0u8, |acc, (a, b)| acc | (a ^ b)) == 0;
+    if same { Ok(()) } else { Err(AppError::Unauthorized) }
 }
 
 /// sipgate liefert Nummern international ohne „+“ (z. B. 4930123456).

@@ -7,12 +7,12 @@ use uuid::Uuid;
 
 use crate::{auth, error::AppResult, models::User};
 
-const ISSUER: &str = "CallCenter";
+
 
 fn totp(secret: &str, account: &str) -> Option<TOTP> {
     let bytes = Secret::Encoded(secret.to_string()).to_bytes().ok()?;
     // ':' ist im Kontonamen nicht erlaubt.
-    TOTP::new(Algorithm::SHA1, 6, 1, 30, bytes, Some(ISSUER.into()), account.replace(':', "")).ok()
+    TOTP::new(Algorithm::SHA1, 6, 1, 30, bytes, Some(crate::config::brand().replace(':', "")), account.replace(':', "")).ok()
 }
 
 pub fn new_secret() -> String {

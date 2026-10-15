@@ -19,7 +19,10 @@ use crate::{
 };
 
 pub const COOKIE: &str = "cc_session";
-const SESSION_DAYS: i64 = 14;
+/// Gültigkeit einer Anmeldung in Tagen (Verwaltung → Einstellungen).
+fn session_days() -> i64 {
+    crate::config::int("auth.session_days")
+}
 
 pub fn hash_password(password: &str) -> anyhow::Result<String> {
     let salt = SaltString::encode_b64(Uuid::new_v4().as_bytes())
@@ -43,7 +46,7 @@ pub async fn create_session(db: &PgPool, user_id: i64) -> AppResult<String> {
     )
     .bind(&token)
     .bind(user_id)
-    .bind(SESSION_DAYS as i32)
+    .bind(session_days() as i32)
     .execute(db)
     .await?;
     Ok(token)
@@ -122,7 +125,7 @@ impl FromRequestParts<AppState> for MaybePortalUser {
 }
 
 pub fn session_cookie(token: &str) -> String {
-    format!("{COOKIE}={token}; Path=/; HttpOnly; SameSite=Lax; Max-Age={}", SESSION_DAYS * 86400)
+    format!("{COOKIE}={token}; Path=/; HttpOnly; SameSite=Lax; Max-Age={}", session_days() * 86400)
 }
 
 pub fn clear_cookie() -> String {

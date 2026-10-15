@@ -835,3 +835,19 @@ tr.row-inactive .t-subject, tr.row-inactive .avatar { opacity: .55; }
 .form-row > label.narrow-field { flex: 0 0 110px; }
 .copy-field { display: flex; gap: var(--space-2); }
 .copy-field input { flex: 1; min-width: 0; font-family: var(--font-mono, monospace); font-size: var(--fs-xs); }
+
+/* Verwaltung: Bereiche (oben) und Seiten des Bereichs (darunter) */
+.admin-nav { margin: var(--space-3) 0 var(--space-5); }
+.admin-groups { display: flex; flex-wrap: wrap; gap: 2px; padding: 3px; background: var(--panel-2); border: 1px solid var(--border); border-radius: var(--radius-lg); width: fit-content; max-width: 100%; }
+.admin-group { padding: 6px 14px; border-radius: var(--radius); color: var(--muted); font-weight: 600; font-size: var(--fs-md); transition: background var(--ease), color var(--ease); }
+.admin-group:hover { color: var(--text); background: var(--hover); text-decoration: none; }
+.admin-group.active { background: var(--panel); color: var(--text); box-shadow: var(--shadow-sm); }
+.admin-nav .admin-pages { margin: var(--space-3) 0 0; }
+
+/* Einstellungsseite */
+.settings-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: var(--space-4); align-items: start; }
+.settings-grid .card { margin: 0; }
+.setting-switch { margin: var(--space-2) 0; }
+.input-unit { display: flex; align-items: center; gap: var(--space-2); }
+.input-unit > input { flex: 1; min-width: 0; }
+.input-unit .unit { color: var(--muted); font-size: var(--fs-sm); white-space: nowrap; }

@@ -18,7 +18,6 @@ use crate::{
     service::{self, TicketChanges},
 };
 
-const PER_PAGE: usize = 50;
 
 pub fn router() -> Router<AppState> {
     Router::new()
@@ -275,9 +274,10 @@ async fn view_show(
     }
 
     let total = matching.len();
-    let page_count = total.div_ceil(PER_PAGE).max(1);
+    let per_page = crate::config::int("tickets.per_page") as usize;
+    let page_count = total.div_ceil(per_page).max(1);
     let page_no = ListParams::get(&p.page).and_then(|s| s.parse::<usize>().ok()).unwrap_or(1).clamp(1, page_count);
-    let page_items: Vec<Ticket> = matching.into_iter().skip((page_no - 1) * PER_PAGE).take(PER_PAGE).collect();
+    let page_items: Vec<Ticket> = matching.into_iter().skip((page_no - 1) * per_page).take(per_page).collect();
 
     let base = format!("/views/{id}");
     let cols = super::list_prefs::load(db, me.id).await?;

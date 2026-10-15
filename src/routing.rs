@@ -7,7 +7,7 @@
 //!
 //! Fähigkeiten: Trägt ein Ticket einen Tag, der zu einer Fähigkeit gehört (z. B.
 //! `englisch`), kommen zuerst nur Agenten mit allen benötigten Fähigkeiten in Frage.
-//! Ist nach `SKILL_TIMEOUT_MINUTES` (Standard 30) niemand Passendes frei, wird
+//! Ist nach der eingestellten Wartezeit (Standard 30 Min.) niemand Passendes frei, wird
 //! ohne Fähigkeiten verteilt, damit kein Ticket liegen bleibt.
 
 use chrono::Utc;
@@ -20,7 +20,7 @@ use crate::{
 };
 
 pub fn skill_timeout_minutes() -> i64 {
-    std::env::var("SKILL_TIMEOUT_MINUTES").ok().and_then(|v| v.trim().parse().ok()).filter(|m| *m >= 0).unwrap_or(30)
+    crate::config::int("routing.skill_timeout_minutes")
 }
 
 /// Fähigkeiten (id, Name), die ein Ticket anhand seiner Tags benötigt.

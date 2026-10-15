@@ -24,13 +24,9 @@ use crate::{
     service::{self, CommentChange, NewTicket, TicketChanges},
 };
 
+/// Öffentliche Adresse für Links in Mails, Webhooks usw. (Verwaltung → Einstellungen).
 pub fn public_url() -> String {
-    std::env::var("PUBLIC_URL")
-        .ok()
-        .filter(|v| !v.trim().is_empty())
-        .unwrap_or_else(|| "http://127.0.0.1:3000".into())
-        .trim_end_matches('/')
-        .to_string()
+    crate::config::get("app.public_url").trim_end_matches('/').to_string()
 }
 
 // ---------------------------------------------------------------------------
@@ -250,12 +246,12 @@ pub async fn store_settings(
             .await?;
     }
     tx.commit().await?;
-    Ok(())
+    crate::config::reload(db).await
 }
 
 pub async fn delete_settings(db: &PgPool, keys: &[&str]) -> AppResult<()> {
     sqlx::query("DELETE FROM settings WHERE key = ANY($1)").bind(keys).execute(db).await?;
-    Ok(())
+    crate::config::reload(db).await
 }
 
 // ---------------------------------------------------------------------------

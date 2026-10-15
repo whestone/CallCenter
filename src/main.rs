@@ -2,6 +2,7 @@ mod api;
 mod auth;
 mod automations;
 mod chat;
+mod config;
 mod email;
 mod error;
 mod escalation;
@@ -70,6 +71,7 @@ async fn main() -> anyhow::Result<()> {
     };
     sqlx::migrate!().run(&db).await?;
     seed::run(&db).await?;
+    config::reload(&db).await?;
 
     let state = AppState { db, presence: Default::default() };
     automations::spawn(state.clone());

@@ -108,6 +108,9 @@ struct RegisterForm {
 }
 
 async fn register(State(st): State<AppState>, Form(f): Form<RegisterForm>) -> WebResult<Response> {
+    if !crate::config::flag("portal.registration") {
+        return Err(AppError::NotFound.into());
+    }
     let fail = |msg: &str, f: &RegisterForm| -> WebResult<Response> {
         let html = page(LoginPage { error: msg.into(), email: f.email.clone(), mode: "register", name: f.name.clone(), demo: demo_login_enabled() })?;
         Ok((StatusCode::UNPROCESSABLE_ENTITY, html).into_response())
@@ -297,8 +300,8 @@ async fn show(State(st): State<AppState>, PortalUser(me): PortalUser, Path(id): 
         status_label: customer_status(&t.status),
         created: fmt_dt(t.created_at),
         can_reply: t.status != "closed",
-        can_solve: !matches!(t.status.as_str(), "solved" | "closed"),
-        can_rate: matches!(t.status.as_str(), "solved" | "closed"),
+        can_solve: crate::config::flag("portal.customer_solve") && !matches!(t.status.as_str(), "solved" | "closed"),
+        can_rate: crate::config::flag("portal.satisfaction") && matches!(t.status.as_str(), "solved" | "closed"),
         rating: t.satisfaction_score.clone().unwrap_or_default(),
         rating_comment: t.satisfaction_comment.clone().unwrap_or_default(),
         comments: comments
@@ -352,11 +355,17 @@ async fn rate(
     Path(id): Path<i64>,
     Form(f): Form<RateForm>,
 ) -> WebResult<Response> {
+    if !crate::config::flag("portal.satisfaction") {
+        return Err(AppError::invalid("Bewertungen sind ausgeschaltet").into());
+    }
     service::rate_ticket(&st.db, &me, id, &f.score, &f.comment).await?;
     Ok(see_other(&format!("/portal/tickets/{id}")))
 }
 
 async fn solve(State(st): State<AppState>, PortalUser(me): PortalUser, Path(id): Path<i64>) -> WebResult<Response> {
+    if !crate::config::flag("portal.customer_solve") {
+        return Err(AppError::invalid("Das Abschließen durch Kunden ist ausgeschaltet").into());
+    }
     own_ticket(&st.db, &me, id).await?;
     let changes = TicketChanges { status: Some("solved".into()), ..Default::default() };
     service::update_ticket(&st.db, &me, id, changes, None, "portal").await?;

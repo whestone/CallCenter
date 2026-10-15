@@ -9,9 +9,9 @@ use sqlx::{PgConnection, PgPool};
 
 use crate::{error::AppResult, models::Ticket, notify, sla};
 
-/// Vorlaufzeit der Warnung in Minuten (`SLA_WARN_MINUTES`, Standard 30).
+/// Vorlaufzeit der Warnung in Minuten (Verwaltung → Einstellungen, Standard 30).
 pub fn warn_minutes() -> i64 {
-    std::env::var("SLA_WARN_MINUTES").ok().and_then(|v| v.trim().parse().ok()).filter(|m| *m > 0).unwrap_or(30)
+    crate::config::int("sla.warn_minutes")
 }
 
 async fn recipients(conn: &mut PgConnection, t: &Ticket) -> AppResult<Vec<i64>> {

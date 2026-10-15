@@ -1097,8 +1097,16 @@ pub async fn rate_ticket(db: &PgPool, customer: &User, id: i64, score: &str, com
     Ok(t)
 }
 
-pub const MAX_ATTACHMENT_BYTES: usize = 10 * 1024 * 1024;
-pub const MAX_ATTACHMENTS: usize = 5;
+/// Obergrenzen für den Upload-Körper (größtmögliche Einstellungen).
+pub const UPLOAD_LIMIT_BYTES: usize = 10 * 25 * 1024 * 1024 + 1024 * 1024;
+
+pub fn max_attachments() -> usize {
+    crate::config::int("attachments.max_count") as usize
+}
+
+pub fn max_attachment_mb() -> usize {
+    crate::config::int("attachments.max_mb") as usize
+}
 
 pub struct Upload {
     pub filename: String,
@@ -1121,11 +1129,12 @@ pub async fn attach_files(
     if files.is_empty() {
         return Err(AppError::invalid("Bitte mindestens eine Datei auswählen"));
     }
-    if files.len() > MAX_ATTACHMENTS {
-        return Err(AppError::invalid(format!("Höchstens {MAX_ATTACHMENTS} Dateien auf einmal")));
+    let (max_count, max_mb) = (max_attachments(), max_attachment_mb());
+    if files.len() > max_count {
+        return Err(AppError::invalid(format!("Höchstens {max_count} Dateien auf einmal")));
     }
-    if let Some(f) = files.iter().find(|f| f.data.len() > MAX_ATTACHMENT_BYTES) {
-        return Err(AppError::invalid(format!("„{}“ ist größer als 10 MB", f.filename)));
+    if let Some(f) = files.iter().find(|f| f.data.len() > max_mb * 1024 * 1024) {
+        return Err(AppError::invalid(format!("„{}“ ist größer als {max_mb} MB", f.filename)));
     }
     // Die Dateien selbst erscheinen als Links unter dem Kommentar.
     let body = match (note.trim(), files.len()) {
@@ -1350,11 +1359,7 @@ pub async fn search_users(db: &PgPool, query: &str, limit: i64, customers_only: 
 // ---------------------------------------------------------------------------
 
 fn default_country_code() -> String {
-    std::env::var("DEFAULT_COUNTRY_CODE")
-        .ok()
-        .map(|c| c.trim().trim_start_matches('+').to_string())
-        .filter(|c| !c.is_empty() && c.chars().all(|ch| ch.is_ascii_digit()))
-        .unwrap_or_else(|| "49".into())
+    crate::config::int("phone.country_code").to_string()
 }
 
 /// Bringt Telefonnummern in ein einheitliches internationales Format, damit ein

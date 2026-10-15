@@ -120,6 +120,19 @@
   {% if nav.is_admin %}
   <section class="card help-section" id="verwaltung">
     <h2>Verwaltung</h2>
+    <p>Die Verwaltung ist in Bereiche gegliedert: <strong>Allgemein</strong> (Einstellungen, Geschäftszeiten), <strong>Team</strong> (Mitarbeitende, Gruppen, Fähigkeiten), <strong>Tickets</strong> (Felder, Ansichten, Makros, SLA), <strong>Automatisierung</strong> (Trigger, Automationen, Webhooks) und <strong>Kanäle</strong> (E-Mail, Telefonie).</p>
+    <h3 id="hilfe-einstellungen">Einstellungen</h3>
+    <p>Änderungen wirken sofort, ohne Neustart. Ein leeres Feld setzt auf den Standard zurück (angezeigt als grauer Platzhalter). Felder mit der Markierung „.env“ übernehmen ihren Wert derzeit aus der <code>.env</code>; ein Eintrag hier hat Vorrang.</p>
+    <ul>
+      <li><strong>Name des Helpdesks</strong> – erscheint im Fenstertitel, auf der Anmeldeseite, im Logo-Kürzel und in Zwei-Faktor-Apps.</li>
+      <li><strong>Öffentliche Adresse</strong> – unter dieser Adresse ist das System von außen erreichbar; sie steht in Links in E-Mails (Kundenportal, Passwort) und in den Webhook-Adressen.</li>
+      <li><strong>Landesvorwahl</strong> – nationale Rufnummern (z. B. 0171 …) werden damit ins internationale Format gebracht, damit Anrufer ihren Kunden zugeordnet werden.</li>
+      <li><strong>SLA-Warnung vor Ablauf</strong> – so viele Minuten vor Ablauf einer SLA-Frist werden Bearbeiter benachrichtigt.</li>
+      <li><strong>Warten auf passende Fähigkeit</strong> – so lange wartet ein Ticket mit benötigten Fähigkeiten auf einen passenden Agenten, bevor es an alle der Gruppe geht.</li>
+      <li><strong>Anhänge</strong> – Höchstgröße je Datei (bis 25 MB) und Anzahl je Nachricht (bis 10), für Agenten und Kunden.</li>
+      <li><strong>Kundenportal</strong> – ob sich Kunden selbst registrieren, Anfragen selbst als gelöst markieren und gelöste Anfragen bewerten können.</li>
+      <li><strong>Angemeldet bleiben</strong> – Gültigkeit einer Anmeldung; gilt für neue Anmeldungen.</li>
+    </ul>
     <h3 id="hilfe-gruppen">Gruppen &amp; automatische Zuweisung</h3>
     <p>Die automatische Zuweisung verteilt neue, nicht zugewiesene Tickets einer Gruppe an Mitglieder mit Status „Online“, deren offene Tickets unter ihrer Kapazität liegen – reihum oder an den am wenigsten Ausgelasteten. Ist gerade niemand frei, bleibt das Ticket in der Warteschlange und wird nachverteilt.</p>
     <h3 id="hilfe-faehigkeiten">Fähigkeiten</h3>
@@ -145,7 +158,7 @@
     <h3 id="hilfe-webhook-eingang">E-Mail-Eingang (Webhook)</h3>
     <p>Für Anbieter, die eingehende Mails per HTTP weiterleiten (z. B. Mailgun, Postmark): „Aktivieren“ erzeugt eine geheime Adresse, die du beim Anbieter einträgst. Erwartet wird JSON mit <code>from</code>, <code>from_name</code>, <code>subject</code> und <code>text</code>. „Neue Adresse erzeugen“ macht die alte sofort ungültig – etwa wenn sie in falsche Hände geraten ist. Ohne Eintrag gilt <code>INBOUND_EMAIL_SECRET</code> aus der <code>.env</code>.</p>
     <h3 id="hilfe-telefonie">Telefonie</h3>
-    <p>Eingehende Anrufe erscheinen bei Online-Agenten als Banner; Gespräche werden im Ticket protokolliert, verpasste Anrufe werden zu Rückruf-Tickets. Anbieter: sipgate (Push-URL), Twilio (Status-Callback) oder allgemeiner JSON-Webhook; aktiv mit <code>TELEPHONY_SECRET</code>. Der Simulator erzeugt Testanrufe ohne Anbieter. Durchwahlen pflegt man unter Team.</p>
+    <p>Eingehende Anrufe erscheinen bei Online-Agenten als Banner; Gespräche werden im Ticket protokolliert, verpasste Anrufe werden zu Rückruf-Tickets. Anbieter: sipgate (Push-URL), Twilio (Status-Callback) oder allgemeiner JSON-Webhook; „Aktivieren“ erzeugt die geheimen Webhook-Adressen zum Eintragen beim Anbieter, „Neue Adressen erzeugen“ macht die alten ungültig. Für Click-to-Call über sipgate Token-ID und Personal Access Token (Scope <code>sessions:calls:write</code>) eintragen; ohne Zugang öffnet „Wählen“ das Softphone über <code>tel:</code>-Links. Der Simulator erzeugt Testanrufe ohne Anbieter. Durchwahlen pflegt man unter Team.</p>
     <h3 id="hilfe-webhooks">Webhooks</h3>
     <p>Bei Ticket-Ereignissen wird eine JSON-Nachricht per <code>POST</code> verschickt, signiert mit HMAC-SHA256 (Header <code>X-CallCenter-Signature: sha256=…</code>, Schlüssel = Secret). Fehlgeschlagene Zustellungen werden bis zu 5-mal wiederholt.</p>
   </section>

@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% block title %}CallCenter{% endblock %} · CallCenter</title>
+  <title>{% block title %}{{ crate::config::brand() }}{% endblock %} · {{ crate::config::brand() }}</title>
   <meta name="htmx-config" content='{"responseHandling":[{"code":"204","swap":false},{"code":"[23]..","swap":true},{"code":"[45]..","swap":true,"error":true}]}'>
   <script>try{var t=localStorage.getItem("cc-theme");if(t&&t!=="auto")document.documentElement.dataset.theme=t}catch(e){}</script>
   <link rel="stylesheet" href="/static/tokens.css?v={{ nav.version }}">
@@ -17,7 +17,7 @@
 <div id="app-version" data-v="{{ nav.version }}" hidden></div>
 <div class="shell">
   <nav class="rail" aria-label="Hauptnavigation">
-    <a class="logo" href="/views" title="CallCenter">CC</a>
+    <a class="logo" href="/views" title="{{ crate::config::brand() }}">{{ crate::config::brand_initials() }}</a>
     <a href="/views" class="rail-link{% if nav.section == "views" %} active{% endif %}" title="Ansichten">
       <svg viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h10"/></svg><span>Tickets</span></a>
     <a href="/tickets/new?channel=phone" class="rail-link{% if nav.section == "new" %} active{% endif %}" title="Anruf erfassen">

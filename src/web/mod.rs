@@ -154,6 +154,51 @@ pub struct Nav {
     pub version: &'static str,
 }
 
+/// Navigation der Verwaltung: Bereiche mit ihren Seiten (Reiter-Kennung, Bezeichnung, Adresse).
+pub const ADMIN_NAV: [(&str, &[(&str, &str, &str)]); 5] = [
+    ("Allgemein", &[("settings", "Einstellungen", "/admin/settings"), ("hours", "Geschäftszeiten", "/admin/hours")]),
+    ("Team", &[("agents", "Mitarbeitende", "/admin/agents"), ("groups", "Gruppen", "/admin/groups"), ("skills", "Fähigkeiten", "/admin/skills")]),
+    (
+        "Tickets",
+        &[
+            ("fields", "Ticketfelder", "/admin/fields"),
+            ("views", "Ansichten", "/admin/rules/views"),
+            ("macros", "Makros", "/admin/rules/macros"),
+            ("sla", "SLA", "/admin/rules/sla"),
+        ],
+    ),
+    (
+        "Automatisierung",
+        &[
+            ("triggers", "Trigger", "/admin/rules/triggers"),
+            ("automations", "Automationen", "/admin/rules/automations"),
+            ("webhooks", "Webhooks", "/admin/webhooks"),
+        ],
+    ),
+    ("Kanäle", &[("email", "E-Mail", "/admin/email"), ("telephony", "Telefonie", "/admin/telephony")]),
+];
+
+/// Bereich der Verwaltung, zu dem ein Reiter gehört.
+pub fn admin_group(tab: &str) -> &'static str {
+    ADMIN_NAV.iter().find(|(_, pages)| pages.iter().any(|p| p.0 == tab)).map(|g| g.0).unwrap_or("Allgemein")
+}
+
+/// Bereiche für die Navigation: (Bezeichnung, Adresse der ersten Seite, aktiv).
+pub fn admin_groups(tab: &str) -> Vec<(&'static str, &'static str, bool)> {
+    let current = admin_group(tab);
+    ADMIN_NAV.iter().map(|(g, pages)| (*g, pages[0].2, *g == current)).collect()
+}
+
+/// Seiten des aktuellen Bereichs: (Bezeichnung, Adresse, aktiv).
+pub fn admin_pages(tab: &str) -> Vec<(&'static str, &'static str, bool)> {
+    let current = admin_group(tab);
+    ADMIN_NAV
+        .iter()
+        .filter(|(g, _)| *g == current)
+        .flat_map(|(_, pages)| pages.iter().map(|(key, label, url)| (*label, *url, *key == tab)))
+        .collect()
+}
+
 /// Kennung dieses Serverlaufs für Stylesheet-/Skript-Adressen.
 pub fn asset_version() -> &'static str {
     static VERSION: std::sync::OnceLock<String> = std::sync::OnceLock::new();

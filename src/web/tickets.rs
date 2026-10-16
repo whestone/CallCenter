@@ -33,6 +33,7 @@ pub fn router() -> Router<AppState> {
         .route("/requesters/{id}/tickets", get(requester_tickets))
         .route("/tags/suggest", get(tag_suggest))
         .route("/emails/suggest", get(email_suggest))
+        .route("/tickets/suggest", get(ticket_suggest))
         .route("/tickets/{id}/comments/{cid}/delete", post(delete_comment))
         .route("/tickets/{id}/attachments/{aid}/delete", post(delete_attachment))
 }
@@ -1259,6 +1260,65 @@ async fn delete_comment(State(st): State<AppState>, WebAgent(me): WebAgent, Path
 async fn delete_attachment(State(st): State<AppState>, WebAgent(me): WebAgent, Path((id, aid)): Path<(i64, i64)>) -> WebResult<Response> {
     service::delete_attachment(&st.db, &me, id, aid).await?;
     Ok(see_other_ok(&format!("/tickets/{id}"), "Anhang gelöscht"))
+}
+
+#[derive(Deserialize)]
+struct TicketSuggestQuery {
+    q: Option<String>,
+    /// Aktuelles Ticket: wird ausgelassen, Tickets desselben Kunden kommen zuerst.
+    exclude: Option<i64>,
+    /// Nur nicht geschlossene Tickets (Zusammenführen).
+    open: Option<String>,
+}
+
+#[derive(serde::Serialize)]
+struct TicketHit {
+    id: i64,
+    subject: String,
+    status: String,
+    status_label: &'static str,
+    requester: String,
+    same_requester: bool,
+}
+
+/// Vorschläge beim Verknüpfen/Zusammenführen: nach Nummer, Betreff oder Kunde;
+/// ohne Suchtext die übrigen Tickets desselben Kunden.
+async fn ticket_suggest(
+    State(st): State<AppState>,
+    WebAgent(_): WebAgent,
+    Query(q): Query<TicketSuggestQuery>,
+) -> WebResult<axum::Json<Vec<TicketHit>>> {
+    let term = q.q.unwrap_or_default().trim().trim_start_matches('#').to_string();
+    let exclude = q.exclude.unwrap_or(0);
+    let only_open = q.open.as_deref().is_some_and(|v| !v.is_empty() && v != "0");
+    let rows: Vec<(i64, String, String, String, bool)> = sqlx::query_as(
+        "SELECT t.id, t.subject, t.status, u.name,
+                t.requester_id = (SELECT requester_id FROM tickets WHERE id = $2) AS same
+         FROM tickets t JOIN users u ON u.id = t.requester_id
+         WHERE t.id <> $2
+           AND (NOT $3 OR t.status <> 'closed')
+           AND CASE WHEN $1 = '' THEN t.requester_id = (SELECT requester_id FROM tickets WHERE id = $2)
+                    ELSE t.id::text LIKE $1 || '%' OR t.subject ILIKE '%' || $1 || '%' OR u.name ILIKE '%' || $1 || '%' END
+         ORDER BY (t.id::text = $1) DESC, same DESC, t.status IN ('solved', 'closed'), t.updated_at DESC
+         LIMIT 8",
+    )
+    .bind(&term)
+    .bind(exclude)
+    .bind(only_open)
+    .fetch_all(&st.db)
+    .await?;
+    Ok(axum::Json(
+        rows.into_iter()
+            .map(|(id, subject, status, requester, same_requester)| TicketHit {
+                id,
+                subject,
+                status_label: status_label(&status),
+                status,
+                requester,
+                same_requester,
+            })
+            .collect(),
+    ))
 }
 
 #[derive(serde::Serialize)]

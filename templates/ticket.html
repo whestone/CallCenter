@@ -18,7 +18,7 @@
       <button type="button" class="icon-btn" data-close-dialog aria-label="Schließen"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
     </header>
     <div class="modal-body">
-      <label>Ticket-Nummer<input type="text" name="target" placeholder="z. B. 12" inputmode="numeric" required autofocus></label>
+      <label>Ticket<input type="text" name="target" placeholder="Nummer, Betreff oder Kunde" required autofocus autocomplete="off" data-ticket-suggest data-exclude="{{ id }}"></label>
       <label>Art der Verknüpfung<select name="kind">{% for o in link_kinds %}<option value="{{ o.value }}"{% if o.selected %} selected{% endif %}>{{ o.label }}</option>{% endfor %}</select></label>
     </div>
     <footer class="modal-foot"><span class="spacer"></span><button class="btn" type="button" data-close-dialog>Abbrechen</button><button class="btn primary" type="submit">Verknüpfen</button></footer>
@@ -31,7 +31,7 @@
       <button type="button" class="icon-btn" data-close-dialog aria-label="Schließen"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
     </header>
     <div class="modal-body">
-      <label>Ticket #{{ id }} zusammenführen mit<input type="text" name="target" placeholder="Ziel-Ticket, z. B. 12" inputmode="numeric" required autofocus></label>
+      <label>Ticket #{{ id }} zusammenführen mit<input type="text" name="target" placeholder="Nummer, Betreff oder Kunde" required autofocus autocomplete="off" data-ticket-suggest data-exclude="{{ id }}" data-open></label>
     </div>
     <footer class="modal-foot"><span class="spacer"></span><button class="btn" type="button" data-close-dialog>Abbrechen</button><button class="btn primary" type="submit">Zusammenführen</button></footer>
   </form>
@@ -207,19 +207,19 @@
 
         <div class="row2">
           <label>Typ
-            <select name="ticket_type">{% for o in type_opts %}<option value="{{ o.value }}"{% if o.selected %} selected{% endif %}>{{ o.label }}</option>{% endfor %}</select>
+            <select name="ticket_type" data-searchable="plain" data-icons="type">{% for o in type_opts %}<option value="{{ o.value }}"{% if o.selected %} selected{% endif %}>{{ o.label }}</option>{% endfor %}</select>
           </label>
           <label>Priorität
-            <select name="priority">{% for o in priority_opts %}<option value="{{ o.value }}"{% if o.selected %} selected{% endif %}>{{ o.label }}</option>{% endfor %}</select>
+            <select name="priority" data-searchable="plain" data-icons="priority">{% for o in priority_opts %}<option value="{{ o.value }}"{% if o.selected %} selected{% endif %}>{{ o.label }}</option>{% endfor %}</select>
           </label>
         </div>
         <label>Gruppe
-          <select name="group_id">{% for o in group_opts %}<option value="{{ o.value }}"{% if o.selected %} selected{% endif %}>{{ o.label }}</option>{% endfor %}</select>
+          <select name="group_id" data-searchable>{% for o in group_opts %}<option value="{{ o.value }}"{% if o.selected %} selected{% endif %}>{{ o.label }}</option>{% endfor %}</select>
         </label>
         <label>Bearbeiter
           <span class="select-avatar">
             <span class="avatar xs{% if assignee_initials.is_empty() %} is-empty{% endif %}{% if crate::avatars::url(assignee_id).is_some() %} has-photo{% endif %}" data-avatar aria-hidden="true">{% if let Some(src) = crate::avatars::url(assignee_id) %}<img src="{{ src }}" alt="">{% else %}{{ assignee_initials }}{% endif %}</span>
-            <select name="assignee_id" data-avatar-select>{% for o in assignee_opts %}<option value="{{ o.value }}" data-photo="{{ crate::avatars::url_for(o.value) }}"{% if o.selected %} selected{% endif %}>{{ o.label }}</option>{% endfor %}</select>
+            <select name="assignee_id" data-avatar-select data-searchable>{% for o in assignee_opts %}<option value="{{ o.value }}" data-photo="{{ crate::avatars::url_for(o.value) }}"{% if o.selected %} selected{% endif %}>{{ o.label }}</option>{% endfor %}</select>
           </span>
         </label>
         <label>Tags

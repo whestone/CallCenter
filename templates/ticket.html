@@ -19,7 +19,7 @@
     <div class="card side-card">
       <h4>Kunde</h4>
       <div class="person">
-        <div class="avatar">{{ requester_initials }}</div>
+        {{ crate::avatars::html(requester_id, requester_initials, "")|safe }}
         <div>
           <a href="/users/{{ requester_id }}"><strong>{{ requester_name }}</strong></a>
           {% if !requester_email.is_empty() %}<div class="muted small"><a class="muted" href="mailto:{{ requester_email }}">{{ requester_email }}</a></div>{% endif %}
@@ -87,7 +87,7 @@
       <div class="comments"{% if chat_id != 0 && chat_status != "ended" %} hx-get="/tickets/{{ id }}" hx-trigger="every 3s" hx-select=".comments" hx-swap="outerHTML"{% endif %}>
         {% for c in comments %}
         <article class="comment{% if !c.public %} internal{% endif %}{% if c.is_agent %} by-agent{% endif %}">
-          <div class="avatar small">{{ c.initials }}</div>
+          {{ crate::avatars::html(c.author_id, c.initials, "small")|safe }}
           <div class="comment-body">
             <header>
               <strong>{{ c.author }}</strong>
@@ -198,8 +198,8 @@
         </label>
         <label>Bearbeiter
           <span class="select-avatar">
-            <span class="avatar xs{% if assignee_initials.is_empty() %} empty{% endif %}" data-avatar aria-hidden="true">{{ assignee_initials }}</span>
-            <select name="assignee_id" data-avatar-select>{% for o in assignee_opts %}<option value="{{ o.value }}"{% if o.selected %} selected{% endif %}>{{ o.label }}</option>{% endfor %}</select>
+            <span class="avatar xs{% if assignee_initials.is_empty() %} empty{% endif %}{% if crate::avatars::url(assignee_id).is_some() %} has-photo{% endif %}" data-avatar aria-hidden="true">{% if let Some(src) = crate::avatars::url(assignee_id) %}<img src="{{ src }}" alt="">{% else %}{{ assignee_initials }}{% endif %}</span>
+            <select name="assignee_id" data-avatar-select>{% for o in assignee_opts %}<option value="{{ o.value }}" data-photo="{{ crate::avatars::url_for(o.value) }}"{% if o.selected %} selected{% endif %}>{{ o.label }}</option>{% endfor %}</select>
           </span>
         </label>
         <label>Tags

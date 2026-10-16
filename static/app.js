@@ -835,6 +835,16 @@ document.addEventListener("change", (event) => {
   if (!avatar) return;
   const option = select.selectedOptions[0];
   const chosen = option && option.value !== "";
-  avatar.textContent = chosen ? initialsOf(option.textContent.trim()) : "";
+  const photo = chosen ? option.dataset.photo : "";
+  avatar.replaceChildren();
+  if (photo) {
+    const img = document.createElement("img");
+    img.src = photo;
+    img.alt = "";
+    avatar.append(img);
+  } else {
+    avatar.textContent = chosen ? initialsOf(option.textContent.trim()) : "";
+  }
+  avatar.classList.toggle("has-photo", !!photo);
   avatar.classList.toggle("empty", !chosen);
 });

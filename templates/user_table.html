@@ -8,7 +8,7 @@
   {% for u in users %}
     <tr data-href="/users/{{ u.id }}">
       <td class="t-main">
-        <div class="t-title"><span class="avatar xs" aria-hidden="true">{{ u.initials }}</span><a class="t-subject" href="/users/{{ u.id }}">{{ u.name }}</a></div>
+        <div class="t-title">{{ crate::avatars::html(u.id, u.initials, "xs")|safe }}<a class="t-subject" href="/users/{{ u.id }}">{{ u.name }}</a></div>
         <div class="t-meta">{% for m in ucols.meta() %}{% match m %}
           {% when "email" %}{% if !u.email.is_empty() %}<span>{{ u.email }}</span>{% endif %}
           {% when "phone" %}{% if !u.phone.is_empty() %}<span>{{ u.phone }}</span>{% endif %}

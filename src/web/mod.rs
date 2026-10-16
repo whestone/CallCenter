@@ -143,6 +143,7 @@ pub fn see_other_ok(path: &str, message: &str) -> Response {
 // ---------------------------------------------------------------------------
 
 pub struct Nav {
+    pub user_id: i64,
     pub name: String,
     pub initials: String,
     pub is_admin: bool,
@@ -208,6 +209,7 @@ pub fn asset_version() -> &'static str {
 impl Nav {
     pub fn new(user: &User, section: &'static str) -> Self {
         Nav {
+            user_id: user.id,
             name: user.name.clone(),
             initials: initials(&user.name),
             is_admin: user.is_admin(),
@@ -331,6 +333,7 @@ pub struct TicketRow {
     pub org: String,
     pub tags: Vec<String>,
     pub assignee_initials: String,
+    pub assignee_id: i64,
     pub created: String,
     pub type_label: &'static str,
 }
@@ -417,6 +420,7 @@ pub async fn ticket_rows(db: &PgPool, tickets: &[Ticket]) -> AppResult<Vec<Ticke
                 sla_class,
                 org: t.organization_id.and_then(|id| orgs.get(&id).cloned()).unwrap_or_default(),
                 tags: t.tags.clone(),
+                assignee_id: t.assignee_id.unwrap_or_default(),
                 assignee_initials: t.assignee_id.and_then(|id| users.get(&id)).map(|n| initials(n)).unwrap_or_default(),
                 created: fmt_rel(t.created_at, now),
                 type_label: t.ticket_type.as_deref().map(type_label).unwrap_or(""),

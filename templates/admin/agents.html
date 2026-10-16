@@ -29,7 +29,7 @@
       {% for a in agents %}
         <tr data-href="/admin/agents/{{ a.id }}"{% if !a.active %} class="row-inactive"{% endif %}>
           <td class="t-main">
-            <div class="t-title"><span class="avatar xs" aria-hidden="true">{{ a.initials }}<span class="dot dot-{{ a.availability }} avatar-dot"></span></span><a class="t-subject" href="/admin/agents/{{ a.id }}">{{ a.name }}</a></div>
+            <div class="t-title"><span class="avatar-wrap">{{ crate::avatars::html(a.id, a.initials, "xs")|safe }}<span class="dot dot-{{ a.availability }} avatar-dot"></span></span><a class="t-subject" href="/admin/agents/{{ a.id }}">{{ a.name }}</a></div>
             <div class="t-meta">{% for m in acols.meta() %}{% match m %}
               {% when "email" %}{% if !a.email.is_empty() %}<span>{{ a.email }}</span>{% endif %}
               {% when "role" %}<span>{{ a.role_label }}</span>

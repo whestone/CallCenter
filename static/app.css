@@ -1055,3 +1055,13 @@ table.ticket-list tbody tr:has(input[name=ticket_id]:checked) td:first-child { b
 .select-avatar > .avatar { position: absolute; left: 8px; top: 50%; transform: translateY(-50%); pointer-events: none; z-index: 1; }
 .select-avatar > .avatar.empty { background: transparent; border: 1.5px dashed var(--border); }
 .select-avatar > select { width: 100%; padding-left: 40px; }
+
+/* Profilfotos: Bild statt Initialen, gleiche Größe und Form */
+.avatar.has-photo { padding: 0; overflow: hidden; background: var(--chip); }
+.avatar.has-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.avatar-wrap { position: relative; display: inline-flex; flex: none; }
+.avatar-wrap .avatar-dot { position: absolute; right: -2px; bottom: -2px; }
+.avatar.xl { width: 88px; height: 88px; font-size: 28px; }
+.profile-photo-row { display: flex; align-items: center; gap: var(--space-5); }
+.profile-photo-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.profile-photo-actions form { margin: 0; }

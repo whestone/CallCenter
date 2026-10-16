@@ -39,6 +39,7 @@ pub fn router() -> Router<AppState> {
 // ---------------------------------------------------------------------------
 
 struct CommentView {
+    author_id: i64,
     author: String,
     initials: String,
     is_agent: bool,
@@ -125,6 +126,7 @@ struct TicketPage {
     /// Letzte öffentliche Antwort eines Agenten (Datum), leer = noch keine.
     last_reply: String,
     assignee_initials: String,
+    assignee_id: i64,
     requester_id: i64,
     requester_name: String,
     requester_initials: String,
@@ -589,6 +591,7 @@ async fn render_ticket(st: &AppState, me: &User, id: i64, draft: Draft) -> WebRe
         tag_list: t.tags.clone(),
         last_reply: last_reply.map(fmt_dt).unwrap_or_default(),
         assignee_initials: initials(&assignee_name),
+        assignee_id: t.assignee_id.unwrap_or_default(),
         requester_id: requester.id,
         requester_name: requester.name.clone(),
         requester_initials: initials(&requester.name),
@@ -611,6 +614,7 @@ async fn render_ticket(st: &AppState, me: &User, id: i64, draft: Draft) -> WebRe
             .map(|c| {
                 let author = users.get(&c.author_id).cloned().unwrap_or_else(|| format!("#{}", c.author_id));
                 CommentView {
+                    author_id: c.author_id,
                     initials: initials(&author),
                     author,
                     is_agent: author_roles.get(&c.author_id).copied().unwrap_or(false),

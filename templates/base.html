@@ -41,7 +41,7 @@
     </div>
     <div class="side-user">
       <a class="side-user-card" href="/me" title="Mein Profil">
-        <span class="avatar sm">{{ nav.initials }}<span class="dot dot-{{ nav.availability }} avatar-dot"></span></span>
+        <span class="avatar-wrap">{{ crate::avatars::html(nav.user_id, nav.initials, "sm")|safe }}<span class="dot dot-{{ nav.availability }} avatar-dot"></span></span>
         <span class="side-user-text"><strong>{{ nav.name }}</strong><small>{% if nav.is_admin %}Administrator{% else %}Agent{% endif %}</small></span>
       </a>
       <div class="side-user-actions">

@@ -36,7 +36,7 @@
           {% when "last" %}{% if !r.last.is_empty() %}<span class="t-clip">{% if r.last_from_visitor %}💬 {% else %}↩ {% endif %}{{ r.last }}</span>{% endif %}
           {% when "page" %}{% if !r.page_url.is_empty() %}<span class="t-clip">{{ r.page_url }}</span>{% endif %}
           {% when "status" %}<span>{{ r.status_label }}</span>
-          {% when "agent" %}{% if r.agent.is_empty() %}<span>kein Agent</span>{% else %}<span class="who"><span class="avatar xxs" aria-hidden="true">{{ r.agent_initials }}</span>{% if r.mine %}du{% else %}{{ r.agent }}{% endif %}</span>{% endif %}
+          {% when "agent" %}{% if r.agent.is_empty() %}<span>kein Agent</span>{% else %}<span class="who">{{ crate::avatars::html(r.agent_id, r.agent_initials, "xxs")|safe }}{% if r.mine %}du{% else %}{{ r.agent }}{% endif %}</span>{% endif %}
           {% when "since" %}<span>seit {{ r.since }}</span>
           {% when "updated" %}<span>aktualisiert {{ r.updated }}</span>
           {% else %}{% endmatch %}{% endfor %}</div>
@@ -47,7 +47,7 @@
       {% when "last" %}<td class="muted"><span class="t-clip">{{ r.last }}</span></td>
       {% when "page" %}<td class="muted"><span class="t-clip">{{ r.page_url }}</span></td>
       {% when "status" %}<td><span class="chat-status chat-{{ r.status }}">{{ r.status_label }}</span></td>
-      {% when "agent" %}<td>{% if r.agent.is_empty() %}<span class="muted small">–</span>{% else %}<span class="who"><span class="avatar xs" aria-hidden="true">{{ r.agent_initials }}</span>{% if r.mine %}du{% else %}{{ r.agent }}{% endif %}</span>{% endif %}</td>
+      {% when "agent" %}<td>{% if r.agent.is_empty() %}<span class="muted small">–</span>{% else %}<span class="who">{{ crate::avatars::html(r.agent_id, r.agent_initials, "xs")|safe }}{% if r.mine %}du{% else %}{{ r.agent }}{% endif %}</span>{% endif %}</td>
       {% when "since" %}<td class="muted nowrap">{{ r.since }}</td>
       {% when "updated" %}<td class="muted nowrap">{{ r.updated }}</td>
       {% else %}<td></td>

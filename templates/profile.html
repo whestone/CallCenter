@@ -12,6 +12,22 @@
   {% if !notice.is_empty() %}<div class="alert info">{{ notice }}</div>{% endif %}
   {% if !error.is_empty() %}<div class="alert">{{ error }}</div>{% endif %}
 
+  <section class="card profile-photo">
+    <h3>Profilfoto</h3>
+    <div class="profile-photo-row">
+      {{ crate::avatars::html(user_id, initials, "xl")|safe }}
+      <div class="profile-photo-actions">
+        <form method="post" action="/me/avatar" enctype="multipart/form-data" hx-boost="false">
+          <label class="btn">{% if has_photo %}Anderes Foto wählen{% else %}Foto hochladen{% endif %}
+            <input type="file" name="photo" accept="image/png,image/jpeg,image/webp,image/gif" hidden onchange="this.form.submit()">
+          </label>
+        </form>
+        {% if has_photo %}<form method="post" action="/me/avatar/delete" hx-confirm="Profilfoto entfernen?"><button class="btn danger" type="submit">Entfernen</button></form>{% endif %}
+        <span class="muted small">PNG, JPEG, WebP oder GIF, bis 2 MB</span>
+      </div>
+    </div>
+  </section>
+
   <section class="card">
     <h3>API-Tokens</h3>
       <code>Authorization: Bearer &lt;token&gt;</code> oder HTTP Basic mit <code>{{ email }}/token</code> als Benutzer und dem Token als Passwort.</p>

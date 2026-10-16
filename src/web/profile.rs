@@ -1,7 +1,9 @@
-//! Persönliche Profilseite: Passwort ändern, API-Tokens verwalten.
+//! Persönliche Profilseite: Profilfoto, Passwort ändern, API-Tokens verwalten.
 
 use askama::Template;
 use axum::{
+    extract::{DefaultBodyLimit, Multipart},
+    http::header,
     response::{Html, IntoResponse, Response},
     routing::{get, post},
     Router,
@@ -27,6 +29,67 @@ pub fn router() -> Router<AppState> {
         .route("/me/2fa/enable", post(twofa_enable))
         .route("/me/2fa/cancel", post(twofa_cancel))
         .route("/me/2fa/disable", post(twofa_disable))
+        .route("/me/avatar", post(upload_avatar).layer(DefaultBodyLimit::max(crate::avatars::MAX_BYTES + 256 * 1024)))
+        .route("/me/avatar/delete", post(delete_avatar))
+        .route("/avatars/{id}", get(avatar_image))
+}
+
+// ---------------------------------------------------------------------------
+// Profilfoto
+// ---------------------------------------------------------------------------
+
+async fn upload_avatar(State(st): State<AppState>, WebAgent(me): WebAgent, mut multipart: Multipart) -> WebResult<Response> {
+    let mut data: Option<Vec<u8>> = None;
+    let mut fail = None;
+    loop {
+        match multipart.next_field().await {
+            Ok(Some(field)) if field.name() == Some("photo") => match field.bytes().await {
+                Ok(b) => data = Some(b.to_vec()),
+                Err(_) => fail = Some("Das Bild ist größer als 2 MB"),
+            },
+            Ok(Some(_)) => {}
+            Ok(None) => break,
+            Err(_) => {
+                fail = Some("Das Bild ist größer als 2 MB");
+                break;
+            }
+        }
+    }
+    let result = match (fail, data) {
+        (Some(msg), _) => Err(AppError::invalid(msg)),
+        (None, data) => crate::avatars::save(&st.db, me.id, &data.unwrap_or_default()).await,
+    };
+    match result {
+        Ok(()) => Ok(see_other_ok("/me", "Profilfoto gespeichert")),
+        Err(AppError::Unprocessable(msg)) => {
+            let html = render(&st.db, &me, String::new(), String::new(), msg).await?;
+            Ok((axum::http::StatusCode::UNPROCESSABLE_ENTITY, html).into_response())
+        }
+        Err(e) => Err(e.into()),
+    }
+}
+
+async fn delete_avatar(State(st): State<AppState>, WebAgent(me): WebAgent) -> WebResult<Response> {
+    crate::avatars::remove(&st.db, me.id).await?;
+    Ok(see_other_ok("/me", "Profilfoto entfernt"))
+}
+
+/// Foto ausliefern (nur für angemeldete Mitarbeitende). Die Adresse enthält die
+/// Version, deshalb darf der Browser lange zwischenspeichern.
+async fn avatar_image(State(st): State<AppState>, WebAgent(_): WebAgent, Path(id): Path<i64>) -> WebResult<Response> {
+    let Some((content_type, data)) = crate::avatars::load(&st.db, id).await? else {
+        return Err(AppError::NotFound.into());
+    };
+    Ok((
+        [
+            (header::CONTENT_TYPE, content_type),
+            (header::CACHE_CONTROL, "private, max-age=31536000, immutable".to_string()),
+            (header::X_CONTENT_TYPE_OPTIONS, "nosniff".to_string()),
+            (header::CONTENT_SECURITY_POLICY, "default-src 'none'".to_string()),
+        ],
+        data,
+    )
+        .into_response())
 }
 
 struct TokenRow {
@@ -43,6 +106,9 @@ struct ProfilePage {
     name: String,
     email: String,
     role_label: &'static str,
+    user_id: i64,
+    initials: String,
+    has_photo: bool,
     tokens: Vec<TokenRow>,
     new_token: String,
     notice: String,
@@ -65,6 +131,9 @@ async fn render(db: &PgPool, me: &User, new_token: String, notice: String, error
         name: me.name.clone(),
         email: me.email.clone().unwrap_or_default(),
         role_label: role_label(&me.role),
+        user_id: me.id,
+        initials: initials(&me.name),
+        has_photo: crate::avatars::url(me.id).is_some(),
         tokens: rows
             .into_iter()
             .map(|(id, name, created, used)| TokenRow {

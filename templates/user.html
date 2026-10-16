@@ -4,7 +4,7 @@
 <div class="page">
   <div class="pane-head">
     <div class="person">
-      <div class="avatar">{{ initials }}</div>
+      {{ crate::avatars::html(id, initials, "")|safe }}
       <div>
         <h1>{{ name }}</h1>
         <span class="muted">{% if !phone.is_empty() %}<form method="post" action="/calls/dial" class="inline"><input type="hidden" name="number" value="{{ phone }}"><button class="link phone-link" title="Anrufen">{{ phone }}</button></form> · {% endif %}Kunde seit {{ created }}{% if !active %} · <strong>deaktiviert</strong>{% endif %}</span>

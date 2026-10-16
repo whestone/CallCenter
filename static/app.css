@@ -1152,3 +1152,11 @@ label.is-dirty > .chips-input .chip-item { box-shadow: 0 0 0 2px var(--tint-oran
 .new-ticket-layout .field-head { justify-content: space-between; align-items: center; margin: 6px 0 8px; }
 .new-ticket-layout .field-head .composer-tabs.segmented { margin: 0; }
 .field-label { font-weight: 600; font-size: var(--fs-sm); color: var(--text); }
+
+/* Kopf im Ticket: Aktionen als Knöpfe, kleine Popups */
+.ticket-head { flex-wrap: wrap; }
+.btn.small-btn { padding: 5px 11px; font-size: var(--fs-sm); }
+.btn.small-btn .btn-icon { width: 15px; height: 15px; }
+.modal.small-modal { width: min(440px, 92vw); }
+.modal.small-modal .modal-body label { margin-bottom: 12px; }
+.ticket-customer .btn.wide { margin-top: 4px; justify-content: center; }

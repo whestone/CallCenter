@@ -10,11 +10,36 @@
 {% if !requester_phone.is_empty() %}
 <form id="dial-form" method="post" action="/calls/dial"><input type="hidden" name="number" value="{{ requester_phone }}"><input type="hidden" name="ticket_id" value="{{ id }}"></form>
 {% endif %}
-<form id="link-form" method="post" action="/tickets/{{ id }}/links"></form>
+{% if !closed %}
+<dialog id="link-dialog" class="modal small-modal" aria-labelledby="link-dialog-title">
+  <form method="post" action="/tickets/{{ id }}/links">
+    <header class="modal-head">
+      <h3 id="link-dialog-title">Ticket verknüpfen <a class="help-q" href="/hilfe#verknuepfen" title="Hilfe" aria-label="Hilfe">?</a></h3>
+      <button type="button" class="icon-btn" data-close-dialog aria-label="Schließen"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+    </header>
+    <div class="modal-body">
+      <label>Ticket-Nummer<input type="text" name="target" placeholder="z. B. 12" inputmode="numeric" required autofocus></label>
+      <label>Art der Verknüpfung<select name="kind">{% for o in link_kinds %}<option value="{{ o.value }}"{% if o.selected %} selected{% endif %}>{{ o.label }}</option>{% endfor %}</select></label>
+    </div>
+    <footer class="modal-foot"><span class="spacer"></span><button class="btn" type="button" data-close-dialog>Abbrechen</button><button class="btn primary" type="submit">Verknüpfen</button></footer>
+  </form>
+</dialog>
+<dialog id="merge-dialog" class="modal small-modal" aria-labelledby="merge-dialog-title">
+  <form method="post" action="/tickets/{{ id }}/merge" hx-confirm="Ticket #{{ id }} wirklich zusammenführen und schließen?">
+    <header class="modal-head">
+      <h3 id="merge-dialog-title">Zusammenführen <a class="help-q" href="/hilfe#verknuepfen" title="Hilfe" aria-label="Hilfe">?</a></h3>
+      <button type="button" class="icon-btn" data-close-dialog aria-label="Schließen"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+    </header>
+    <div class="modal-body">
+      <label>Ticket #{{ id }} zusammenführen mit<input type="text" name="target" placeholder="Ziel-Ticket, z. B. 12" inputmode="numeric" required autofocus></label>
+    </div>
+    <footer class="modal-foot"><span class="spacer"></span><button class="btn" type="button" data-close-dialog>Abbrechen</button><button class="btn primary" type="submit">Zusammenführen</button></footer>
+  </form>
+</dialog>
+{% endif %}
 <form id="unlink-form" method="post" hx-confirm="Verknüpfung aufheben?"></form>
 <form id="comment-delete-form" method="post" hx-confirm="Kommentar wirklich löschen? Bereits verschickte E-Mails lassen sich nicht zurückholen."></form>
 <form id="attachment-delete-form" method="post" hx-confirm="Anhang wirklich löschen?"></form>
-<form id="merge-form" method="post" action="/tickets/{{ id }}/merge" hx-confirm="Ticket #{{ id }} wirklich zusammenführen und schließen?"></form>
 
 <form class="ticket-layout" method="post" action="/tickets/{{ id }}">
   <aside class="ticket-customer">
@@ -31,9 +56,7 @@
       <dl class="detail-list">
         <dt>Telefon</dt><dd>{% if requester_phone.is_empty() %}–{% else %}<button class="link phone-link" type="submit" form="dial-form" title="Anrufen">{{ requester_phone }}</button>{% endif %}</dd>
       </dl>
-      <div class="side-actions">
-        <a class="link-arrow" href="/tickets/new?channel=phone&requester_id={{ requester_id }}">Neues Anruf-Ticket →</a>
-      </div>
+      <a class="btn wide" href="/tickets/new?channel=phone&requester_id={{ requester_id }}"><svg class="btn-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2"/></svg>Neues Anruf-Ticket</a>
     </div>
   </aside>
   <fieldset class="ticket-fields"{% if closed %} disabled{% endif %}>
@@ -53,8 +76,12 @@
         <a class="icon-btn" href="/views" title="Zurück" aria-label="Zurück" onclick="if (history.length > 1) { history.back(); return false; }"><svg viewBox="0 0 24 24"><path d="M19 12H5M11 18l-6-6 6-6"/></svg></a>
         <span class="ticket-no">Ticket #{{ id }}</span>
         <span class="status-pill s-{{ status }}">{{ status_label }}</span>
-        <span class="spacer"></span>
         <span class="muted small">aktualisiert {{ updated }}</span>
+        <span class="spacer"></span>
+        {% if !closed %}
+        <button type="button" class="btn small-btn" data-open-dialog="link-dialog"><svg class="btn-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg>Verknüpfen</button>
+        <button type="button" class="btn small-btn" data-open-dialog="merge-dialog"><svg class="btn-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4v5a6 6 0 0 0 6 6h0a6 6 0 0 1 6 6v0M18 4v5a6 6 0 0 1-6 6M6 20v1"/></svg>Zusammenführen</button>
+        {% endif %}
       </div>
       <div class="ticket-hero">
         <span class="t-icon ch-{{ channel }}" aria-hidden="true">{% match channel.as_str() %}
@@ -227,9 +254,9 @@
   </fieldset>
 
   <aside class="context">
+    {% if !links.is_empty() %}
     <div class="card">
-      <h4>Verknüpfte Tickets{% if !links.is_empty() %} ({{ links.len() }}){% endif %} <a class="help-q" href="/hilfe#verknuepfen" title="Hilfe" aria-label="Hilfe">?</a></h4>
-      {% if !links.is_empty() %}
+      <h4>Verknüpfte Tickets ({{ links.len() }})</h4>
       <ul class="mini-list link-list">
         {% for l in links %}
         <li><span class="status-badge s-{{ l.status }}" title="{{ l.status_label }}">{{ l.status_label }}</span>
@@ -238,15 +265,8 @@
           {% if l.removable && !closed %}<button class="link danger small" type="submit" form="unlink-form" formaction="/tickets/{{ id }}/links/{{ l.id }}/delete" title="Verknüpfung aufheben" aria-label="Verknüpfung mit #{{ l.id }} aufheben">✕</button>{% endif %}</li>
         {% endfor %}
       </ul>
-      {% endif %}
-      {% if !closed %}
-      <div class="link-add">
-        <input type="text" name="target" form="link-form" placeholder="Ticket-Nr., z. B. 12" aria-label="Ticket-Nummer zum Verknüpfen" inputmode="numeric" required>
-        <select name="kind" form="link-form" aria-label="Art der Verknüpfung">{% for o in link_kinds %}<option value="{{ o.value }}"{% if o.selected %} selected{% endif %}>{{ o.label }}</option>{% endfor %}</select>
-        <button class="btn" type="submit" form="link-form">Verknüpfen</button>
-      </div>
-      {% endif %}
     </div>
+    {% endif %}
     {% if has_attachments %}
     <div class="card">
       <h4>Anhänge</h4>
@@ -282,15 +302,6 @@
           <textarea id="kb-text-{{ k.id }}" hidden>{{ k.text }}</textarea></li>
         {% endfor %}
       </ul>
-    </div>
-    {% endif %}
-    {% if !closed %}
-    <div class="card">
-      <h4>Zusammenführen <a class="help-q" href="/hilfe#verknuepfen" title="Hilfe" aria-label="Hilfe">?</a></h4>
-      <div class="inline-merge">
-        <input type="text" name="target" form="merge-form" placeholder="Ziel-Ticket, z. B. 12" aria-label="Zielticket" inputmode="numeric">
-        <button class="btn" type="submit" form="merge-form">Zusammenführen</button>
-      </div>
     </div>
     {% endif %}
     <div class="card">

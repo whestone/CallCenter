@@ -822,3 +822,19 @@ function markActiveView() {
 document.addEventListener("htmx:afterSettle", markActiveView);
 document.addEventListener("DOMContentLoaded", markActiveView);
 window.addEventListener("popstate", () => setTimeout(markActiveView, 0));
+
+// ---------------------------------------------------------------------------
+// Auswahl mit Avatar (z. B. Bearbeiter): Kürzel folgt der gewählten Person
+// ---------------------------------------------------------------------------
+function initialsOf(name) {
+  return name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join("").toUpperCase();
+}
+document.addEventListener("change", (event) => {
+  const select = event.target.closest?.("[data-avatar-select]");
+  const avatar = select?.parentElement.querySelector("[data-avatar]");
+  if (!avatar) return;
+  const option = select.selectedOptions[0];
+  const chosen = option && option.value !== "";
+  avatar.textContent = chosen ? initialsOf(option.textContent.trim()) : "";
+  avatar.classList.toggle("empty", !chosen);
+});

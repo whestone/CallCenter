@@ -124,9 +124,7 @@ struct TicketPage {
     tag_list: Vec<String>,
     /// Letzte öffentliche Antwort eines Agenten (Datum), leer = noch keine.
     last_reply: String,
-    assignee_name: String,
     assignee_initials: String,
-    group_name: String,
     requester_id: i64,
     requester_name: String,
     requester_initials: String,
@@ -362,10 +360,6 @@ async fn render_ticket(st: &AppState, me: &User, id: i64, draft: Draft) -> WebRe
         Some(id) => sqlx::query_scalar("SELECT name FROM users WHERE id = $1").bind(id).fetch_optional(db).await?.unwrap_or_default(),
         None => String::new(),
     };
-    let group_name: String = match t.group_id {
-        Some(id) => sqlx::query_scalar("SELECT name FROM agent_groups WHERE id = $1").bind(id).fetch_optional(db).await?.unwrap_or_default(),
-        None => String::new(),
-    };
     let last_reply: Option<chrono::DateTime<Utc>> = sqlx::query_scalar(
         "SELECT max(c.created_at) FROM ticket_comments c JOIN users u ON u.id = c.author_id
          WHERE c.ticket_id = $1 AND c.public AND u.role <> 'end-user'",
@@ -595,8 +589,6 @@ async fn render_ticket(st: &AppState, me: &User, id: i64, draft: Draft) -> WebRe
         tag_list: t.tags.clone(),
         last_reply: last_reply.map(fmt_dt).unwrap_or_default(),
         assignee_initials: initials(&assignee_name),
-        assignee_name,
-        group_name,
         requester_id: requester.id,
         requester_name: requester.name.clone(),
         requester_initials: initials(&requester.name),

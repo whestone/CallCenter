@@ -197,7 +197,10 @@
           <select name="group_id">{% for o in group_opts %}<option value="{{ o.value }}"{% if o.selected %} selected{% endif %}>{{ o.label }}</option>{% endfor %}</select>
         </label>
         <label>Bearbeiter
-          <select name="assignee_id">{% for o in assignee_opts %}<option value="{{ o.value }}"{% if o.selected %} selected{% endif %}>{{ o.label }}</option>{% endfor %}</select>
+          <span class="select-avatar">
+            <span class="avatar xs{% if assignee_initials.is_empty() %} empty{% endif %}" data-avatar aria-hidden="true">{{ assignee_initials }}</span>
+            <select name="assignee_id" data-avatar-select>{% for o in assignee_opts %}<option value="{{ o.value }}"{% if o.selected %} selected{% endif %}>{{ o.label }}</option>{% endfor %}</select>
+          </span>
         </label>
         <label>Tags
           <input type="text" name="tags" value="{{ tags }}" placeholder="Tag hinzufügen …" data-chips="tags">
@@ -227,11 +230,6 @@
         {% endif %}
 
         </div>
-      <div class="card side-card">
-        <h4>Zugewiesen an</h4>
-        {% if assignee_name.is_empty() %}<p class="muted small">Noch niemand{% if !group_name.is_empty() %} · Gruppe {{ group_name }}{% endif %}</p>
-        {% else %}<div class="person compact"><span class="avatar sm">{{ assignee_initials }}</span><div><strong>{{ assignee_name }}</strong>{% if !group_name.is_empty() %}<div class="muted small">{{ group_name }}</div>{% endif %}</div></div>{% endif %}
-      </div>
     </aside>
   </fieldset>
 

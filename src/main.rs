@@ -1,6 +1,7 @@
 mod api;
 mod auth;
 mod automations;
+mod automode;
 mod avatars;
 mod chat;
 mod config;
@@ -74,6 +75,7 @@ async fn main() -> anyhow::Result<()> {
     seed::run(&db).await?;
     config::reload(&db).await?;
     avatars::reload(&db).await?;
+    automode::reload(&db).await?;
 
     let state = AppState { db, presence: Default::default() };
     automations::spawn(state.clone());

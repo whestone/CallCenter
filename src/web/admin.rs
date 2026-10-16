@@ -31,6 +31,7 @@ pub fn router() -> Router<AppState> {
         .route("/admin/settings", get(settings_index).post(save_settings))
         .route("/admin/agents", get(agents_index).post(create_agent))
         .route("/admin/agents/{id}", get(agent_edit).post(update_agent))
+        .route("/admin/agents/{id}/auto", post(save_auto_sources))
         .route("/admin/fields", get(fields_index).post(create_field))
         .route("/admin/fields/{id}", post(update_field))
         .route("/admin/fields/{id}/delete", post(delete_field))
@@ -270,6 +271,9 @@ struct AgentEditPage {
     role_opts: Vec<Opt>,
     groups: Vec<GroupCheck>,
     skills: Vec<GroupCheck>,
+    /// Auto-Modus: alle Quellen, eingestellte zuerst in ihrer Reihenfolge.
+    auto_sources: Vec<(String, String, bool)>,
+    auto_on: bool,
 }
 
 async fn agent_edit(State(st): State<AppState>, WebAdmin(me): WebAdmin, Path(id): Path<i64>) -> WebResult<Html<String>> {
@@ -309,7 +313,29 @@ async fn agent_edit(State(st): State<AppState>, WebAdmin(me): WebAdmin, Path(id)
         .into_iter()
         .map(|(id, name, checked)| GroupCheck { id, name, checked })
         .collect(),
+        auto_sources: {
+            let all = crate::automode::all_sources(&st.db).await?;
+            let mine = crate::automode::sources(&st.db, id).await?;
+            let mut list: Vec<(String, String, bool)> =
+                mine.iter().filter_map(|k| all.iter().find(|(key, _)| key == k).map(|(k, l)| (k.clone(), l.clone(), true))).collect();
+            list.extend(all.into_iter().filter(|(k, _)| !mine.contains(k)).map(|(k, l)| (k, l, false)));
+            list
+        },
+        auto_on: crate::automode::is_enabled(id),
     })
+}
+
+/// Quellen des Auto-Modus speichern: Reihenfolge der Liste, nur eingeschaltete.
+async fn save_auto_sources(
+    State(st): State<AppState>,
+    WebAdmin(_): WebAdmin,
+    Path(id): Path<i64>,
+    Form(pairs): Form<Vec<(String, String)>>,
+) -> WebResult<Response> {
+    let on: std::collections::HashSet<&str> = pairs.iter().filter(|(k, _)| k == "source").map(|(_, v)| v.as_str()).collect();
+    let order: Vec<String> = pairs.iter().filter(|(k, v)| k == "order" && on.contains(v.as_str())).map(|(_, v)| v.clone()).collect();
+    crate::automode::save_sources(&st.db, id, &order).await?;
+    Ok(see_other_ok(&format!("/admin/agents/{id}"), "Auto-Modus gespeichert"))
 }
 
 async fn update_agent(

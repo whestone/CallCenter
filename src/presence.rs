@@ -28,6 +28,13 @@ impl Presence {
         viewers.insert(user, (now, composing));
         viewers.iter().filter(|(uid, _)| **uid != user).map(|(uid, (_, c))| (*uid, *c)).collect()
     }
+
+    /// Hat gerade jemand anderes als `user` das Ticket offen? (ohne sich selbst anzumelden)
+    pub fn others(&self, ticket: i64, user: i64) -> bool {
+        let now = Instant::now();
+        let map = self.tickets.lock().unwrap_or_else(|e| e.into_inner());
+        map.get(&ticket).is_some_and(|v| v.iter().any(|(uid, (seen, _))| *uid != user && now.duration_since(*seen) < TTL))
+    }
 }
 
 #[cfg(test)]

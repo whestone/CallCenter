@@ -1248,3 +1248,32 @@ select.combo-native { position: absolute !important; width: 1px !important; heig
 .combo-panel { position: fixed; top: 0; left: 0; right: auto; bottom: auto; z-index: 1000; }
 .combo-up .combo-panel, .combo-inline .combo-panel { top: 0; bottom: auto; min-width: 0; }
 .combo-list { max-height: 320px; }
+
+/* --- Auto-Modus ------------------------------------------------------------- */
+.side-auto-form { margin: 0; }
+.side-auto { width: 100%; display: flex; align-items: center; gap: 10px; padding: 7px 10px; border-radius: var(--radius); border: 1px solid var(--side-border);
+  background: transparent; color: var(--side-text); font: inherit; font-size: var(--fs-sm); font-weight: 600; cursor: pointer; transition: background var(--ease), border-color var(--ease); }
+.side-auto:hover { background: var(--side-hover); color: var(--side-strong); }
+.side-auto svg { width: 17px; height: 17px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linejoin: round; }
+.side-auto .side-label { flex: 1; text-align: left; }
+.side-auto-switch { position: relative; width: 30px; height: 17px; border-radius: var(--radius-full); background: var(--side-count); flex: none; transition: background var(--ease); }
+.side-auto-switch::after { content: ""; position: absolute; top: 2px; left: 2px; width: 13px; height: 13px; border-radius: 50%; background: var(--side-text); transition: transform var(--ease); }
+.side-auto.on { border-color: color-mix(in srgb, var(--warn) 55%, transparent); background: color-mix(in srgb, var(--warn) 14%, transparent); color: var(--side-strong); }
+.side-auto.on svg { color: var(--warn); fill: var(--warn); }
+.side-auto.on .side-auto-switch { background: var(--warn); }
+.side-auto.on .side-auto-switch::after { transform: translateX(13px); background: #fff; }
+@media (max-width: 1100px) { .side-auto { justify-content: center; padding: 8px 0; } .side-auto-switch { display: none; } }
+
+.auto-chip { display: inline-flex; align-items: center; gap: 5px; height: 26px; padding: 0 10px; border-radius: var(--radius-full); font-size: var(--fs-xs); font-weight: 700;
+  background: var(--tint-orange); color: var(--warn-strong); border: 1px solid var(--tint-orange-border); }
+.auto-chip svg { width: 13px; height: 13px; fill: currentColor; stroke: none; }
+.ticket-head form.inline { margin: 0; display: inline-flex; }
+
+.auto-wait { display: grid; place-items: center; min-height: calc(100vh - 64px - 48px); }
+.auto-wait-card { width: min(460px, 100%); text-align: center; padding: 32px 28px; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.auto-wait-card h2 { margin: 6px 0 0; }
+.auto-pulse { width: 64px; height: 64px; border-radius: 50%; display: grid; place-items: center; background: var(--tint-orange); color: var(--warn); animation: auto-pulse 1.8s ease-in-out infinite; }
+.auto-pulse svg { width: 30px; height: 30px; fill: currentColor; }
+@keyframes auto-pulse { 0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--warn) 35%, transparent); } 50% { box-shadow: 0 0 0 14px transparent; } }
+@media (prefers-reduced-motion: reduce) { .auto-pulse { animation: none; } }
+.auto-sources { text-align: left; margin: 6px 0 10px; padding-left: 22px; color: var(--muted); font-size: var(--fs-sm); }

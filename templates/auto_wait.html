@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Auto-Modus{% endblock %}
+{% block content %}
+<div class="page auto-wait">
+  <div class="card auto-wait-card" hx-get="/auto/next?poll=1" hx-trigger="every 8s" hx-swap="none">
+    <span class="auto-pulse" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M13 3 4 14h7l-1 7 9-11h-7z"/></svg></span>
+    <h2>Auto-Modus aktiv</h2>
+    <p class="muted">Gerade keine passende Aufgabe – die nächste öffnet sich automatisch.</p>
+    {% if !sources.is_empty() %}
+    <ol class="auto-sources">{% for s in sources %}<li>{{ s }}</li>{% endfor %}</ol>
+    {% else %}
+    <p class="muted small">Für dich sind keine Quellen eingestellt (Verwaltung → Mitarbeitende).</p>
+    {% endif %}
+    <form method="post" action="/me/auto"><input type="hidden" name="on" value="0"><button class="btn" type="submit">Auto-Modus beenden</button></form>
+  </div>
+</div>
+{% endblock %}

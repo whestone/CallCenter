@@ -121,6 +121,9 @@
   <section class="card help-section" id="verwaltung">
     <h2>Verwaltung</h2>
     <p>Die Verwaltung ist in Bereiche gegliedert: <strong>Allgemein</strong> (Einstellungen, Geschäftszeiten), <strong>Team</strong> (Mitarbeitende, Gruppen, Fähigkeiten), <strong>Tickets</strong> (Felder, Ansichten, Makros, SLA), <strong>Automatisierung</strong> (Trigger, Automationen, Webhooks) und <strong>Kanäle</strong> (E-Mail, Telefonie).</p>
+    <h3 id="hilfe-auto">Auto-Modus</h3>
+    <p>Mit „Auto-Modus“ unten links in der Navigation bekommst du automatisch die nächste Aufgabe: Das Ticket öffnet sich sofort, und sobald du es als gelöst absendest, öffnet sich das nächste. Ist gerade nichts da, wartet eine Seite und öffnet die nächste Aufgabe, sobald eine kommt. „Überspringen“ legt ein Ticket für 30 Minuten zurück (eine Zuweisung durch den Auto-Modus wird dabei gelöst), „Pause“ beendet den Modus.</p>
+    <p>Woher die Aufgaben kommen und in welcher Reihenfolge, legt ein Admin pro Person unter Verwaltung → Mitarbeitende fest: wartende Live-Chats und beliebige Ansichten (deren Bedingungen und Sortierung gelten). Vergeben werden nur Tickets, die niemandem oder dir selbst zugewiesen sind, die gerade niemand anderes offen hat und deren Gruppe du angehörst. Freie Tickets werden dir dabei zugewiesen – zwei Personen bekommen nie dasselbe Ticket.</p>
     <h3 id="hilfe-einstellungen">Einstellungen</h3>
     <p>Änderungen wirken sofort, ohne Neustart. Ein leeres Feld setzt auf den Standard zurück (angezeigt als grauer Platzhalter). Felder mit der Markierung „.env“ übernehmen ihren Wert derzeit aus der <code>.env</code>; ein Eintrag hier hat Vorrang.</p>
     <ul>

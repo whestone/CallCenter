@@ -1,6 +1,7 @@
 //! Agenten-Oberfläche: serverseitig gerendert (askama) mit htmx.
 
 mod admin;
+mod auto;
 mod chat;
 mod custom_reports;
 mod files;
@@ -63,6 +64,7 @@ pub fn router() -> Router<AppState> {
         .merge(telephony::router())
         .merge(notifications::router())
         .merge(list_prefs::router())
+        .merge(auto::router())
         .merge(chat::router())
         .merge(admin::personal_router())
         .merge(admin::router())
@@ -144,6 +146,8 @@ pub fn see_other_ok(path: &str, message: &str) -> Response {
 
 pub struct Nav {
     pub user_id: i64,
+    /// Auto-Modus aktiv (nächste Aufgabe kommt automatisch).
+    pub auto_mode: bool,
     pub name: String,
     pub initials: String,
     pub is_admin: bool,
@@ -210,6 +214,7 @@ impl Nav {
     pub fn new(user: &User, section: &'static str) -> Self {
         Nav {
             user_id: user.id,
+            auto_mode: crate::automode::is_enabled(user.id),
             name: user.name.clone(),
             initials: initials(&user.name),
             is_admin: user.is_admin(),

@@ -800,6 +800,13 @@ async fn update_ticket(
             .execute(&st.db)
             .await?;
     }
+    // Auto-Modus: Ist das Ticket jetzt gelöst/geschlossen, sofort die nächste Aufgabe.
+    if crate::automode::is_enabled(me.id) {
+        let status: String = sqlx::query_scalar("SELECT status FROM tickets WHERE id = $1").bind(id).fetch_one(&st.db).await?;
+        if matches!(status.as_str(), "solved" | "closed") {
+            return Ok(see_other_ok("/auto/next", &format!("#{id} gelöst")));
+        }
+    }
     Ok(see_other_ok(&format!("/tickets/{id}"), "Gespeichert"))
 }
 

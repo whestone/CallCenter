@@ -78,6 +78,11 @@
         <span class="status-pill s-{{ status }}">{{ status_label }}</span>
         <span class="muted small">aktualisiert {{ updated }}</span>
         <span class="spacer"></span>
+        {% if nav.auto_mode %}
+        <span class="auto-chip" title="Auto-Modus aktiv"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 3 4 14h7l-1 7 9-11h-7z"/></svg> Auto</span>
+        <form method="post" action="/auto/skip/{{ id }}" class="inline"><button class="btn small-btn" type="submit" title="Dieses Ticket überspringen und das nächste öffnen">Überspringen</button></form>
+        <form method="post" action="/me/auto" class="inline"><input type="hidden" name="on" value="0"><button class="btn small-btn" type="submit" title="Auto-Modus beenden">Pause</button></form>
+        {% endif %}
         {% if !closed %}
         <button type="button" class="btn small-btn" data-open-dialog="link-dialog"><svg class="btn-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg>Verknüpfen</button>
         <button type="button" class="btn small-btn" data-open-dialog="merge-dialog"><svg class="btn-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4v5a6 6 0 0 0 6 6h0a6 6 0 0 1 6 6v0M18 4v5a6 6 0 0 1-6 6M6 20v1"/></svg>Zusammenführen</button>

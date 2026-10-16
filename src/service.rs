@@ -898,6 +898,49 @@ pub async fn unlink_tickets(db: &PgPool, actor: &User, id: i64, other: i64) -> A
 }
 
 // ---------------------------------------------------------------------------
+// Auto-Modus: Ticket übernehmen
+// ---------------------------------------------------------------------------
+
+/// Weist ein noch freies Ticket atomar dem Agenten zu (zwei Agenten im Auto-Modus
+/// können also nie dasselbe Ticket bekommen). `false`, wenn es inzwischen vergeben ist.
+pub async fn claim_ticket(db: &PgPool, actor: &User, ticket_id: i64) -> AppResult<bool> {
+    let mut tx = db.begin().await?;
+    let claimed: Option<i64> = sqlx::query_scalar(
+        "UPDATE tickets SET assignee_id = $1, updated_at = now()
+         WHERE id = $2 AND assignee_id IS NULL AND status NOT IN ('solved', 'closed') RETURNING id",
+    )
+    .bind(actor.id)
+    .bind(ticket_id)
+    .fetch_optional(&mut *tx)
+    .await?;
+    if claimed.is_none() {
+        return Ok(false);
+    }
+    let ev = AuditEvent::Change { field: "assignee_id".into(), previous_value: Value::Null, value: Value::from(actor.id) };
+    insert_audit(&mut tx, ticket_id, Some(actor.id), "auto", &[ev]).await?;
+    tx.commit().await?;
+    Ok(true)
+}
+
+/// Zuweisung wieder lösen (Überspringen im Auto-Modus), nur wenn sie noch beim Agenten liegt.
+pub async fn release_ticket(db: &PgPool, actor: &User, ticket_id: i64) -> AppResult<()> {
+    let mut tx = db.begin().await?;
+    let released: Option<i64> = sqlx::query_scalar(
+        "UPDATE tickets SET assignee_id = NULL, updated_at = now() WHERE id = $1 AND assignee_id = $2 RETURNING id",
+    )
+    .bind(ticket_id)
+    .bind(actor.id)
+    .fetch_optional(&mut *tx)
+    .await?;
+    if released.is_some() {
+        let ev = AuditEvent::Change { field: "assignee_id".into(), previous_value: Value::from(actor.id), value: Value::Null };
+        insert_audit(&mut tx, ticket_id, Some(actor.id), "auto", &[ev]).await?;
+    }
+    tx.commit().await?;
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
 // Löschen von Kommentaren und Anhängen
 // ---------------------------------------------------------------------------
 

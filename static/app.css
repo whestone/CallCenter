@@ -1243,3 +1243,8 @@ select.combo-native { position: absolute !important; width: 1px !important; heig
 .combo-dot.st-solved { background: var(--success); }
 .combo-dot.st-closed { background: var(--border); }
 .combo-dot.st-none { background: transparent; border: 1.5px dashed var(--border); }
+
+/* Offene Auswahlliste liegt fest über der Seite (Position setzt combo.js) */
+.combo-panel { position: fixed; top: 0; left: 0; right: auto; bottom: auto; z-index: 1000; }
+.combo-up .combo-panel, .combo-inline .combo-panel { top: 0; bottom: auto; min-width: 0; }
+.combo-list { max-height: 320px; }

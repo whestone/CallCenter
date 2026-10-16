@@ -201,22 +201,56 @@
       const opts = [...select.options].filter((o) => !o.hidden && (!q || norm(o.textContent).includes(q)));
       box.set(opts.map((opt) => ({ opt, node: optionNode(select, opt) })), Math.max(0, opts.findIndex((o) => o.selected)));
     }
+    // Die offene Liste liegt fest über der Seite (position: fixed), damit Tabellen,
+    // Karten oder Popups mit Scrollbereich sie nicht abschneiden. Sie folgt beim
+    // Scrollen dem Feld und klappt nach oben auf, wenn unten kein Platz ist.
+    function place() {
+      if (panel.hidden) return;
+      const r = trigger.getBoundingClientRect();
+      const gap = 4;
+      const below = window.innerHeight - r.bottom - gap - 8;
+      const above = r.top - gap - 8;
+      const wanted = Math.min(panel.scrollHeight, 320);
+      const up = below < Math.min(wanted, 220) && above > below;
+      const room = Math.max(120, up ? above : below);
+      list.style.maxHeight = `${Math.max(80, room - (search.classList.contains("combo-search-hidden") ? 12 : 56))}px`;
+      const width = Math.max(r.width, combo.classList.contains("combo-inline") ? 220 : 0);
+      const left = Math.min(Math.max(8, r.left), window.innerWidth - width - 8);
+      panel.style.width = `${width}px`;
+      panel.style.left = `${left}px`;
+      panel.style.top = up ? `${r.top - gap - panel.offsetHeight}px` : `${r.bottom + gap}px`;
+      combo.classList.toggle("combo-up", up);
+      // Bei einem umgebenden Element mit transform (z. B. Popup) bezieht sich „fixed“
+      // auf dieses – die Abweichung einmal messen und ausgleichen.
+      const p = panel.getBoundingClientRect();
+      const dx = p.left - left;
+      const dy = p.top - (up ? r.top - gap - p.height : r.bottom + gap);
+      if (Math.abs(dx) > 1) panel.style.left = `${left - dx}px`;
+      if (Math.abs(dy) > 1) panel.style.top = `${parseFloat(panel.style.top) - dy}px`;
+    }
+    function onScroll(e) {
+      // Scrollen innerhalb der Liste selbst nicht beachten.
+      if (panel.contains(e.target)) return;
+      place();
+    }
     function open() {
       if (trigger.disabled) return;
       label();
       search.classList.toggle("combo-search-hidden", !wantsSearch(select));
-      // Nach oben aufklappen, wenn unten kein Platz ist (z. B. unten in der Navigation).
-      const r = trigger.getBoundingClientRect();
-      combo.classList.toggle("combo-up", r.bottom + 300 > window.innerHeight && r.top > 300);
       panel.hidden = false;
       combo.classList.add("open");
       search.value = "";
       fill();
+      place();
+      window.addEventListener("scroll", onScroll, true);
+      window.addEventListener("resize", place);
       search.focus();
     }
     function close() {
       panel.hidden = true;
       combo.classList.remove("open");
+      window.removeEventListener("scroll", onScroll, true);
+      window.removeEventListener("resize", place);
     }
     trigger.addEventListener("click", () => (panel.hidden ? open() : close()));
     trigger.addEventListener("keydown", (e) => {
@@ -229,9 +263,13 @@
         open();
         search.value = e.key;
         fill();
+        place();
       }
     });
-    search.addEventListener("input", fill);
+    search.addEventListener("input", () => {
+      fill();
+      place();
+    });
     search.addEventListener("keydown", (e) => {
       if (e.key === "Escape") {
         e.preventDefault();

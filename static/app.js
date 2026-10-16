@@ -336,7 +336,8 @@ function applyFormat(area, fmt) {
 document.addEventListener("click", (event) => {
   const btn = event.target.closest("[data-fmt]");
   if (!btn) return;
-  const area = document.querySelector("textarea[name=comment]");
+  // Das Textfeld in derselben Editor-Box (Antwort im Ticket, Beschreibung beim neuen Ticket).
+  const area = btn.closest(".editor-box")?.querySelector("textarea") || document.querySelector("textarea[name=comment]");
   if (area?._editor) window.ccEditorFormat(area._editor, btn.dataset.fmt);
   else if (area) applyFormat(area, btn.dataset.fmt);
 });

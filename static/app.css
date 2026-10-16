@@ -1147,3 +1147,8 @@ label.is-dirty > .chips-input .chip-item { box-shadow: 0 0 0 2px var(--tint-oran
 .file-item:hover .file-delete, .file-delete:focus-visible { opacity: 1; }
 .file-delete:hover { color: var(--danger); border-color: var(--tint-red-border); background: var(--tint-red); }
 @media (hover: none) { .comment-delete, .file-delete { opacity: 1; } }
+
+/* Neues Ticket: Beschreibung wie die Antwort im Ticket (Umschalter + Editor) */
+.new-ticket-layout .field-head { justify-content: space-between; align-items: center; margin: 6px 0 8px; }
+.new-ticket-layout .field-head .composer-tabs.segmented { margin: 0; }
+.field-label { font-weight: 600; font-size: var(--fs-sm); color: var(--text); }

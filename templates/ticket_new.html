@@ -38,12 +38,16 @@
       {% if !followup.is_empty() %}<p class="small">↪ Folgeticket zu <a href="/tickets/{{ followup }}">#{{ followup }}</a></p>{% endif %}
       <label>Betreff<input type="text" name="subject" value="{{ subject_prefill }}" required></label>
       <label>CC<input type="text" name="cc" autocomplete="off" placeholder="E-Mail hinzufügen …" data-chips="emails"></label>
-      <label>{% if is_call %}Gesprächsnotiz{% else %}Beschreibung{% endif %}
-        <textarea name="description" rows="7" required></textarea>
-      </label>
-      <div class="composer-tabs">
-        <label><input type="radio" name="public" value="1"{% if !is_call %} checked{% endif %}> Für den Kunden sichtbar</label>
-        <label><input type="radio" name="public" value="0"{% if is_call %} checked{% endif %}> Interne Notiz</label>
+      <div class="field-head">
+        <span class="field-label">{% if is_call %}Gesprächsnotiz{% else %}Beschreibung{% endif %}</span>
+        <div class="composer-tabs segmented" role="radiogroup" aria-label="Sichtbarkeit">
+          <label><input type="radio" name="public" value="1"{% if !is_call %} checked{% endif %}> Für den Kunden sichtbar</label>
+          <label class="seg-internal"><input type="radio" name="public" value="0"{% if is_call %} checked{% endif %}> Interne Notiz</label>
+        </div>
+      </div>
+      <div class="editor-box">
+        {% include "format_bar.html" %}
+        <textarea name="description" rows="7" placeholder="{% if is_call %}Was hat der Anrufer geschildert?{% else %}Worum geht es?{% endif %}" aria-label="{% if is_call %}Gesprächsnotiz{% else %}Beschreibung{% endif %}" data-rte></textarea>
       </div>
     </fieldset>
 

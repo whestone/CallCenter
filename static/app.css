@@ -1277,3 +1277,4 @@ select.combo-native { position: absolute !important; width: 1px !important; heig
 @keyframes auto-pulse { 0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--warn) 35%, transparent); } 50% { box-shadow: 0 0 0 14px transparent; } }
 @media (prefers-reduced-motion: reduce) { .auto-pulse { animation: none; } }
 .auto-sources { text-align: left; margin: 6px 0 10px; padding-left: 22px; color: var(--muted); font-size: var(--fs-sm); }
+.switch-row { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-5); margin: var(--space-2) 0 var(--space-4); }

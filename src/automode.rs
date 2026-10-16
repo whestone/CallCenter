@@ -103,6 +103,35 @@ pub async fn save_sources(db: &PgPool, user_id: i64, list: &[String]) -> AppResu
     Ok(())
 }
 
+/// Status, nach denen es weitergeht: (Schlüssel, Bezeichnung). „Geschlossen“ zählt wie „gelöst“.
+pub const ADVANCE_CHOICES: [(&str, &str); 3] = [("pending", "Wartend"), ("hold", "Angehalten"), ("solved", "Gelöst")];
+
+pub async fn advance_on(db: &PgPool, user_id: i64) -> AppResult<Vec<String>> {
+    let stored: Option<Option<sqlx::types::Json<Vec<String>>>> =
+        sqlx::query_scalar("SELECT advance_on FROM agent_auto WHERE user_id = $1").bind(user_id).fetch_optional(db).await?;
+    Ok(stored.flatten().map(|j| j.0).unwrap_or_else(|| vec!["solved".to_string()]))
+}
+
+/// Geht es nach diesem neuen Status zur nächsten Aufgabe?
+pub async fn advances(db: &PgPool, user_id: i64, status: &str) -> AppResult<bool> {
+    let list = advance_on(db, user_id).await?;
+    let status = if status == "closed" { "solved" } else { status };
+    Ok(list.iter().any(|s| s == status))
+}
+
+pub async fn save_advance(db: &PgPool, user_id: i64, list: &[String]) -> AppResult<()> {
+    let clean: Vec<&str> = ADVANCE_CHOICES.iter().map(|(k, _)| *k).filter(|k| list.iter().any(|s| s == k)).collect();
+    sqlx::query(
+        "INSERT INTO agent_auto (user_id, advance_on, updated_at) VALUES ($1, $2, now())
+         ON CONFLICT (user_id) DO UPDATE SET advance_on = $2, updated_at = now()",
+    )
+    .bind(user_id)
+    .bind(sqlx::types::Json(clean))
+    .execute(db)
+    .await?;
+    Ok(())
+}
+
 pub fn skip(user_id: i64, ticket_id: i64) {
     if let Ok(mut s) = SKIPPED.lock() {
         s.get_or_insert_with(HashMap::new).entry(user_id).or_default().insert(ticket_id, Instant::now());

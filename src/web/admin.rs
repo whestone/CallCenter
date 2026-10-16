@@ -274,6 +274,8 @@ struct AgentEditPage {
     /// Auto-Modus: alle Quellen, eingestellte zuerst in ihrer Reihenfolge.
     auto_sources: Vec<(String, String, bool)>,
     auto_on: bool,
+    /// Weiter nach diesen Status: (Schlüssel, Bezeichnung, an)
+    auto_advance: Vec<(&'static str, &'static str, bool)>,
 }
 
 async fn agent_edit(State(st): State<AppState>, WebAdmin(me): WebAdmin, Path(id): Path<i64>) -> WebResult<Html<String>> {
@@ -322,6 +324,10 @@ async fn agent_edit(State(st): State<AppState>, WebAdmin(me): WebAdmin, Path(id)
             list
         },
         auto_on: crate::automode::is_enabled(id),
+        auto_advance: {
+            let on = crate::automode::advance_on(&st.db, id).await?;
+            crate::automode::ADVANCE_CHOICES.iter().map(|(k, l)| (*k, *l, on.iter().any(|s| s == k))).collect()
+        },
     })
 }
 
@@ -335,6 +341,8 @@ async fn save_auto_sources(
     let on: std::collections::HashSet<&str> = pairs.iter().filter(|(k, _)| k == "source").map(|(_, v)| v.as_str()).collect();
     let order: Vec<String> = pairs.iter().filter(|(k, v)| k == "order" && on.contains(v.as_str())).map(|(_, v)| v.clone()).collect();
     crate::automode::save_sources(&st.db, id, &order).await?;
+    let advance: Vec<String> = pairs.iter().filter(|(k, _)| k == "advance").map(|(_, v)| v.clone()).collect();
+    crate::automode::save_advance(&st.db, id, &advance).await?;
     Ok(see_other_ok(&format!("/admin/agents/{id}"), "Auto-Modus gespeichert"))
 }
 

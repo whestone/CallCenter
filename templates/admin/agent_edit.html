@@ -34,6 +34,10 @@
     <ul class="sortable" aria-label="Quellen des Auto-Modus – Reihenfolge per Ziehen">
       {% for s in auto_sources %}<li class="sort-item" draggable="true"><span class="drag-handle" aria-hidden="true">⠿</span><input type="hidden" name="order" value="{{ s.0 }}"><label class="switch"><input type="checkbox" name="source" value="{{ s.0 }}"{% if s.2 %} checked{% endif %}><span class="switch-track" aria-hidden="true"></span>{{ s.1 }}</label></li>{% endfor %}
     </ul>
+    <h4>Weiter zur nächsten Aufgabe nach</h4>
+    <div class="switch-row">
+      {% for a in auto_advance %}<label class="switch"><input type="checkbox" name="advance" value="{{ a.0 }}"{% if a.2 %} checked{% endif %}><span class="switch-track" aria-hidden="true"></span>{{ a.1 }}</label>{% endfor %}
+    </div>
     <div class="form-actions"><button class="btn primary" type="submit">Speichern</button></div>
   </form>
 </div>

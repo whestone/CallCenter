@@ -505,6 +505,7 @@ pub async fn create_ticket(db: &PgPool, actor: &User, input: NewTicket, via: &st
         sla_breach_key: None,
         sla_paused_seconds: 0,
         sla_paused_since: None,
+        substatus: None,
     };
     validate_enums(&t)?;
     if t.status == "new" && t.assignee_id.is_some() {
@@ -897,6 +898,36 @@ pub async fn unlink_tickets(db: &PgPool, actor: &User, id: i64, other: i64) -> A
         }
     }
     Err(AppError::invalid(format!("Ticket #{other} ist nicht verknüpft")))
+}
+
+// ---------------------------------------------------------------------------
+// Eigener Status
+// ---------------------------------------------------------------------------
+
+/// Eigenen Status setzen bzw. entfernen (`None` = nur Grundart) und protokollieren.
+pub async fn set_substatus(db: &PgPool, actor: &User, ticket_id: i64, substatus: Option<String>) -> AppResult<()> {
+    let mut tx = db.begin().await?;
+    let old: Option<Option<String>> = sqlx::query_scalar("SELECT substatus FROM tickets WHERE id = $1 FOR UPDATE")
+        .bind(ticket_id)
+        .fetch_optional(&mut *tx)
+        .await?;
+    let Some(old) = old else { return Err(AppError::NotFound) };
+    if old == substatus {
+        return Ok(());
+    }
+    sqlx::query("UPDATE tickets SET substatus = $2, updated_at = now() WHERE id = $1")
+        .bind(ticket_id)
+        .bind(&substatus)
+        .execute(&mut *tx)
+        .await?;
+    let ev = AuditEvent::Change {
+        field: "substatus".into(),
+        previous_value: old.map(Value::from).unwrap_or(Value::Null),
+        value: substatus.map(Value::from).unwrap_or(Value::Null),
+    };
+    insert_audit(&mut tx, ticket_id, Some(actor.id), "web", &[ev]).await?;
+    tx.commit().await?;
+    Ok(())
 }
 
 // ---------------------------------------------------------------------------

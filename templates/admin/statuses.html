@@ -16,11 +16,26 @@
             <input type="hidden" name="key" value="{{ s.key }}">
             <input type="color" name="color_{{ s.key }}" value="{{ s.color }}" aria-label="Farbe für {{ s.label }}" class="status-color">
             <input type="text" name="label_{{ s.key }}" value="{{ s.label }}" aria-label="Bezeichnung" required maxlength="40">
+            {% if s.custom %}
+            <select name="category_{{ s.key }}" aria-label="Grundart von {{ s.label }}" data-icons="status" class="status-category">{% for o in s.category_opts %}<option value="{{ o.value }}"{% if o.selected %} selected{% endif %}>{{ o.label }}</option>{% endfor %}</select>
+            {% else %}
+            <span class="status-base muted small" title="Fester Status">{{ s.category_label }}</span>
+            {% endif %}
             <span class="muted small status-count" title="Tickets in diesem Status">{{ s.tickets }}</span>
             <label class="switch" title="Aktiv (zur Auswahl angeboten)"><input type="checkbox" name="active" value="{{ s.key }}"{% if s.active %} checked{% endif %}><span class="switch-track" aria-hidden="true"></span><span class="sr-only">aktiv</span></label>
+            {% if s.custom %}<button class="icon-btn status-delete" type="submit" formaction="/admin/statuses/{{ s.key }}/delete" formnovalidate hx-confirm="Status „{{ s.label }}“ löschen?{% if s.tickets > 0 %} {{ s.tickets }} Ticket(s) behalten ihre Grundart.{% endif %}" title="Status löschen" aria-label="Status {{ s.label }} löschen"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg></button>{% else %}<span class="status-delete-placeholder" aria-hidden="true"></span>{% endif %}
           </li>
           {% endfor %}
         </ul>
+        <details class="status-new"{% if rows.len() == 6 %} open{% endif %}>
+          <summary class="btn"><svg class="btn-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Status hinzufügen</summary>
+          <div class="status-new-row">
+            <input type="color" name="color" value="#0ea5e9" form="status-new-form" aria-label="Farbe" class="status-color">
+            <input type="text" name="label" form="status-new-form" placeholder="z. B. Warten auf Lieferant" aria-label="Bezeichnung" maxlength="40">
+            <select name="category" form="status-new-form" aria-label="Grundart" data-icons="status">{% for o in base_opts %}<option value="{{ o.value }}"{% if o.selected %} selected{% endif %}>{{ o.label }}</option>{% endfor %}</select>
+            <button class="btn primary" type="submit" form="status-new-form">Anlegen</button>
+          </div>
+        </details>
       </section>
 
       <section class="card">
@@ -42,5 +57,6 @@
     </div>
     <div class="form-actions"><button class="btn primary" type="submit">Speichern</button></div>
   </form>
+  <form id="status-new-form" method="post" action="/admin/statuses/new" hidden></form>
 </div>
 {% endblock %}

@@ -30,6 +30,8 @@ pub fn router() -> Router<AppState> {
         .route("/admin", get(|| async { Redirect::to("/admin/settings") }))
         .route("/admin/settings", get(settings_index).post(save_settings))
         .route("/admin/statuses", get(statuses_index).post(save_statuses))
+        .route("/admin/statuses/new", post(create_status))
+        .route("/admin/statuses/{key}/delete", post(delete_status))
         .route("/admin/agents", get(agents_index).post(create_agent))
         .route("/admin/agents/{id}", get(agent_edit).post(update_agent))
         .route("/admin/agents/{id}/auto", post(save_auto_sources))
@@ -61,6 +63,10 @@ struct StatusRow {
     color: String,
     active: bool,
     tickets: i64,
+    custom: bool,
+    /// Grundart zur Auswahl (bei festen Status nur Anzeige).
+    category_opts: Vec<Opt>,
+    category_label: &'static str,
 }
 
 struct TransitionRow {
@@ -79,6 +85,8 @@ struct StatusesPage {
     rows: Vec<StatusRow>,
     heads: Vec<(&'static str, &'static str)>,
     matrix: Vec<TransitionRow>,
+    /// Grundarten für „Status hinzufügen“.
+    base_opts: Vec<Opt>,
 }
 
 #[derive(Deserialize)]
@@ -91,8 +99,15 @@ async fn statuses_index(
     WebAdmin(me): WebAdmin,
     super::extract::Query(q): super::extract::Query<ErrorQuery>,
 ) -> WebResult<Html<String>> {
-    let counts: std::collections::HashMap<String, i64> =
-        sqlx::query_as::<_, (String, i64)>("SELECT status, count(*) FROM tickets GROUP BY status").fetch_all(&st.db).await?.into_iter().collect();
+    // Tickets je angezeigtem Status (eigener Status, sonst Grundart).
+    let counts: std::collections::HashMap<String, i64> = sqlx::query_as::<_, (String, i64)>(
+        "SELECT coalesce(substatus, status), count(*) FROM tickets GROUP BY 1",
+    )
+    .fetch_all(&st.db)
+    .await?
+    .into_iter()
+    .collect();
+    let bases: Vec<&str> = STATUSES.to_vec();
     let all = crate::statuses::all();
     page(StatusesPage {
         nav: Nav::new(&me, "admin"),
@@ -100,7 +115,24 @@ async fn statuses_index(
         error: q.error.unwrap_or_default(),
         rows: all
             .iter()
-            .map(|s| StatusRow { key: s.key, label: s.label, color: s.color.clone(), active: s.active, tickets: counts.get(s.key).copied().unwrap_or(0) })
+            .map(|s| StatusRow {
+                key: s.key,
+                label: s.label,
+                color: s.color.clone(),
+                active: s.active,
+                tickets: counts.get(s.key).copied().unwrap_or(0),
+                custom: s.custom,
+                category_opts: bases
+                    .iter()
+                    .map(|b| Opt { value: b.to_string(), label: base_label(b).to_string(), selected: *b == s.category })
+                    .collect(),
+                category_label: base_label(s.category),
+            })
+            .collect(),
+        base_opts: bases
+            .iter()
+            .filter(|b| **b != "new" && **b != "closed")
+            .map(|b| Opt { value: b.to_string(), label: base_label(b).to_string(), selected: *b == "hold" })
             .collect(),
         heads: all.iter().map(|s| (s.key, s.label)).collect(),
         matrix: all
@@ -121,10 +153,13 @@ async fn save_statuses(
 ) -> WebResult<Response> {
     let value = |name: &str| pairs.iter().find(|(k, _)| k == name).map(|(_, v)| v.clone()).unwrap_or_default();
     let active: std::collections::HashSet<&str> = pairs.iter().filter(|(k, _)| k == "active").map(|(_, v)| v.as_str()).collect();
-    let rows: Vec<(String, String, String, bool)> = pairs
+    let rows: Vec<(String, String, String, bool, String)> = pairs
         .iter()
         .filter(|(k, _)| k == "key")
-        .map(|(_, key)| (key.clone(), value(&format!("label_{key}")), value(&format!("color_{key}")).to_lowercase(), active.contains(key.as_str())))
+        .map(|(_, key)| {
+            let category = Some(value(&format!("category_{key}"))).filter(|c| !c.is_empty()).unwrap_or_else(|| key.clone());
+            (key.clone(), value(&format!("label_{key}")), value(&format!("color_{key}")).to_lowercase(), active.contains(key.as_str()), category)
+        })
         .collect();
     let transitions: Vec<(String, String)> = pairs
         .iter()
@@ -133,6 +168,42 @@ async fn save_statuses(
         .collect();
     match crate::statuses::save(&st.db, &rows, &transitions).await {
         Ok(()) => Ok(see_other_ok("/admin/statuses", "Status gespeichert")),
+        Err(AppError::Unprocessable(msg)) => Ok(see_other(&with_query("/admin/statuses", &[("error", &msg)]))),
+        Err(e) => Err(e.into()),
+    }
+}
+
+/// Bezeichnung der Grundart (feste Standardnamen, unabhängig von Umbenennungen).
+fn base_label(key: &str) -> &'static str {
+    match key {
+        "new" => "Neu",
+        "open" => "Offen",
+        "pending" => "Wartend",
+        "hold" => "Angehalten",
+        "solved" => "Gelöst",
+        "closed" => "Geschlossen",
+        _ => "?",
+    }
+}
+
+#[derive(Deserialize)]
+struct NewStatusForm {
+    label: String,
+    category: String,
+    color: String,
+}
+
+async fn create_status(State(st): State<AppState>, WebAdmin(_): WebAdmin, Form(f): Form<NewStatusForm>) -> WebResult<Response> {
+    match crate::statuses::create(&st.db, &f.label, &f.category, &f.color.to_lowercase()).await {
+        Ok(_) => Ok(see_other_ok("/admin/statuses", &format!("Status „{}“ angelegt", f.label.trim()))),
+        Err(AppError::Unprocessable(msg)) => Ok(see_other(&with_query("/admin/statuses", &[("error", &msg)]))),
+        Err(e) => Err(e.into()),
+    }
+}
+
+async fn delete_status(State(st): State<AppState>, WebAdmin(_): WebAdmin, Path(key): Path<String>) -> WebResult<Response> {
+    match crate::statuses::delete(&st.db, &key).await {
+        Ok(()) => Ok(see_other_ok("/admin/statuses", "Status gelöscht")),
         Err(AppError::Unprocessable(msg)) => Ok(see_other(&with_query("/admin/statuses", &[("error", &msg)]))),
         Err(e) => Err(e.into()),
     }
@@ -1205,7 +1276,11 @@ fn edit_page(me: &User, k: &'static RuleKind, id: Option<i64>, form: RuleForm, e
     let (a_builder, b_builder) = builders(k);
     let paused = form.pause_statuses();
     let pause_opts = if k.key == "sla" {
-        ["new", "open", "pending", "hold"].iter().map(|s| (*s, status_label(s), paused.iter().any(|p| p == s))).collect()
+        crate::statuses::all()
+            .into_iter()
+            .filter(|s| !matches!(s.category, "solved" | "closed"))
+            .map(|s| (s.key, s.label, paused.iter().any(|p| p == s.key)))
+            .collect()
     } else {
         Vec::new()
     };
@@ -1246,10 +1321,7 @@ async fn rule_new(State(st): State<AppState>, WebAdmin(me): WebAdmin, Path(key):
         active: Some("on".into()),
         a: k.a_default.into(),
         b: k.b_col.map(|_| k.b_default.into()),
-        pause_new: None,
-        pause_open: None,
-        pause_pending: Some("on".into()),
-        pause_hold: None,
+        extra: [("pause_pending".to_string(), "on".to_string())].into_iter().collect(),
     };
     page(edit_page(&me, k, None, form, String::new(), rule_meta(&st.db).await?))
 }
@@ -1277,10 +1349,7 @@ async fn rule_edit(
         active: row.3.then(|| "on".into()),
         a: pretty(&row.4),
         b: row.5.as_ref().map(pretty),
-        pause_new: None,
-        pause_open: None,
-        pause_pending: None,
-        pause_hold: None,
+        extra: Default::default(),
     };
     if k.key == "sla" {
         let pause: sqlx::types::Json<Vec<String>> =
@@ -1300,32 +1369,25 @@ struct RuleForm {
     active: Option<String>,
     a: String,
     b: Option<String>,
-    /// SLA: in diesen Status steht die Uhr (Kästchen je Status).
-    #[serde(default)]
-    pause_new: Option<String>,
-    #[serde(default)]
-    pause_open: Option<String>,
-    #[serde(default)]
-    pause_pending: Option<String>,
-    #[serde(default)]
-    pause_hold: Option<String>,
+    /// Weitere Felder, u. a. SLA-Pause: `pause_<status>` = an (auch eigene Status).
+    #[serde(flatten)]
+    extra: std::collections::HashMap<String, String>,
 }
 
 impl RuleForm {
     fn pause_statuses(&self) -> Vec<String> {
-        [("new", &self.pause_new), ("open", &self.pause_open), ("pending", &self.pause_pending), ("hold", &self.pause_hold)]
-            .iter()
-            .filter(|(_, v)| v.is_some())
-            .map(|(k, _)| k.to_string())
+        crate::statuses::all()
+            .into_iter()
+            .filter(|s| self.extra.contains_key(&format!("pause_{}", s.key)))
+            .map(|s| s.key.to_string())
             .collect()
     }
 
     fn set_pause(&mut self, list: &[String]) {
-        let on = |k: &str| list.iter().any(|s| s == k).then(|| "on".to_string());
-        self.pause_new = on("new");
-        self.pause_open = on("open");
-        self.pause_pending = on("pending");
-        self.pause_hold = on("hold");
+        self.extra.retain(|k, _| !k.starts_with("pause_"));
+        for key in list {
+            self.extra.insert(format!("pause_{key}"), "on".into());
+        }
     }
 }
 

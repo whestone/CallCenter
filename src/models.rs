@@ -179,6 +179,8 @@ pub struct Ticket {
     /// SLA-Pause: bisher angesammelte Pausenzeit und Beginn der laufenden Pause (Trigger in der DB).
     pub sla_paused_seconds: i64,
     pub sla_paused_since: Option<DateTime<Utc>>,
+    /// Eigener Status (Verwaltung → Status); `status` enthält dessen Grundart.
+    pub substatus: Option<String>,
 }
 
 pub const FIELD_TYPES: [&str; 5] = ["text", "number", "dropdown", "checkbox", "date"];

@@ -201,15 +201,20 @@ fn link_view(t: &Ticket, relation: &'static str, removable: bool) -> LinkView {
     LinkView {
         id: t.id,
         subject: t.subject.clone(),
-        status: t.status.clone(),
-        status_label: status_label(&t.status),
+        status: crate::statuses::shown(t).to_string(),
+        status_label: status_label(crate::statuses::shown(t)),
         relation,
         removable,
     }
 }
 
 fn mini(t: &Ticket) -> MiniTicket {
-    MiniTicket { id: t.id, subject: t.subject.clone(), status: t.status.clone(), status_label: status_label(&t.status) }
+    MiniTicket {
+        id: t.id,
+        subject: t.subject.clone(),
+        status: crate::statuses::shown(t).to_string(),
+        status_label: status_label(crate::statuses::shown(t)),
+    }
 }
 
 /// Sekunden als „12 Min“ bzw. „1:05 h“.
@@ -251,6 +256,7 @@ fn field_label(field: &str) -> String {
     match field {
         "subject" => "Betreff".into(),
         "status" => "Status".into(),
+        "substatus" => "Status (eigener)".into(),
         "priority" => "Priorität".into(),
         "type" => "Typ".into(),
         "requester_id" => "Anfragender".into(),
@@ -300,7 +306,7 @@ impl Names {
 fn describe_value(field: &str, v: &Value, names: &Names) -> String {
     match (field, v) {
         (_, Value::Null) => "–".into(),
-        ("status", Value::String(s)) => status_label(s).into(),
+        ("status" | "substatus", Value::String(s)) => status_label(s).into(),
         ("priority", Value::String(s)) => priority_label(s).into(),
         ("type", Value::String(s)) => type_label(s).into(),
         ("problem_id", Value::Number(n)) => format!("#{n}"),
@@ -526,7 +532,7 @@ async fn render_ticket(st: &AppState, me: &User, id: i64, draft: Draft) -> WebRe
     };
 
     // Erlaubte Ziele laut Verwaltung → Tickets → Status (plus der aktuelle Status).
-    let statuses: Vec<&str> = crate::statuses::targets(&t.status);
+    let statuses: Vec<&str> = crate::statuses::targets(crate::statuses::shown(&t));
 
     let sla = policy
         .as_ref()
@@ -584,8 +590,8 @@ async fn render_ticket(st: &AppState, me: &User, id: i64, draft: Draft) -> WebRe
         chat_present: chat.as_ref().is_some_and(|c| crate::chat::visitor_present(c, now)),
         id: t.id,
         subject: t.subject.clone(),
-        status: t.status.clone(),
-        status_label: status_label(&t.status),
+        status: crate::statuses::shown(&t).to_string(),
+        status_label: status_label(crate::statuses::shown(&t)),
         closed: t.status == "closed",
         channel: t.channel.clone(),
         channel_label: channel_label(&t.channel),
@@ -604,7 +610,7 @@ async fn render_ticket(st: &AppState, me: &User, id: i64, draft: Draft) -> WebRe
         requester_phone: requester.phone.clone().unwrap_or_default(),
         org_id: org.as_ref().map(|o| o.id).unwrap_or_default(),
         org_name: org.map(|o| o.name).unwrap_or_default(),
-        status_opts: enum_opts(&statuses, status_label, Some(&t.status), None),
+        status_opts: enum_opts(&statuses, status_label, Some(crate::statuses::shown(&t)), None),
         priority_opts: enum_opts(&PRIORITIES, priority_label, t.priority.as_deref(), Some("–")),
         type_opts: enum_opts(&TYPES, type_label, t.ticket_type.as_deref(), Some("–")),
         assignee_opts: id_opts(agent_labels.iter().map(|(id, n)| (*id, n.as_str())), t.assignee_id, "– nicht zugewiesen –"),
@@ -763,7 +769,7 @@ async fn update_ticket(
     let (new_tags, orig_tags) = (tag_set(&f.tags), tag_set(&f.orig_tags));
     let added: Vec<String> = new_tags.iter().filter(|t| !orig_tags.contains(t)).cloned().collect();
     let removed: Vec<String> = orig_tags.iter().filter(|t| !new_tags.contains(t)).cloned().collect();
-    let changes = TicketChanges {
+    let mut changes = TicketChanges {
         // Ein geleerter Betreff kommt als "" an und wird vom Service abgelehnt.
         subject: changed(&f.subject, &f.orig_subject),
         status: non_empty(&f.submit_as).or_else(|| changed(&f.status, &f.orig_status).filter(|s| !s.is_empty())),
@@ -788,12 +794,25 @@ async fn update_ticket(
         })?),
         None => None,
     };
-    // Statuswechsel nur, wenn er unter Verwaltung → Tickets → Status erlaubt ist.
-    if let Some(new_status) = &changes.status {
-        let current: String = sqlx::query_scalar("SELECT status FROM tickets WHERE id = $1").bind(id).fetch_one(&st.db).await?;
-        crate::statuses::check_transition(&current, new_status)?;
+    // Gewählter Status (auch ein eigener) → Grundart + eigener Status. Wechsel nur, wenn
+    // er unter Verwaltung → Tickets → Status erlaubt ist.
+    let mut new_substatus: Option<Option<String>> = None;
+    if let Some(wanted) = changes.status.take() {
+        let (cur_status, cur_sub): (String, Option<String>) =
+            sqlx::query_as("SELECT status, substatus FROM tickets WHERE id = $1").bind(id).fetch_one(&st.db).await?;
+        crate::statuses::check_transition(cur_sub.as_deref().unwrap_or(&cur_status), &wanted)?;
+        let (category, sub) = crate::statuses::resolve(&wanted)?;
+        if category != cur_status {
+            changes.status = Some(category.to_string());
+        }
+        if sub != cur_sub {
+            new_substatus = Some(sub);
+        }
     }
     service::update_ticket(&st.db, &me, id, changes, None, "web").await?;
+    if let Some(sub) = new_substatus {
+        service::set_substatus(&st.db, &me, id, sub).await?;
+    }
     if let Some(seconds) = time {
         sqlx::query("INSERT INTO time_entries (ticket_id, user_id, seconds) VALUES ($1, $2, $3)")
             .bind(id)
@@ -1234,8 +1253,8 @@ async fn requester_tickets(
     let view = |t: &Ticket| CustomerTicket {
         id: t.id,
         subject: t.subject.clone(),
-        status: t.status.clone(),
-        status_label: status_label(&t.status),
+        status: crate::statuses::shown(t).to_string(),
+        status_label: status_label(crate::statuses::shown(t)),
         channel_label: channel_label(&t.channel),
         updated: fmt_rel(t.updated_at, now),
         last: last

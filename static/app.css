@@ -1294,3 +1294,16 @@ select.combo-native { position: absolute !important; width: 1px !important; heig
 
 /* SLA pausiert */
 .sla.paused { background: var(--tint-gray); color: var(--muted); border-color: var(--border); }
+
+/* Eigene Status */
+.status-item .combo, .status-item .status-category { flex: 0 0 150px; }
+.status-base { flex: 0 0 150px; padding-left: 4px; }
+.status-delete, .status-delete-placeholder { width: 32px; height: 32px; flex: none; }
+.status-delete:hover { color: var(--danger); background: var(--tint-red); }
+.status-delete svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.status-new { margin-top: var(--space-3); }
+.status-new > summary { list-style: none; display: inline-flex; }
+.status-new > summary::-webkit-details-marker { display: none; }
+.status-new-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); margin-top: var(--space-3); }
+.status-new-row input[type=text] { flex: 1 1 200px; min-width: 0; }
+.status-new-row .combo { flex: 0 0 170px; }

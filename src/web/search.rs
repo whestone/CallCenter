@@ -212,7 +212,7 @@ async fn quick(State(st): State<AppState>, WebAgent(me): WebAgent, Query(p): Que
         q_url: serde_urlencoded::to_string([("q", q.as_str())]).unwrap_or_default(),
         tickets: tickets
             .iter()
-            .map(|t| (t.id, search::highlight(&t.subject, &terms), t.status.clone(), status_label(&t.status)))
+            .map(|t| (t.id, search::highlight(&t.subject, &terms), crate::statuses::shown(t).to_string(), status_label(crate::statuses::shown(t))))
             .collect(),
         people: if filters_only { Vec::new() } else { people(db, &text, 4).await? },
         orgs: if filters_only { Vec::new() } else { organizations(db, &text, 3).await? },

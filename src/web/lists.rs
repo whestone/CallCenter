@@ -89,7 +89,8 @@ impl ListParams {
         if let Some(s) = Self::get(&self.status) {
             let ok = match s {
                 "unsolved" => matches!(t.status.as_str(), "new" | "open" | "pending" | "hold"),
-                s => t.status == s,
+                // Grundart oder eigener Status
+                s => t.status == s || t.substatus.as_deref() == Some(s),
             };
             if !ok {
                 return false;
@@ -436,16 +437,34 @@ async fn bulk_update(
 
     let (mut ok, mut err) = (0usize, 0usize);
     for id in ids {
-        // Nicht erlaubte Statuswechsel (Verwaltung → Tickets → Status) überspringen.
-        if let Some(new_status) = &changes.status {
-            let current: Option<String> = sqlx::query_scalar("SELECT status FROM tickets WHERE id = $1").bind(id).fetch_optional(&st.db).await?;
-            if current.is_some_and(|c| crate::statuses::check_transition(&c, new_status).is_err()) {
+        // Gewählter Status → Grundart + eigener Status; nicht erlaubte Wechsel überspringen.
+        let mut ticket_changes = changes.clone();
+        let mut new_substatus: Option<Option<String>> = None;
+        if let Some(wanted) = &changes.status {
+            let current: Option<(String, Option<String>)> =
+                sqlx::query_as("SELECT status, substatus FROM tickets WHERE id = $1").bind(id).fetch_optional(&st.db).await?;
+            let Some((cur_status, cur_sub)) = current else {
                 err += 1;
                 continue;
+            };
+            let resolved = crate::statuses::check_transition(cur_sub.as_deref().unwrap_or(&cur_status), wanted)
+                .and_then(|_| crate::statuses::resolve(wanted));
+            let Ok((category, sub)) = resolved else {
+                err += 1;
+                continue;
+            };
+            ticket_changes.status = (category != cur_status).then(|| category.to_string());
+            if sub != cur_sub {
+                new_substatus = Some(sub);
             }
         }
-        match service::update_ticket(&st.db, &me, id, changes.clone(), macro_id, "bulk").await {
-            Ok(_) => ok += 1,
+        match service::update_ticket(&st.db, &me, id, ticket_changes, macro_id, "bulk").await {
+            Ok(_) => {
+                if let Some(sub) = new_substatus {
+                    service::set_substatus(&st.db, &me, id, sub).await?;
+                }
+                ok += 1
+            }
             Err(e) => {
                 tracing::info!(ticket = id, "Massenbearbeitung übersprungen: {}", e.public_message());
                 err += 1;

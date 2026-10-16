@@ -381,7 +381,7 @@ fn opt_id(v: &Value, actor: Option<&User>) -> Result<Option<i64>, String> {
 pub fn render_placeholders(text: &str, t: &Ticket, actor: Option<&User>) -> String {
     text.replace("{{ticket.id}}", &t.id.to_string())
         .replace("{{ticket.subject}}", &t.subject)
-        .replace("{{ticket.status}}", crate::models::status_label(&t.status))
+        .replace("{{ticket.status}}", crate::models::status_label(crate::statuses::shown(t)))
         .replace("{{ticket.priority}}", t.priority.as_deref().map(crate::models::priority_label).unwrap_or("–"))
         .replace("{{current_user.name}}", actor.map(|u| u.name.as_str()).unwrap_or(""))
 }

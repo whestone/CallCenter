@@ -897,6 +897,69 @@ pub async fn unlink_tickets(db: &PgPool, actor: &User, id: i64, other: i64) -> A
     Err(AppError::invalid(format!("Ticket #{other} ist nicht verknüpft")))
 }
 
+// ---------------------------------------------------------------------------
+// Löschen von Kommentaren und Anhängen
+// ---------------------------------------------------------------------------
+
+/// Löschen dürfen Admins sowie der Verfasser bzw. wer die Datei hochgeladen hat.
+/// Geschlossene Tickets bleiben unverändert.
+fn may_delete(actor: &User, owner: Option<i64>, ticket: &Ticket) -> AppResult<()> {
+    if ticket.status == "closed" {
+        return Err(AppError::invalid("Das Ticket ist geschlossen und kann nicht mehr geändert werden"));
+    }
+    if actor.is_admin() || (actor.is_agent() && owner == Some(actor.id)) {
+        Ok(())
+    } else {
+        Err(AppError::Forbidden)
+    }
+}
+
+/// Kommentar samt seiner Anhänge löschen; im Ereignisprotokoll bleibt vermerkt, wer
+/// wann was gelöscht hat (ohne den Inhalt).
+pub async fn delete_comment(db: &PgPool, actor: &User, ticket_id: i64, comment_id: i64) -> AppResult<()> {
+    let ticket = get_ticket(db, ticket_id).await?;
+    let row: Option<(i64, bool, String)> = sqlx::query_as(
+        "SELECT c.author_id, c.public, u.name FROM ticket_comments c JOIN users u ON u.id = c.author_id WHERE c.id = $1 AND c.ticket_id = $2",
+    )
+    .bind(comment_id)
+    .bind(ticket_id)
+    .fetch_optional(db)
+    .await?;
+    let Some((author_id, public, author)) = row else { return Err(AppError::NotFound) };
+    may_delete(actor, Some(author_id), &ticket)?;
+    let mut tx = db.begin().await?;
+    sqlx::query("DELETE FROM ticket_comments WHERE id = $1").bind(comment_id).execute(&mut *tx).await?;
+    sqlx::query("UPDATE tickets SET updated_at = now() WHERE id = $1").bind(ticket_id).execute(&mut *tx).await?;
+    let what = if public { "Öffentlicher Kommentar" } else { "Interne Notiz" };
+    let ev = AuditEvent::Deleted { item: what.into(), name: format!("von {author}") };
+    insert_audit(&mut tx, ticket_id, Some(actor.id), "web", &[ev]).await?;
+    tx.commit().await?;
+    Ok(())
+}
+
+pub async fn delete_attachment(db: &PgPool, actor: &User, ticket_id: i64, attachment_id: i64) -> AppResult<()> {
+    let ticket = get_ticket(db, ticket_id).await?;
+    let row: Option<(String, Option<i64>, Option<i64>)> = sqlx::query_as(
+        "SELECT a.filename, a.uploaded_by, c.author_id FROM attachments a LEFT JOIN ticket_comments c ON c.id = a.comment_id
+         WHERE a.id = $1 AND a.ticket_id = $2",
+    )
+    .bind(attachment_id)
+    .bind(ticket_id)
+    .fetch_optional(db)
+    .await?;
+    let Some((filename, uploaded_by, comment_author)) = row else { return Err(AppError::NotFound) };
+    // Eigene Uploads und Anhänge an eigenen Kommentaren.
+    let owner = if uploaded_by == Some(actor.id) { uploaded_by } else { comment_author };
+    may_delete(actor, owner, &ticket)?;
+    let mut tx = db.begin().await?;
+    sqlx::query("DELETE FROM attachments WHERE id = $1").bind(attachment_id).execute(&mut *tx).await?;
+    sqlx::query("UPDATE tickets SET updated_at = now() WHERE id = $1").bind(ticket_id).execute(&mut *tx).await?;
+    let ev = AuditEvent::Deleted { item: "Anhang".into(), name: filename };
+    insert_audit(&mut tx, ticket_id, Some(actor.id), "web", &[ev]).await?;
+    tx.commit().await?;
+    Ok(())
+}
+
 /// Löst alle offenen Vorfälle eines gelösten Problems (wie bei Zendesk) und
 /// informiert deren Anfragende mit dem Lösungstext des Problems.
 async fn solve_incidents(db: &PgPool, actor: &User, problem: &Ticket, note: Option<String>) -> AppResult<()> {

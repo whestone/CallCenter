@@ -1130,3 +1130,20 @@ label.is-dirty > .chips-input .chip-item { box-shadow: 0 0 0 2px var(--tint-oran
 .chips-suggest li { display: flex; flex-direction: column; gap: 1px; padding: 7px 10px; border-radius: var(--radius); cursor: pointer; font-size: var(--fs-sm); color: var(--text); }
 .chips-suggest li small { color: var(--muted); font-size: var(--fs-xs); }
 .chips-suggest li:hover, .chips-suggest li.active { background: var(--tint-blue); }
+
+/* Löschen von Kommentaren und Anhängen: erst beim Überfahren sichtbar */
+.comment-body header { align-items: center; }
+.comment-delete { margin-left: auto; width: 30px; height: 30px; opacity: 0; transition: opacity var(--ease), color var(--ease), background var(--ease); }
+.comment:hover .comment-delete, .comment-delete:focus-visible { opacity: 1; }
+.comment-delete:hover { color: var(--danger); background: var(--tint-red); }
+.comment-delete svg, .file-delete svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.file-item { position: relative; display: inline-flex; }
+.side-attachments .file-item { display: flex; }
+.side-attachments .file-item .file-card { flex: 1; }
+.file-delete { position: absolute; top: -7px; right: -7px; width: 24px; height: 24px; padding: 0; border-radius: 50%; border: 1px solid var(--border);
+  background: var(--panel); color: var(--muted); display: grid; place-items: center; cursor: pointer; opacity: 0; box-shadow: var(--shadow-sm);
+  transition: opacity var(--ease), color var(--ease), border-color var(--ease); }
+.file-delete svg { width: 13px; height: 13px; }
+.file-item:hover .file-delete, .file-delete:focus-visible { opacity: 1; }
+.file-delete:hover { color: var(--danger); border-color: var(--tint-red-border); background: var(--tint-red); }
+@media (hover: none) { .comment-delete, .file-delete { opacity: 1; } }

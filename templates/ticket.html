@@ -12,6 +12,8 @@
 {% endif %}
 <form id="link-form" method="post" action="/tickets/{{ id }}/links"></form>
 <form id="unlink-form" method="post" hx-confirm="Verknüpfung aufheben?"></form>
+<form id="comment-delete-form" method="post" hx-confirm="Kommentar wirklich löschen? Bereits verschickte E-Mails lassen sich nicht zurückholen."></form>
+<form id="attachment-delete-form" method="post" hx-confirm="Anhang wirklich löschen?"></form>
 <form id="merge-form" method="post" action="/tickets/{{ id }}/merge" hx-confirm="Ticket #{{ id }} wirklich zusammenführen und schließen?"></form>
 
 <form class="ticket-layout" method="post" action="/tickets/{{ id }}">
@@ -93,11 +95,12 @@
               <strong>{{ c.author }}</strong>
               {% if !c.public %}<span class="tag-internal">Interne Notiz</span>{% endif %}
               <span class="muted">{{ c.created }} · via {{ c.via }}</span>
+              {% if !closed && (nav.is_admin || c.author_id == nav.user_id) %}<button class="icon-btn comment-delete" type="submit" form="comment-delete-form" formaction="/tickets/{{ id }}/comments/{{ c.id }}/delete" title="Kommentar löschen" aria-label="Kommentar löschen"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg></button>{% endif %}
             </header>
             <div class="text md">{{ c.html|safe }}</div>
             {% if !c.attachments.is_empty() %}
             <ul class="attachments">
-              {% for a in c.attachments %}<li><a class="file-card" href="/attachments/{{ a.id }}" target="_blank" rel="noopener" hx-boost="false" data-attachment data-kind="{{ a.kind }}" data-name="{{ a.filename }}" data-size="{{ a.size }}">{% if a.kind == "image" %}<img class="file-thumb" src="/attachments/{{ a.id }}" alt="" loading="lazy">{% else %}<span class="file-icon file-{{ a.kind }}" aria-hidden="true">{% if a.kind == "pdf" %}PDF{% else if a.kind == "text" %}TXT{% else %}DATEI{% endif %}</span>{% endif %}<span class="file-text"><strong>{{ a.filename }}</strong><small>{{ a.size }}</small></span></a></li>{% endfor %}
+              {% for a in c.attachments %}<li class="file-item"><a class="file-card" href="/attachments/{{ a.id }}" target="_blank" rel="noopener" hx-boost="false" data-attachment data-kind="{{ a.kind }}" data-name="{{ a.filename }}" data-size="{{ a.size }}">{% if a.kind == "image" %}<img class="file-thumb" src="/attachments/{{ a.id }}" alt="" loading="lazy">{% else %}<span class="file-icon file-{{ a.kind }}" aria-hidden="true">{% if a.kind == "pdf" %}PDF{% else if a.kind == "text" %}TXT{% else %}DATEI{% endif %}</span>{% endif %}<span class="file-text"><strong>{{ a.filename }}</strong><small>{{ a.size }}</small></span></a>{% if !closed && (nav.is_admin || c.author_id == nav.user_id) %}<button class="file-delete" type="submit" form="attachment-delete-form" formaction="/tickets/{{ id }}/attachments/{{ a.id }}/delete" title="Anhang löschen" aria-label="{{ a.filename }} löschen"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg></button>{% endif %}</li>{% endfor %}
             </ul>
             {% endif %}
           </div>
@@ -258,7 +261,7 @@
     <div class="card">
       <h4>Anhänge</h4>
       <ul class="attachments side-attachments">
-        {% for c in comments %}{% for a in c.attachments %}<li><a class="file-card" href="/attachments/{{ a.id }}" target="_blank" rel="noopener" hx-boost="false" data-attachment data-kind="{{ a.kind }}" data-name="{{ a.filename }}" data-size="{{ a.size }}">{% if a.kind == "image" %}<img class="file-thumb" src="/attachments/{{ a.id }}" alt="" loading="lazy">{% else %}<span class="file-icon file-{{ a.kind }}" aria-hidden="true">{% if a.kind == "pdf" %}PDF{% else if a.kind == "text" %}TXT{% else %}DATEI{% endif %}</span>{% endif %}<span class="file-text"><strong>{{ a.filename }}</strong><small>{{ a.size }}</small></span></a></li>{% endfor %}{% endfor %}
+        {% for c in comments %}{% for a in c.attachments %}<li class="file-item"><a class="file-card" href="/attachments/{{ a.id }}" target="_blank" rel="noopener" hx-boost="false" data-attachment data-kind="{{ a.kind }}" data-name="{{ a.filename }}" data-size="{{ a.size }}">{% if a.kind == "image" %}<img class="file-thumb" src="/attachments/{{ a.id }}" alt="" loading="lazy">{% else %}<span class="file-icon file-{{ a.kind }}" aria-hidden="true">{% if a.kind == "pdf" %}PDF{% else if a.kind == "text" %}TXT{% else %}DATEI{% endif %}</span>{% endif %}<span class="file-text"><strong>{{ a.filename }}</strong><small>{{ a.size }}</small></span></a>{% if !closed && (nav.is_admin || c.author_id == nav.user_id) %}<button class="file-delete" type="submit" form="attachment-delete-form" formaction="/tickets/{{ id }}/attachments/{{ a.id }}/delete" title="Anhang löschen" aria-label="{{ a.filename }} löschen"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg></button>{% endif %}</li>{% endfor %}{% endfor %}
       </ul>
     </div>
     {% endif %}

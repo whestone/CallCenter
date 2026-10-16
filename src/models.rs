@@ -289,6 +289,8 @@ pub enum AuditEvent {
     Notification { body: String },
     /// Verknüpfung mit einem anderen Ticket angelegt (`added`) oder entfernt.
     Link { ticket_id: i64, relation: String, added: bool },
+    /// Kommentar oder Anhang gelöscht (Inhalt wird nicht aufbewahrt).
+    Deleted { item: String, name: String },
 }
 
 #[derive(Debug, Clone, Serialize, FromRow)]

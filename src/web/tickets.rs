@@ -33,6 +33,8 @@ pub fn router() -> Router<AppState> {
         .route("/requesters/{id}/tickets", get(requester_tickets))
         .route("/tags/suggest", get(tag_suggest))
         .route("/emails/suggest", get(email_suggest))
+        .route("/tickets/{id}/comments/{cid}/delete", post(delete_comment))
+        .route("/tickets/{id}/attachments/{aid}/delete", post(delete_attachment))
 }
 
 // ---------------------------------------------------------------------------
@@ -40,6 +42,7 @@ pub fn router() -> Router<AppState> {
 // ---------------------------------------------------------------------------
 
 struct CommentView {
+    id: i64,
     author_id: i64,
     author: String,
     initials: String,
@@ -346,6 +349,7 @@ fn describe_event(ev: &AuditEvent, names: &Names) -> String {
         AuditEvent::Notification { body } => format!("Benachrichtigung an Anfragenden: {body}"),
         AuditEvent::Link { ticket_id, added: true, .. } => format!("Mit Ticket #{ticket_id} verknüpft"),
         AuditEvent::Link { ticket_id, added: false, .. } => format!("Verknüpfung mit Ticket #{ticket_id} entfernt"),
+        AuditEvent::Deleted { item, name } => format!("{item} gelöscht ({name})"),
     }
 }
 
@@ -617,6 +621,7 @@ async fn render_ticket(st: &AppState, me: &User, id: i64, draft: Draft) -> WebRe
             .map(|c| {
                 let author = users.get(&c.author_id).cloned().unwrap_or_else(|| format!("#{}", c.author_id));
                 CommentView {
+                    id: c.id,
                     author_id: c.author_id,
                     initials: initials(&author),
                     author,
@@ -1246,6 +1251,16 @@ struct TagQuery {
 }
 
 /// Vorschläge für das Tag-Feld: vorhandene Tags, häufigste zuerst.
+async fn delete_comment(State(st): State<AppState>, WebAgent(me): WebAgent, Path((id, cid)): Path<(i64, i64)>) -> WebResult<Response> {
+    service::delete_comment(&st.db, &me, id, cid).await?;
+    Ok(see_other_ok(&format!("/tickets/{id}"), "Kommentar gelöscht"))
+}
+
+async fn delete_attachment(State(st): State<AppState>, WebAgent(me): WebAgent, Path((id, aid)): Path<(i64, i64)>) -> WebResult<Response> {
+    service::delete_attachment(&st.db, &me, id, aid).await?;
+    Ok(see_other_ok(&format!("/tickets/{id}"), "Anhang gelöscht"))
+}
+
 #[derive(serde::Serialize)]
 struct EmailHit {
     name: String,

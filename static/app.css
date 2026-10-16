@@ -1110,3 +1110,23 @@ table.ticket-list tbody tr:has(input[name=ticket_id]:checked) td:first-child { b
 .lightbox-thumb.active { border-color: var(--accent); }
 @media (max-width: 700px) { .lightbox-content { padding: 12px; } .lightbox-nav { top: auto; bottom: 12px; transform: none; } }
 .lightbox-text { width: 100%; height: 100%; margin: 0; overflow: auto; padding: 16px 18px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--panel); color: var(--text); font: var(--fs-sm)/1.55 var(--font-mono); white-space: pre-wrap; overflow-wrap: anywhere; }
+
+/* Chip-Felder ohne Rahmen: Chips + „+“-Knopf, Eingabe erst nach Klick */
+.chips-input { position: relative; min-height: 32px; padding: 2px 0; gap: 6px; border: 0; background: transparent; cursor: default; }
+.chips-input:focus-within { outline: none; border: 0; }
+.chips-add { display: inline-grid; place-items: center; width: 28px; height: 28px; padding: 0; border-radius: 50%; border: 1.5px dashed var(--border);
+  background: transparent; color: var(--muted); cursor: pointer; transition: border-color var(--ease), color var(--ease), background var(--ease); }
+.chips-add:hover, .chips-add:focus-visible { border-style: solid; border-color: var(--accent); color: var(--accent); background: var(--tint-blue); outline: none; }
+.chips-add svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; }
+.chips-add[hidden], .chips-entry[hidden] { display: none; }
+.chips-input .chips-entry { flex: 1 1 160px; min-width: 140px; height: 28px; padding: 0 10px !important; border: 1px solid var(--accent) !important;
+  border-radius: var(--radius-full); background: var(--panel) !important; box-shadow: var(--focus-ring) !important; font-size: var(--fs-sm); }
+.chips-input.chips-invalid .chips-entry { border-color: var(--danger) !important; box-shadow: 0 0 0 3px var(--tint-red-border) !important; }
+label.is-dirty > .chips-input { background: transparent; }
+label.is-dirty > .chips-input .chip-item { box-shadow: 0 0 0 2px var(--tint-orange-border); }
+.chips-suggest { position: absolute; left: 0; right: 0; top: calc(100% + 4px); z-index: 40; list-style: none; margin: 0; padding: 4px; max-height: 260px; overflow-y: auto;
+  background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); }
+.chips-suggest[hidden] { display: none; }
+.chips-suggest li { display: flex; flex-direction: column; gap: 1px; padding: 7px 10px; border-radius: var(--radius); cursor: pointer; font-size: var(--fs-sm); color: var(--text); }
+.chips-suggest li small { color: var(--muted); font-size: var(--fs-xs); }
+.chips-suggest li:hover, .chips-suggest li.active { background: var(--tint-blue); }

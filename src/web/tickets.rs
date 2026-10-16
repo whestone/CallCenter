@@ -32,6 +32,7 @@ pub fn router() -> Router<AppState> {
         .route("/requesters/lookup", get(requester_lookup))
         .route("/requesters/{id}/tickets", get(requester_tickets))
         .route("/tags/suggest", get(tag_suggest))
+        .route("/emails/suggest", get(email_suggest))
 }
 
 // ---------------------------------------------------------------------------
@@ -1245,6 +1246,33 @@ struct TagQuery {
 }
 
 /// Vorschläge für das Tag-Feld: vorhandene Tags, häufigste zuerst.
+#[derive(serde::Serialize)]
+struct EmailHit {
+    name: String,
+    email: String,
+}
+
+/// Vorschläge für CC: bestehende Kunden mit E-Mail-Adresse (Name oder Adresse passt).
+async fn email_suggest(
+    State(st): State<AppState>,
+    WebAgent(_): WebAgent,
+    Query(q): Query<TagQuery>,
+) -> WebResult<axum::Json<Vec<EmailHit>>> {
+    let term = q.q.unwrap_or_default();
+    if term.trim().is_empty() {
+        return Ok(axum::Json(Vec::new()));
+    }
+    let users = service::search_users(&st.db, &term, 20, true).await?;
+    Ok(axum::Json(
+        users
+            .into_iter()
+            .filter(|u| u.active)
+            .filter_map(|u| u.email.filter(|e| !e.is_empty()).map(|email| EmailHit { name: u.name, email }))
+            .take(8)
+            .collect(),
+    ))
+}
+
 async fn tag_suggest(
     State(st): State<AppState>,
     WebAgent(_): WebAgent,

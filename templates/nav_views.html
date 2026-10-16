@@ -1,0 +1,6 @@
+<div class="side-heading">Ansichten</div>
+{% for v in views %}
+<a href="/views/{{ v.id }}" class="side-link side-view" data-view-link title="{{ v.title }}">
+  <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="m9 12 2 2 4-4"/></svg><span class="side-label">{{ v.title }}</span>{% if v.count > 0 %}<span class="side-count">{{ v.count }}</span>{% endif %}
+</a>
+{% endfor %}

@@ -45,6 +45,7 @@ pub static TICKETS: Spec = Spec {
     fields: &[
         ("status", "Status", true, false),
         ("id", "Ticketnummer", true, false),
+        ("preview", "Textvorschau", true, false),
         ("requester", "Kunde", true, false),
         ("org", "Organisation", true, false),
         ("channel", "Kanal", true, false),

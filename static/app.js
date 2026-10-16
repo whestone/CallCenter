@@ -449,7 +449,7 @@ const SHORTCUTS = [
   ["g dann b", "Benachrichtigungen"],
   ["n", "Neues Ticket"],
   ["a", "Anruf erfassen"],
-  ["/", "Suche"],
+  ["/ oder Strg + K", "Suche"],
   ["j / k", "Nächstes / vorheriges Ticket in der Liste"],
   ["o oder Enter", "Markiertes Ticket öffnen"],
   ["x", "Markiertes Ticket auswählen (Massenbearbeitung)"],
@@ -498,6 +498,17 @@ function go(url) {
   link.click();
   link.remove();
 }
+
+// Strg/⌘ + K: Suche – auch aus Eingabefeldern heraus.
+document.addEventListener("keydown", (event) => {
+  if ((event.ctrlKey || event.metaKey) && !event.altKey && event.key.toLowerCase() === "k") {
+    const search = document.querySelector("[data-search-shortcut]");
+    if (!search) return;
+    event.preventDefault();
+    search.focus();
+    search.select();
+  }
+});
 
 let gPending = false;
 document.addEventListener("keydown", (event) => {
@@ -798,3 +809,16 @@ document.addEventListener("keydown", (event) => {
   }
   event.target.focus();
 });
+
+// ---------------------------------------------------------------------------
+// Linke Navigation: aktuelle Ansicht markieren (die Liste wird nachgeladen)
+// ---------------------------------------------------------------------------
+function markActiveView() {
+  const path = location.pathname;
+  document.querySelectorAll("[data-view-link]").forEach((a) => {
+    a.classList.toggle("active", new URL(a.href, location.href).pathname === path);
+  });
+}
+document.addEventListener("htmx:afterSettle", markActiveView);
+document.addEventListener("DOMContentLoaded", markActiveView);
+window.addEventListener("popstate", () => setTimeout(markActiveView, 0));

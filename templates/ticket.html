@@ -15,6 +15,26 @@
 <form id="merge-form" method="post" action="/tickets/{{ id }}/merge" hx-confirm="Ticket #{{ id }} wirklich zusammenführen und schließen?"></form>
 
 <form class="ticket-layout" method="post" action="/tickets/{{ id }}">
+  <aside class="ticket-customer">
+    <div class="card side-card">
+      <h4>Kunde</h4>
+      <div class="person">
+        <div class="avatar">{{ requester_initials }}</div>
+        <div>
+          <a href="/users/{{ requester_id }}"><strong>{{ requester_name }}</strong></a>
+          {% if !requester_email.is_empty() %}<div class="muted small"><a class="muted" href="mailto:{{ requester_email }}">{{ requester_email }}</a></div>{% endif %}
+          {% if org_id != 0 %}<div class="small"><a class="muted" href="/organizations/{{ org_id }}">{{ org_name }}</a></div>{% endif %}
+        </div>
+      </div>
+      <dl class="detail-list">
+        <dt>Telefon</dt><dd>{% if requester_phone.is_empty() %}–{% else %}<button class="link phone-link" type="submit" form="dial-form" title="Anrufen">{{ requester_phone }}</button>{% endif %}</dd>
+      </dl>
+      <div class="side-actions">
+        <a class="link-arrow" href="/users/{{ requester_id }}">Kundenprofil öffnen →</a>
+        <a class="link-arrow" href="/tickets/new?channel=phone&requester_id={{ requester_id }}">Neues Anruf-Ticket →</a>
+      </div>
+    </div>
+  </aside>
   <fieldset class="ticket-fields"{% if closed %} disabled{% endif %}>
     <input type="hidden" name="orig_subject" value="{{ subject }}">
     <input type="hidden" name="orig_status" value="{{ status }}">
@@ -26,67 +46,32 @@
 
     <input type="hidden" name="orig_cc" value="{{ cc }}">
     <input type="hidden" name="seen_audit" value="{{ seen_audit }}">
-    <aside class="props">
-      <h3>Ticket #{{ id }}</h3>
-      <div class="meta">
-        <span class="status-pill s-{{ status }}">{{ status_label }}</span>
-        <span class="muted">{{ channel_label }} · {{ created }}</span>
-      </div>
-      {% if followup_source != 0 %}<p class="small">↪ Folgeticket zu <a href="/tickets/{{ followup_source }}">#{{ followup_source }}</a></p>{% endif %}
-
-      <div class="row2">
-        <label>Typ
-          <select name="ticket_type">{% for o in type_opts %}<option value="{{ o.value }}"{% if o.selected %} selected{% endif %}>{{ o.label }}</option>{% endfor %}</select>
-        </label>
-        <label>Priorität
-          <select name="priority">{% for o in priority_opts %}<option value="{{ o.value }}"{% if o.selected %} selected{% endif %}>{{ o.label }}</option>{% endfor %}</select>
-        </label>
-      </div>
-      <label>Gruppe
-        <select name="group_id">{% for o in group_opts %}<option value="{{ o.value }}"{% if o.selected %} selected{% endif %}>{{ o.label }}</option>{% endfor %}</select>
-      </label>
-      <label>Bearbeiter
-        <select name="assignee_id">{% for o in assignee_opts %}<option value="{{ o.value }}"{% if o.selected %} selected{% endif %}>{{ o.label }}</option>{% endfor %}</select>
-      </label>
-      <label>Tags
-        <input type="text" name="tags" value="{{ tags }}" placeholder="Tag hinzufügen …" data-chips="tags">
-      </label>
-      {% if !skills.is_empty() %}<p class="small skill-need" title="Ergibt sich aus den Tags; die automatische Zuweisung bevorzugt Agenten mit diesen Fähigkeiten">🎯 Benötigt: {{ skills }}</p>{% endif %}
-
-      <label>CC
-        <input type="text" name="cc" value="{{ cc }}" placeholder="E-Mail hinzufügen …" data-chips="emails">
-      </label>
-
-      {% if !cf_inputs.is_empty() %}
-      <h4>Weitere Felder</h4>
-      {% include "cf_inputs.html" %}
-      {% endif %}
-
-      {% if !custom_fields.is_empty() %}
-      <h4>Zusatzdaten</h4>
-      <dl class="kv">{% for f in custom_fields %}<dt>{{ f.key }}</dt><dd>{{ f.value }}</dd>{% endfor %}</dl>
-      {% endif %}
-
-      {% if !csat.is_empty() %}
-      <h4>Kundenbewertung</h4>
-      <div class="csat {% if csat_good %}csat-good{% else %}csat-bad{% endif %}">
-        <strong>{{ csat }}</strong>
-        {% if !csat_comment.is_empty() %}<div class="small">„{{ csat_comment }}“</div>{% endif %}
-      </div>
-      {% endif %}
-
-      {% if !sla.is_empty() %}
-      <h4>SLA</h4>
-      <ul class="sla-list">
-        {% for s in sla %}<li><span>{{ s.label }}</span><span class="{{ s.class }}">{{ s.text }}</span></li>{% endfor %}
-      </ul>
-      {% endif %}
-    </aside>
 
     <section class="conversation">
-      <div class="conv-head">
-        <input class="subject-input" type="text" name="subject" value="{{ subject }}" aria-label="Betreff">
-        <span class="muted">aktualisiert {{ updated }}</span>
+      <div class="ticket-head">
+        <a class="icon-btn" href="/views" title="Zurück" aria-label="Zurück" onclick="if (history.length > 1) { history.back(); return false; }"><svg viewBox="0 0 24 24"><path d="M19 12H5M11 18l-6-6 6-6"/></svg></a>
+        <span class="ticket-no">Ticket #{{ id }}</span>
+        <span class="status-pill s-{{ status }}">{{ status_label }}</span>
+        <span class="spacer"></span>
+        <span class="muted small">aktualisiert {{ updated }}</span>
+      </div>
+      <div class="ticket-hero">
+        <span class="t-icon ch-{{ channel }}" aria-hidden="true">{% match channel.as_str() %}
+          {% when "email" %}<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>
+          {% when "phone" %}<svg viewBox="0 0 24 24"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2"/></svg>
+          {% when "chat" %}<svg viewBox="0 0 24 24"><path d="M4 6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H9l-5 4z"/></svg>
+          {% when "api" %}<svg viewBox="0 0 24 24"><path d="m8 8-4 4 4 4M16 8l4 4-4 4M14 5l-4 14"/></svg>
+          {% else %}<svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg>
+        {% endmatch %}</span>
+        <div class="ticket-hero-body">
+          <input class="subject-input" type="text" name="subject" value="{{ subject }}" aria-label="Betreff">
+          <div class="ticket-hero-meta">
+            <span>Von <a href="/users/{{ requester_id }}">{{ requester_name }}</a>{% if org_id != 0 %} · <a class="muted" href="/organizations/{{ org_id }}">{{ org_name }}</a>{% endif %}</span>
+            <span>{{ channel_label }} · {{ created }}</span>
+            {% if !priority_label.is_empty() %}<span class="prio-badge p-{{ orig_priority }}">{{ priority_label }}</span>{% endif %}
+            {% for t in tag_list %}<span class="chip-item chip-tag chip-sm">{{ t }}</span>{% endfor %}
+          </div>
+        </div>
       </div>
       {% if chat_id != 0 %}
       <div class="chat-bar chat-{{ chat_status }}">
@@ -188,23 +173,69 @@
         {% endfor %}
       </details>
     </section>
+    <aside class="ticket-side">
+      <div class="card side-card">
+        <h4>Ticket-Details</h4>
+        <dl class="detail-list">
+          <dt>Ticket-ID</dt><dd>#{{ id }}</dd>
+          <dt>Erstellt</dt><dd>{{ created }}</dd>
+          <dt>Letzte Antwort</dt><dd>{% if last_reply.is_empty() %}–{% else %}{{ last_reply }}{% endif %}</dd>
+          <dt>Kanal</dt><dd>{{ channel_label }}</dd>
+          {% for s in sla %}<dt>{{ s.label }}</dt><dd><span class="sla-dot {{ s.class }}">{{ s.text }}</span></dd>{% endfor %}
+        </dl>
+        {% if followup_source != 0 %}<p class="small">↪ Folgeticket zu <a href="/tickets/{{ followup_source }}">#{{ followup_source }}</a></p>{% endif %}
+
+        <div class="row2">
+          <label>Typ
+            <select name="ticket_type">{% for o in type_opts %}<option value="{{ o.value }}"{% if o.selected %} selected{% endif %}>{{ o.label }}</option>{% endfor %}</select>
+          </label>
+          <label>Priorität
+            <select name="priority">{% for o in priority_opts %}<option value="{{ o.value }}"{% if o.selected %} selected{% endif %}>{{ o.label }}</option>{% endfor %}</select>
+          </label>
+        </div>
+        <label>Gruppe
+          <select name="group_id">{% for o in group_opts %}<option value="{{ o.value }}"{% if o.selected %} selected{% endif %}>{{ o.label }}</option>{% endfor %}</select>
+        </label>
+        <label>Bearbeiter
+          <select name="assignee_id">{% for o in assignee_opts %}<option value="{{ o.value }}"{% if o.selected %} selected{% endif %}>{{ o.label }}</option>{% endfor %}</select>
+        </label>
+        <label>Tags
+          <input type="text" name="tags" value="{{ tags }}" placeholder="Tag hinzufügen …" data-chips="tags">
+        </label>
+        {% if !skills.is_empty() %}<p class="small skill-need" title="Ergibt sich aus den Tags; die automatische Zuweisung bevorzugt Agenten mit diesen Fähigkeiten">🎯 Benötigt: {{ skills }}</p>{% endif %}
+
+        <label>CC
+          <input type="text" name="cc" value="{{ cc }}" placeholder="E-Mail hinzufügen …" data-chips="emails">
+        </label>
+
+        {% if !cf_inputs.is_empty() %}
+        <h4>Weitere Felder</h4>
+        {% include "cf_inputs.html" %}
+        {% endif %}
+
+        {% if !custom_fields.is_empty() %}
+        <h4>Zusatzdaten</h4>
+        <dl class="kv">{% for f in custom_fields %}<dt>{{ f.key }}</dt><dd>{{ f.value }}</dd>{% endfor %}</dl>
+        {% endif %}
+
+        {% if !csat.is_empty() %}
+        <h4>Kundenbewertung</h4>
+        <div class="csat {% if csat_good %}csat-good{% else %}csat-bad{% endif %}">
+          <strong>{{ csat }}</strong>
+          {% if !csat_comment.is_empty() %}<div class="small">„{{ csat_comment }}“</div>{% endif %}
+        </div>
+        {% endif %}
+
+        </div>
+      <div class="card side-card">
+        <h4>Zugewiesen an</h4>
+        {% if assignee_name.is_empty() %}<p class="muted small">Noch niemand{% if !group_name.is_empty() %} · Gruppe {{ group_name }}{% endif %}</p>
+        {% else %}<div class="person compact"><span class="avatar sm">{{ assignee_initials }}</span><div><strong>{{ assignee_name }}</strong>{% if !group_name.is_empty() %}<div class="muted small">{{ group_name }}</div>{% endif %}</div></div>{% endif %}
+      </div>
+    </aside>
   </fieldset>
 
   <aside class="context">
-    <div class="card">
-      <div class="person">
-        <div class="avatar">{{ requester_initials }}</div>
-        <div>
-          <a href="/users/{{ requester_id }}"><strong>{{ requester_name }}</strong></a>
-          {% if org_id != 0 %}<div><a class="muted" href="/organizations/{{ org_id }}">{{ org_name }}</a></div>{% endif %}
-        </div>
-      </div>
-      <dl class="kv">
-        <dt>E-Mail</dt><dd>{% if requester_email.is_empty() %}–{% else %}<a href="mailto:{{ requester_email }}">{{ requester_email }}</a>{% endif %}</dd>
-        <dt>Telefon</dt><dd>{% if requester_phone.is_empty() %}–{% else %}<button class="link phone-link" type="submit" form="dial-form" title="Anrufen">{{ requester_phone }}</button>{% endif %}</dd>
-      </dl>
-      <a class="btn wide" href="/tickets/new?channel=phone&requester_id={{ requester_id }}">📞 Neues Anruf-Ticket</a>
-    </div>
     <div class="card">
       <h4>Verknüpfte Tickets{% if !links.is_empty() %} ({{ links.len() }}){% endif %} <a class="help-q" href="/hilfe#verknuepfen" title="Hilfe" aria-label="Hilfe">?</a></h4>
       {% if !links.is_empty() %}

@@ -1,8 +1,0 @@
-<aside class="views-nav" id="views-nav" hx-get="/views/sidebar?current={{ current }}" hx-trigger="every 30s" hx-swap="outerHTML">
-  <h2>Ansichten</h2>
-  {% for v in views %}
-  <a href="/views/{{ v.id }}" class="view-link{% if v.active %} active{% endif %}">
-    <span>{{ v.title }}</span><span class="count">{{ v.count }}</span>
-  </a>
-  {% endfor %}
-</aside>

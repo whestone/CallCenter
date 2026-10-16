@@ -252,7 +252,7 @@ async fn chats_index(State(st): State<AppState>, WebAgent(me): WebAgent, Query(q
 
 async fn chats_badge(State(st): State<AppState>, WebAgent(me): WebAgent) -> WebResult<Html<String>> {
     let n = chat::attention_count(&st.db, &me).await?;
-    Ok(Html(if n > 0 { format!(r#"<span class="rail-badge">{n}</span>"#) } else { String::new() }))
+    Ok(Html(if n > 0 { format!(r#"<span class="side-badge">{n}</span>"#) } else { String::new() }))
 }
 
 async fn accept(State(st): State<AppState>, WebAgent(me): WebAgent, Path(id): Path<i64>) -> WebResult<Response> {

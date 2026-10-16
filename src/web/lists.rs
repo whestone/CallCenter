@@ -22,7 +22,7 @@ use crate::{
 pub fn router() -> Router<AppState> {
     Router::new()
         .route("/views", get(views_index))
-        .route("/views/sidebar", get(views_sidebar))
+        .route("/nav/views", get(nav_views))
         .route("/views/{id}", get(view_show))
         .route("/tickets/bulk", post(bulk_update))
 }
@@ -31,7 +31,6 @@ pub struct ViewLink {
     pub id: i64,
     pub title: String,
     pub count: usize,
-    pub active: bool,
 }
 
 /// Filter- und Sortierparameter einer Liste (alles Strings, damit kaputte
@@ -155,7 +154,6 @@ struct PageLink {
 #[template(path = "views.html")]
 struct ViewsPage {
     nav: Nav,
-    views: Vec<ViewLink>,
     current: i64,
     current_title: String,
     rows: Vec<TicketRow>,
@@ -183,17 +181,22 @@ struct ViewsPage {
 }
 
 #[derive(Template)]
-#[template(path = "views_sidebar.html")]
-struct ViewsSidebar {
+#[template(path = "nav_views.html")]
+struct NavViews {
     views: Vec<ViewLink>,
-    current: i64,
+}
+
+/// Ansichten mit Anzahl für die linke Navigation (aktive Ansicht markiert das Skript).
+async fn nav_views(State(st): State<AppState>, WebAgent(me): WebAgent) -> WebResult<Html<String>> {
+    let (_, _, links) = view_links(&st.db, &me).await?;
+    page(NavViews { views: links })
 }
 
 async fn active_views(db: &PgPool) -> AppResult<Vec<View>> {
     Ok(sqlx::query_as("SELECT * FROM views WHERE active ORDER BY position, id").fetch_all(db).await?)
 }
 
-async fn view_links(db: &PgPool, me: &User, current: i64) -> AppResult<(Vec<View>, Vec<Ticket>, Vec<ViewLink>)> {
+async fn view_links(db: &PgPool, me: &User) -> AppResult<(Vec<View>, Vec<Ticket>, Vec<ViewLink>)> {
     let views = active_views(db).await?;
     let tickets = service::candidate_tickets(db).await?;
     let now = Utc::now();
@@ -203,7 +206,6 @@ async fn view_links(db: &PgPool, me: &User, current: i64) -> AppResult<(Vec<View
             id: v.id,
             title: v.title.clone(),
             count: service::count_view(v, &tickets, me, now),
-            active: v.id == current,
         })
         .collect();
     Ok((views, tickets, links))
@@ -259,7 +261,7 @@ async fn view_show(
 ) -> WebResult<Html<String>> {
     let db = &st.db;
     let now = Utc::now();
-    let (views, tickets, links) = view_links(db, &me, id).await?;
+    let (views, tickets, _) = view_links(db, &me).await?;
     let view = views.iter().find(|v| v.id == id).ok_or(AppError::NotFound)?;
     let in_view = service::filter_view(view, &tickets, &me, now);
     let total_unfiltered = in_view.len();
@@ -365,7 +367,6 @@ async fn view_show(
 
     page(ViewsPage {
         nav: Nav::new(&me, "views"),
-        views: links,
         current: id,
         current_title: view.title.clone(),
         rows: ticket_rows(db, &page_items).await?,
@@ -391,21 +392,6 @@ async fn view_show(
         bulk_group_opts: with_special(&[], group_list, None, "Gruppe …"),
         bulk_macro_opts: with_special(&[], macros.iter().map(|m| (m.id.to_string(), m.title.clone())).collect(), None, "Makro …"),
     })
-}
-
-#[derive(Deserialize)]
-struct SidebarQuery {
-    current: Option<i64>,
-}
-
-async fn views_sidebar(
-    State(st): State<AppState>,
-    WebAgent(me): WebAgent,
-    Query(q): Query<SidebarQuery>,
-) -> WebResult<Html<String>> {
-    let current = q.current.unwrap_or(0);
-    let (_, _, links) = view_links(&st.db, &me, current).await?;
-    page(ViewsSidebar { views: links, current })
 }
 
 /// Nur lokale Pfade als Rücksprungziel zulassen (kein Open Redirect).

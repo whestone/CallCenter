@@ -306,6 +306,9 @@ pub struct TicketRow {
     pub subject_html: String,
     /// Textausschnitt mit Treffern (nur in der Suche).
     pub snippet: String,
+    /// Kanal-Schlüssel (für das Symbol) und Anfang der Beschreibung als Vorschau.
+    pub channel: String,
+    pub preview: String,
     /// Letzte öffentliche Antwort eines Agenten (relativ), leer = noch keine.
     pub last_reply: String,
     /// Letzte öffentliche Nachricht des Kunden (relativ).
@@ -330,6 +333,17 @@ pub struct TicketRow {
     pub assignee_initials: String,
     pub created: String,
     pub type_label: &'static str,
+}
+
+/// Einzeilige Textvorschau (ohne Formatierung, gekürzt).
+pub fn preview_text(body: &str) -> String {
+    let plain = crate::markdown::to_plain(body);
+    let line = plain.split_whitespace().collect::<Vec<_>>().join(" ");
+    if line.chars().count() > 160 {
+        format!("{} …", line.chars().take(160).collect::<String>().trim_end())
+    } else {
+        line
+    }
 }
 
 pub async fn ticket_rows(db: &PgPool, tickets: &[Ticket]) -> AppResult<Vec<TicketRow>> {
@@ -378,6 +392,8 @@ pub async fn ticket_rows(db: &PgPool, tickets: &[Ticket]) -> AppResult<Vec<Ticke
                 id: t.id,
                 subject_html: crate::markdown::escape(&t.subject),
                 snippet: String::new(),
+                channel: t.channel.clone(),
+                preview: preview_text(&t.description),
                 last_reply: last.get(&t.id).and_then(|l| l.0).map(|d| fmt_rel(d, now)).unwrap_or_default(),
                 last_customer: last.get(&t.id).and_then(|l| l.1).map(|d| fmt_rel(d, now)).unwrap_or_default(),
                 due: t.due_at.map(fmt_dt).unwrap_or_default(),

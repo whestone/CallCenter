@@ -1,26 +1,38 @@
 <td class="t-main">
-  <div class="t-title">{% if cols.in_meta("status") %}<span class="status-pill s-{{ r.status }}">{{ r.status_label }}</span>{% endif %}<a class="t-subject" href="/tickets/{{ r.id }}">{{ r.subject_html|safe }}</a></div>
-  <div class="t-meta">{% if cols.in_meta("id") %}<span class="t-id">#{{ r.id }}</span>{% endif %}{% for m in cols.meta() %}{% match m %}
-    {% when "requester" %}<span>{{ r.requester }}</span>
-    {% when "org" %}{% if !r.org.is_empty() %}<span>{{ r.org }}</span>{% endif %}
-    {% when "channel" %}<span>{{ r.channel_label }}</span>
-    {% when "group" %}{% if r.group != "–" %}<span>{{ r.group }}</span>{% endif %}
-    {% when "tags" %}{% for t in r.tags %}<span class="chip-item chip-tag chip-sm">{{ t }}</span>{% endfor %}
-    {% when "priority" %}{% if !r.priority.is_empty() %}<span class="prio-dot p-{{ r.priority }}">{{ r.priority_label }}</span>{% endif %}
-    {% when "type" %}{% if !r.type_label.is_empty() %}<span>{{ r.type_label }}</span>{% endif %}
-    {% when "assignee" %}{% if r.assignee_initials.is_empty() %}<span>nicht zugewiesen</span>{% else %}<span class="who"><span class="avatar xxs" aria-hidden="true">{{ r.assignee_initials }}</span>{{ r.assignee }}</span>{% endif %}
-    {% when "sla" %}{% if !r.sla_text.is_empty() %}<span><span class="{{ r.sla_class }}">{{ r.sla_text }}</span></span>{% endif %}
-    {% when "last_reply" %}<span>{% if r.last_reply.is_empty() %}noch keine Antwort{% else %}beantwortet {{ r.last_reply }}{% endif %}</span>
-    {% when "last_customer" %}{% if !r.last_customer.is_empty() %}<span>Kunde schrieb {{ r.last_customer }}</span>{% endif %}
-    {% when "due" %}{% if !r.due.is_empty() %}<span>fällig {{ r.due }}</span>{% endif %}
-    {% when "solved" %}{% if !r.solved.is_empty() %}<span>gelöst {{ r.solved }}</span>{% endif %}
-    {% when "satisfaction" %}{% if !r.satisfaction.is_empty() %}<span>Bewertung: {{ r.satisfaction }}</span>{% endif %}
-    {% when "created" %}<span>erstellt {{ r.created }}</span>
-    {% when "updated" %}<span>aktualisiert {{ r.updated }}</span>
-    {% else %}{% endmatch %}{% endfor %}</div>
-  {% if !r.snippet.is_empty() %}<div class="hit-snippet">{{ r.snippet|safe }}</div>{% endif %}
+  <div class="t-row">
+    <span class="t-icon ch-{{ r.channel }}" aria-hidden="true">{% match r.channel.as_str() %}
+      {% when "email" %}<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>
+      {% when "phone" %}<svg viewBox="0 0 24 24"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2"/></svg>
+      {% when "chat" %}<svg viewBox="0 0 24 24"><path d="M4 6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H9l-5 4z"/></svg>
+      {% when "api" %}<svg viewBox="0 0 24 24"><path d="m8 8-4 4 4 4M16 8l4 4-4 4M14 5l-4 14"/></svg>
+      {% else %}<svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg>
+    {% endmatch %}</span>
+    <div class="t-body">
+      <div class="t-title"><a class="t-subject" href="/tickets/{{ r.id }}">{{ r.subject_html|safe }}</a>{% if cols.in_meta("priority") && !r.priority.is_empty() %}<span class="prio-badge p-{{ r.priority }}">{{ r.priority_label }}</span>{% endif %}{% if cols.in_meta("status") %}<span class="status-pill s-{{ r.status }}">{{ r.status_label }}</span>{% endif %}</div>
+      {% if cols.in_meta("preview") && !r.preview.is_empty() %}<div class="t-preview">{{ r.preview }}</div>{% endif %}
+      <div class="t-meta">{% if cols.in_meta("id") %}<span class="t-id">#{{ r.id }}</span>{% endif %}{% for m in cols.meta() %}{% match m %}
+        {% when "requester" %}<span>{{ r.requester }}</span>
+        {% when "org" %}{% if !r.org.is_empty() %}<span>{{ r.org }}</span>{% endif %}
+        {% when "channel" %}<span>{{ r.channel_label }}</span>
+        {% when "group" %}{% if r.group != "–" %}<span>{{ r.group }}</span>{% endif %}
+        {% when "tags" %}{% for t in r.tags %}<span class="chip-item chip-tag chip-sm">{{ t }}</span>{% endfor %}
+        {% when "type" %}{% if !r.type_label.is_empty() %}<span>{{ r.type_label }}</span>{% endif %}
+        {% when "assignee" %}{% if r.assignee_initials.is_empty() %}<span>nicht zugewiesen</span>{% else %}<span class="who"><span class="avatar xxs" aria-hidden="true">{{ r.assignee_initials }}</span>{{ r.assignee }}</span>{% endif %}
+        {% when "sla" %}{% if !r.sla_text.is_empty() %}<span><span class="{{ r.sla_class }}">{{ r.sla_text }}</span></span>{% endif %}
+        {% when "last_reply" %}<span>{% if r.last_reply.is_empty() %}noch keine Antwort{% else %}beantwortet {{ r.last_reply }}{% endif %}</span>
+        {% when "last_customer" %}{% if !r.last_customer.is_empty() %}<span>Kunde schrieb {{ r.last_customer }}</span>{% endif %}
+        {% when "due" %}{% if !r.due.is_empty() %}<span>fällig {{ r.due }}</span>{% endif %}
+        {% when "solved" %}{% if !r.solved.is_empty() %}<span>gelöst {{ r.solved }}</span>{% endif %}
+        {% when "satisfaction" %}{% if !r.satisfaction.is_empty() %}<span>Bewertung: {{ r.satisfaction }}</span>{% endif %}
+        {% when "created" %}<span>erstellt {{ r.created }}</span>
+        {% when "updated" %}<span>aktualisiert {{ r.updated }}</span>
+        {% else %}{% endmatch %}{% endfor %}</div>
+      {% if !r.snippet.is_empty() %}<div class="hit-snippet">{{ r.snippet|safe }}</div>{% endif %}
+    </div>
+  </div>
 </td>
 {% for c in cols.columns() %}{% match c.0 %}
+{% when "preview" %}<td class="muted"><span class="t-clip">{{ r.preview }}</span></td>
 {% when "status" %}<td><span class="status-pill s-{{ r.status }}">{{ r.status_label }}</span></td>
 {% when "id" %}<td class="muted nowrap">#{{ r.id }}</td>
 {% when "requester" %}<td>{{ r.requester }}</td>
@@ -28,7 +40,7 @@
 {% when "channel" %}<td class="nowrap">{{ r.channel_label }}</td>
 {% when "group" %}<td>{% if r.group == "–" %}<span class="muted">–</span>{% else %}{{ r.group }}{% endif %}</td>
 {% when "tags" %}<td class="t-tags">{% for t in r.tags %}<span class="chip-item chip-tag chip-sm">{{ t }}</span>{% endfor %}</td>
-{% when "priority" %}<td>{% if r.priority.is_empty() %}<span class="muted">–</span>{% else %}<span class="prio-dot p-{{ r.priority }}">{{ r.priority_label }}</span>{% endif %}</td>
+{% when "priority" %}<td>{% if r.priority.is_empty() %}<span class="muted">–</span>{% else %}<span class="prio-badge p-{{ r.priority }}">{{ r.priority_label }}</span>{% endif %}</td>
 {% when "type" %}<td>{% if r.type_label.is_empty() %}<span class="muted">–</span>{% else %}{{ r.type_label }}{% endif %}</td>
 {% when "assignee" %}<td>{% if r.assignee_initials.is_empty() %}<span class="muted small">nicht zugewiesen</span>{% else %}<span class="who"><span class="avatar xs" aria-hidden="true">{{ r.assignee_initials }}</span>{{ r.assignee }}</span>{% endif %}</td>
 {% when "sla" %}<td>{% if !r.sla_text.is_empty() %}<span class="{{ r.sla_class }}">{{ r.sla_text }}</span>{% endif %}</td>

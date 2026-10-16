@@ -115,10 +115,18 @@ struct TicketPage {
     status: String,
     status_label: &'static str,
     closed: bool,
+    channel: String,
     channel_label: &'static str,
+    priority_label: &'static str,
     created: String,
     updated: String,
     tags: String,
+    tag_list: Vec<String>,
+    /// Letzte öffentliche Antwort eines Agenten (Datum), leer = noch keine.
+    last_reply: String,
+    assignee_name: String,
+    assignee_initials: String,
+    group_name: String,
     requester_id: i64,
     requester_name: String,
     requester_initials: String,
@@ -350,6 +358,21 @@ async fn render_ticket(st: &AppState, me: &User, id: i64, draft: Draft) -> WebRe
     let t = service::get_ticket(db, id).await?;
     let now = Utc::now();
     let requester: User = sqlx::query_as("SELECT * FROM users WHERE id = $1").bind(t.requester_id).fetch_one(db).await?;
+    let assignee_name: String = match t.assignee_id {
+        Some(id) => sqlx::query_scalar("SELECT name FROM users WHERE id = $1").bind(id).fetch_optional(db).await?.unwrap_or_default(),
+        None => String::new(),
+    };
+    let group_name: String = match t.group_id {
+        Some(id) => sqlx::query_scalar("SELECT name FROM agent_groups WHERE id = $1").bind(id).fetch_optional(db).await?.unwrap_or_default(),
+        None => String::new(),
+    };
+    let last_reply: Option<chrono::DateTime<Utc>> = sqlx::query_scalar(
+        "SELECT max(c.created_at) FROM ticket_comments c JOIN users u ON u.id = c.author_id
+         WHERE c.ticket_id = $1 AND c.public AND u.role <> 'end-user'",
+    )
+    .bind(t.id)
+    .fetch_one(db)
+    .await?;
     let org: Option<Organization> = sqlx::query_as("SELECT * FROM organizations WHERE id = $1")
         .bind(t.organization_id)
         .fetch_optional(db)
@@ -563,10 +586,17 @@ async fn render_ticket(st: &AppState, me: &User, id: i64, draft: Draft) -> WebRe
         status: t.status.clone(),
         status_label: status_label(&t.status),
         closed: t.status == "closed",
+        channel: t.channel.clone(),
         channel_label: channel_label(&t.channel),
+        priority_label: t.priority.as_deref().map(priority_label).unwrap_or(""),
         created: fmt_dt(t.created_at),
         updated: fmt_rel(t.updated_at, now),
         tags: t.tags.join(" "),
+        tag_list: t.tags.clone(),
+        last_reply: last_reply.map(fmt_dt).unwrap_or_default(),
+        assignee_initials: initials(&assignee_name),
+        assignee_name,
+        group_name,
         requester_id: requester.id,
         requester_name: requester.name.clone(),
         requester_initials: initials(&requester.name),

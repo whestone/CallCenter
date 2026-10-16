@@ -118,6 +118,7 @@ fn snapshot(t: &Ticket) -> Vec<(&'static str, Value)> {
     vec![
         ("subject", json!(t.subject)),
         ("status", json!(t.status)),
+        ("substatus", json!(t.substatus)),
         ("priority", json!(t.priority)),
         ("type", json!(t.ticket_type)),
         ("requester_id", json!(t.requester_id)),
@@ -757,7 +758,7 @@ pub async fn update_ticket_with(
         "UPDATE tickets SET subject = $2, status = $3, priority = $4, ticket_type = $5, requester_id = $6,
             assignee_id = $7, group_id = $8, organization_id = $9, tags = $10, custom_fields = $11,
             sla_policy_id = $12, due_at = $13, first_reply_at = $14, solved_at = $15, updated_at = $16,
-            problem_id = $17, cc_ids = $18
+            problem_id = $17, cc_ids = $18, substatus = $19
          WHERE id = $1",
     )
     .bind(t.id)
@@ -778,6 +779,7 @@ pub async fn update_ticket_with(
     .bind(t.updated_at)
     .bind(t.problem_id)
     .bind(&t.cc_ids)
+    .bind(&t.substatus)
     .execute(&mut *tx)
     .await?;
 

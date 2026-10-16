@@ -12,8 +12,10 @@ pub const TYPES: [&str; 4] = ["question", "incident", "problem", "task"];
 pub const CHANNELS: [&str; 5] = ["web", "email", "phone", "api", "chat"];
 pub const ROLES: [&str; 3] = ["end-user", "agent", "admin"];
 
+/// Rang eines Status für „kleiner/größer als“; eigene Status zählen wie ihre Grundart.
 pub fn status_rank(s: &str) -> Option<usize> {
-    STATUSES.iter().position(|x| *x == s)
+    let base = crate::statuses::category(s).unwrap_or(s);
+    STATUSES.iter().position(|x| *x == base)
 }
 
 pub fn priority_rank(s: &str) -> Option<usize> {

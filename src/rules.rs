@@ -9,7 +9,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
-use crate::models::{priority_rank, status_rank, Ticket, User, PRIORITIES, STATUSES, TYPES};
+use crate::models::{priority_rank, status_rank, Ticket, User, PRIORITIES, TYPES};
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct Conditions {
@@ -139,8 +139,16 @@ impl Condition {
     }
 
     pub fn matches(&self, t: &Ticket, ctx: &EvalCtx) -> bool {
-        let current = field_value(t, &self.field, ctx);
         let expected = resolve_value(&self.value, &self.field, ctx);
+        // „Status ist <eigener Status>“ prüft den eigenen Status des Tickets.
+        let current = if self.field == "status"
+            && matches!(self.operator.as_str(), "is" | "is_not")
+            && expected.as_str().is_some_and(crate::statuses::is_custom)
+        {
+            serde_json::json!(t.substatus)
+        } else {
+            field_value(t, &self.field, ctx)
+        };
         match self.operator.as_str() {
             "is" => loose_eq(&current, &expected),
             "is_not" => !loose_eq(&current, &expected),
@@ -303,11 +311,14 @@ impl Action {
         let v = &self.value;
         match self.field.as_str() {
             "status" => {
+                // Auch eigene Status (Verwaltung → Status): Grundart + eigener Status.
                 let s = req_str(v)?;
-                if !STATUSES.contains(&s.as_str()) || s == "new" {
+                let (category, sub) = crate::statuses::resolve(&s).map_err(|_| format!("Ungültiger Status: {s}"))?;
+                if category == "new" {
                     return Err(format!("Ungültiger Status: {s}"));
                 }
-                t.status = s;
+                t.status = category.to_string();
+                t.substatus = sub;
             }
             "priority" => t.priority = opt_enum(v, &PRIORITIES)?,
             "type" => t.ticket_type = opt_enum(v, &TYPES)?,

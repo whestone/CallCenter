@@ -1166,7 +1166,13 @@ async fn rule_meta(db: &PgPool) -> AppResult<String> {
     };
     let condition_fields = vec![
         cond("update_type", "Ereignis", "enum", vec![json!(["Create", "Ticket erstellt"]), json!(["Change", "Ticket geändert"])], vec!["is"]),
-        cond("status", "Status", "enum", enum_opts(&STATUSES, status_label), ops(&["is", "is_not", "less_than", "greater_than"], true)),
+        cond(
+            "status",
+            "Status",
+            "enum",
+            enum_opts(&crate::statuses::all().iter().map(|s| s.key).collect::<Vec<_>>(), status_label),
+            ops(&["is", "is_not", "less_than", "greater_than"], true),
+        ),
         cond("priority", "Priorität", "enum", enum_opts(&PRIORITIES, priority_label), ops(&["is", "is_not", "less_than", "greater_than", "present", "not_present"], true)),
         cond("type", "Typ", "enum", enum_opts(&TYPES, type_label), ops(&["is", "is_not", "present", "not_present"], true)),
         cond("channel", "Kanal", "enum", enum_opts(&CHANNELS, channel_label), vec!["is", "is_not"]),
@@ -1214,7 +1220,12 @@ async fn rule_meta(db: &PgPool) -> AppResult<String> {
     opt_type.extend(enum_opts(&TYPES, type_label));
     let act = |key: &str, label: &str, ty: &str, options: Vec<Value>| json!({ "key": key, "label": label, "type": ty, "options": options });
     let action_fields = vec![
-        act("status", "Status setzen", "enum", enum_opts(&["open", "pending", "hold", "solved"], status_label)),
+        act(
+            "status",
+            "Status setzen",
+            "enum",
+            enum_opts(&crate::statuses::all().iter().filter(|s| s.category != "new").map(|s| s.key).collect::<Vec<_>>(), status_label),
+        ),
         act("priority", "Priorität setzen", "enum", opt_prio),
         act("type", "Typ setzen", "enum", opt_type),
         act("assignee_id", "Bearbeiter setzen", "id", opt_agent),

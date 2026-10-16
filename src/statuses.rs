@@ -116,6 +116,11 @@ pub fn label(key: &str) -> &'static str {
     find(key).map(|s| s.label).unwrap_or_else(|| default_label(key))
 }
 
+/// Grundart eines (auch eigenen) Status.
+pub fn category(key: &str) -> Option<&'static str> {
+    base_key(key).or_else(|| find(key).map(|s| s.category))
+}
+
 pub fn is_custom(key: &str) -> bool {
     find(key).is_some_and(|s| s.custom)
 }

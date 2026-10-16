@@ -35,6 +35,13 @@
     </details>
     {% endif %}
 
+    {% if !pause_opts.is_empty() %}
+    <h4>SLA pausieren bei Status</h4>
+    <div class="switch-row">
+      {% for p in pause_opts %}<label class="switch"><input type="checkbox" name="pause_{{ p.0 }}"{% if p.2 %} checked{% endif %}><span class="switch-track" aria-hidden="true"></span><span class="status-pill s-{{ p.0 }}">{{ p.1 }}</span></label>{% endfor %}
+    </div>
+    {% endif %}
+
     <details class="json-expert">
       <summary>Verfügbare Felder</summary>
       <p class="muted small">{{ fields_help }}</p>

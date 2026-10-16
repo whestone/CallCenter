@@ -65,6 +65,7 @@ pub fn router() -> Router<AppState> {
         .merge(notifications::router())
         .merge(list_prefs::router())
         .merge(auto::router())
+        .route("/status.css", axum::routing::get(status_css))
         .merge(chat::router())
         .merge(admin::personal_router())
         .merge(admin::router())
@@ -167,6 +168,7 @@ pub const ADMIN_NAV: [(&str, &[(&str, &str, &str)]); 5] = [
         "Tickets",
         &[
             ("fields", "Ticketfelder", "/admin/fields"),
+            ("statuses", "Status", "/admin/statuses"),
             ("views", "Ansichten", "/admin/rules/views"),
             ("macros", "Makros", "/admin/rules/macros"),
             ("sla", "SLA", "/admin/rules/sla"),
@@ -202,6 +204,18 @@ pub fn admin_pages(tab: &str) -> Vec<(&'static str, &'static str, bool)> {
         .filter(|(g, _)| *g == current)
         .flat_map(|(_, pages)| pages.iter().map(|(key, label, url)| (*label, *url, *key == tab)))
         .collect()
+}
+
+/// Farben der Status als Stylesheet (öffentlich: auch Portal und Anmeldung nutzen sie).
+async fn status_css() -> Response {
+    (
+        [
+            (axum::http::header::CONTENT_TYPE, "text/css; charset=utf-8"),
+            (axum::http::header::CACHE_CONTROL, "public, max-age=31536000, immutable"),
+        ],
+        crate::statuses::css(),
+    )
+        .into_response()
 }
 
 /// Kennung dieses Serverlaufs für Stylesheet-/Skript-Adressen.
@@ -391,6 +405,7 @@ pub async fn ticket_rows(db: &PgPool, tickets: &[Ticket]) -> AppResult<Vec<Ticke
                 .and_then(|id| policies.get(&id))
                 .and_then(|p| sla::next_target(p, t, now));
             let (sla_text, sla_class) = match next {
+                Some(s) if s.paused => (format!("⏸ {}", sla::fmt_minutes(s.minutes_left)), "sla paused"),
                 Some(s) if s.breached => (sla::fmt_minutes(s.minutes_left), "sla breached"),
                 Some(s) if s.minutes_left < 60 => (sla::fmt_minutes(s.minutes_left), "sla warn"),
                 Some(s) => (sla::fmt_minutes(s.minutes_left), "sla ok"),

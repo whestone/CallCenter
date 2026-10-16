@@ -525,13 +525,8 @@ async fn render_ticket(st: &AppState, me: &User, id: i64, draft: Draft) -> WebRe
             .collect(),
     };
 
-    let mut statuses: Vec<&str> = STATUSES.iter().copied().filter(|s| *s != "closed").collect();
-    if t.status != "new" {
-        statuses.retain(|s| *s != "new");
-    }
-    if t.status == "closed" {
-        statuses = vec!["closed"];
-    }
+    // Erlaubte Ziele laut Verwaltung → Tickets → Status (plus der aktuelle Status).
+    let statuses: Vec<&str> = crate::statuses::targets(&t.status);
 
     let sla = policy
         .as_ref()
@@ -539,7 +534,9 @@ async fn render_ticket(st: &AppState, me: &User, id: i64, draft: Draft) -> WebRe
         .unwrap_or_default()
         .into_iter()
         .map(|s| {
-            let (text, class) = if s.fulfilled && !s.breached {
+            let (text, class) = if s.paused {
+                (format!("pausiert · noch {}", sla::fmt_minutes(s.minutes_left)), "sla paused")
+            } else if s.fulfilled && !s.breached {
                 ("erfüllt".to_string(), "sla ok")
             } else if s.fulfilled {
                 ("verletzt (erledigt)".to_string(), "sla breached")
@@ -791,6 +788,11 @@ async fn update_ticket(
         })?),
         None => None,
     };
+    // Statuswechsel nur, wenn er unter Verwaltung → Tickets → Status erlaubt ist.
+    if let Some(new_status) = &changes.status {
+        let current: String = sqlx::query_scalar("SELECT status FROM tickets WHERE id = $1").bind(id).fetch_one(&st.db).await?;
+        crate::statuses::check_transition(&current, new_status)?;
+    }
     service::update_ticket(&st.db, &me, id, changes, None, "web").await?;
     if let Some(seconds) = time {
         sqlx::query("INSERT INTO time_entries (ticket_id, user_id, seconds) VALUES ($1, $2, $3)")
@@ -1014,7 +1016,12 @@ async fn new_ticket_page(
         requester_id: requester.as_ref().map(|u| u.id.to_string()).unwrap_or_default(),
         requester_label: requester.as_ref().map(requester_label).unwrap_or_default(),
         channel_opts: enum_opts(&CHANNELS, channel_label, Some(&channel), None),
-        status_opts: enum_opts(&["new", "open", "pending", "solved"], status_label, Some(if is_call { "open" } else { "new" }), None),
+        status_opts: enum_opts(
+            &crate::statuses::active_keys(Some(&["new", "open", "pending", "solved"])),
+            status_label,
+            Some(if is_call { "open" } else { "new" }),
+            None,
+        ),
         priority_opts: enum_opts(&PRIORITIES, priority_label, Some("normal"), Some("–")),
         type_opts: enum_opts(&TYPES, type_label, None, Some("–")),
         assignee_opts: id_opts(

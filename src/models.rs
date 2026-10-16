@@ -20,16 +20,9 @@ pub fn priority_rank(s: &str) -> Option<usize> {
     PRIORITIES.iter().position(|x| *x == s)
 }
 
+/// Bezeichnung des Status (einstellbar unter Verwaltung → Tickets → Status).
 pub fn status_label(s: &str) -> &'static str {
-    match s {
-        "new" => "Neu",
-        "open" => "Offen",
-        "pending" => "Wartend",
-        "hold" => "Angehalten",
-        "solved" => "Gelöst",
-        "closed" => "Geschlossen",
-        _ => "?",
-    }
+    crate::statuses::label(s)
 }
 
 pub fn priority_label(s: &str) -> &'static str {
@@ -183,6 +176,9 @@ pub struct Ticket {
     pub sla_warn_key: Option<String>,
     #[serde(skip)]
     pub sla_breach_key: Option<String>,
+    /// SLA-Pause: bisher angesammelte Pausenzeit und Beginn der laufenden Pause (Trigger in der DB).
+    pub sla_paused_seconds: i64,
+    pub sla_paused_since: Option<DateTime<Utc>>,
 }
 
 pub const FIELD_TYPES: [&str; 5] = ["text", "number", "dropdown", "checkbox", "date"];
@@ -378,6 +374,8 @@ pub struct SlaPolicy {
     pub metrics: Json<Vec<SlaMetric>>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
+    /// In diesen Status steht die SLA-Uhr still (z. B. „Wartend“ = warten auf den Kunden).
+    pub pause_statuses: Json<Vec<String>>,
     /// Geschäftszeiten für Fälligkeiten; wird beim Laden für die Anzeige gesetzt.
     #[sqlx(skip)]
     #[serde(skip)]

@@ -21,6 +21,7 @@ mod security;
 mod seed;
 mod service;
 mod sla;
+mod statuses;
 mod telephony;
 mod twofactor;
 mod web;
@@ -74,6 +75,7 @@ async fn main() -> anyhow::Result<()> {
     sqlx::migrate!().run(&db).await?;
     seed::run(&db).await?;
     config::reload(&db).await?;
+    statuses::reload(&db).await?;
     avatars::reload(&db).await?;
     automode::reload(&db).await?;
 

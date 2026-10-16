@@ -29,6 +29,7 @@ pub fn router() -> Router<AppState> {
     Router::new()
         .route("/admin", get(|| async { Redirect::to("/admin/settings") }))
         .route("/admin/settings", get(settings_index).post(save_settings))
+        .route("/admin/statuses", get(statuses_index).post(save_statuses))
         .route("/admin/agents", get(agents_index).post(create_agent))
         .route("/admin/agents/{id}", get(agent_edit).post(update_agent))
         .route("/admin/agents/{id}/auto", post(save_auto_sources))
@@ -48,6 +49,93 @@ pub fn router() -> Router<AppState> {
         .route("/admin/rules/{kind}/new", get(rule_new))
         .route("/admin/rules/{kind}/{id}", get(rule_edit).post(update_rule))
         .route("/admin/rules/{kind}/{id}/delete", post(delete_rule))
+}
+
+// ---------------------------------------------------------------------------
+// Status: Bezeichnung, Farbe, Reihenfolge, aktiv, erlaubte Übergänge
+// ---------------------------------------------------------------------------
+
+struct StatusRow {
+    key: &'static str,
+    label: &'static str,
+    color: String,
+    active: bool,
+    tickets: i64,
+}
+
+struct TransitionRow {
+    from: &'static str,
+    label: &'static str,
+    /// (Zielschlüssel, erlaubt, gleich dem Ausgangsstatus)
+    to: Vec<(&'static str, bool, bool)>,
+}
+
+#[derive(Template)]
+#[template(path = "admin/statuses.html")]
+struct StatusesPage {
+    nav: Nav,
+    tab: &'static str,
+    error: String,
+    rows: Vec<StatusRow>,
+    heads: Vec<(&'static str, &'static str)>,
+    matrix: Vec<TransitionRow>,
+}
+
+#[derive(Deserialize)]
+struct ErrorQuery {
+    error: Option<String>,
+}
+
+async fn statuses_index(
+    State(st): State<AppState>,
+    WebAdmin(me): WebAdmin,
+    super::extract::Query(q): super::extract::Query<ErrorQuery>,
+) -> WebResult<Html<String>> {
+    let counts: std::collections::HashMap<String, i64> =
+        sqlx::query_as::<_, (String, i64)>("SELECT status, count(*) FROM tickets GROUP BY status").fetch_all(&st.db).await?.into_iter().collect();
+    let all = crate::statuses::all();
+    page(StatusesPage {
+        nav: Nav::new(&me, "admin"),
+        tab: "statuses",
+        error: q.error.unwrap_or_default(),
+        rows: all
+            .iter()
+            .map(|s| StatusRow { key: s.key, label: s.label, color: s.color.clone(), active: s.active, tickets: counts.get(s.key).copied().unwrap_or(0) })
+            .collect(),
+        heads: all.iter().map(|s| (s.key, s.label)).collect(),
+        matrix: all
+            .iter()
+            .map(|f| TransitionRow {
+                from: f.key,
+                label: f.label,
+                to: all.iter().map(|t| (t.key, f.key != t.key && crate::statuses::allowed(f.key, t.key), f.key == t.key)).collect(),
+            })
+            .collect(),
+    })
+}
+
+async fn save_statuses(
+    State(st): State<AppState>,
+    WebAdmin(_): WebAdmin,
+    Form(pairs): Form<Vec<(String, String)>>,
+) -> WebResult<Response> {
+    let value = |name: &str| pairs.iter().find(|(k, _)| k == name).map(|(_, v)| v.clone()).unwrap_or_default();
+    let active: std::collections::HashSet<&str> = pairs.iter().filter(|(k, _)| k == "active").map(|(_, v)| v.as_str()).collect();
+    let rows: Vec<(String, String, String, bool)> = pairs
+        .iter()
+        .filter(|(k, _)| k == "key")
+        .map(|(_, key)| (key.clone(), value(&format!("label_{key}")), value(&format!("color_{key}")).to_lowercase(), active.contains(key.as_str())))
+        .collect();
+    let transitions: Vec<(String, String)> = pairs
+        .iter()
+        .filter(|(k, _)| k == "t")
+        .filter_map(|(_, v)| v.split_once('>').map(|(a, b)| (a.to_string(), b.to_string())))
+        .collect();
+    match crate::statuses::save(&st.db, &rows, &transitions).await {
+        Ok(()) => Ok(see_other_ok("/admin/statuses", "Status gespeichert")),
+        Err(AppError::Unprocessable(msg)) => Ok(see_other(&with_query("/admin/statuses", &[("error", &msg)]))),
+        Err(e) => Err(e.into()),
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -963,6 +1051,8 @@ struct RuleEditPage {
     b_builder: &'static str,
     meta_json: String,
     personal: bool,
+    /// SLA: (Status, Bezeichnung, pausiert)
+    pause_opts: Vec<(&'static str, &'static str, bool)>,
 }
 
 /// Welcher grafische Editor für Feld A/B eines Regeltyps zuständig ist.
@@ -1113,7 +1203,14 @@ fn fields_help(k: &RuleKind) -> String {
 
 fn edit_page(me: &User, k: &'static RuleKind, id: Option<i64>, form: RuleForm, error: String, meta_json: String) -> RuleEditPage {
     let (a_builder, b_builder) = builders(k);
+    let paused = form.pause_statuses();
+    let pause_opts = if k.key == "sla" {
+        ["new", "open", "pending", "hold"].iter().map(|s| (*s, status_label(s), paused.iter().any(|p| p == s))).collect()
+    } else {
+        Vec::new()
+    };
     RuleEditPage {
+        pause_opts,
         a_builder,
         b_builder,
         meta_json,
@@ -1149,6 +1246,10 @@ async fn rule_new(State(st): State<AppState>, WebAdmin(me): WebAdmin, Path(key):
         active: Some("on".into()),
         a: k.a_default.into(),
         b: k.b_col.map(|_| k.b_default.into()),
+        pause_new: None,
+        pause_open: None,
+        pause_pending: Some("on".into()),
+        pause_hold: None,
     };
     page(edit_page(&me, k, None, form, String::new(), rule_meta(&st.db).await?))
 }
@@ -1169,18 +1270,27 @@ async fn rule_edit(
     .await?
     .ok_or(AppError::NotFound)?;
     let pretty = |v: &Value| serde_json::to_string_pretty(v).unwrap_or_default();
-    let form = RuleForm {
+    let mut form = RuleForm {
         title: row.0,
         description: row.1,
         position: row.2,
         active: row.3.then(|| "on".into()),
         a: pretty(&row.4),
         b: row.5.as_ref().map(pretty),
+        pause_new: None,
+        pause_open: None,
+        pause_pending: None,
+        pause_hold: None,
     };
+    if k.key == "sla" {
+        let pause: sqlx::types::Json<Vec<String>> =
+            sqlx::query_scalar("SELECT pause_statuses FROM sla_policies WHERE id = $1").bind(id).fetch_one(&st.db).await?;
+        form.set_pause(&pause.0);
+    }
     page(edit_page(&me, k, Some(id), form, String::new(), rule_meta(&st.db).await?))
 }
 
-#[derive(Deserialize, Clone)]
+#[derive(Deserialize, Clone, Default)]
 struct RuleForm {
     title: String,
     #[serde(default)]
@@ -1190,6 +1300,33 @@ struct RuleForm {
     active: Option<String>,
     a: String,
     b: Option<String>,
+    /// SLA: in diesen Status steht die Uhr (Kästchen je Status).
+    #[serde(default)]
+    pause_new: Option<String>,
+    #[serde(default)]
+    pause_open: Option<String>,
+    #[serde(default)]
+    pause_pending: Option<String>,
+    #[serde(default)]
+    pause_hold: Option<String>,
+}
+
+impl RuleForm {
+    fn pause_statuses(&self) -> Vec<String> {
+        [("new", &self.pause_new), ("open", &self.pause_open), ("pending", &self.pause_pending), ("hold", &self.pause_hold)]
+            .iter()
+            .filter(|(_, v)| v.is_some())
+            .map(|(k, _)| k.to_string())
+            .collect()
+    }
+
+    fn set_pause(&mut self, list: &[String]) {
+        let on = |k: &str| list.iter().any(|s| s == k).then(|| "on".to_string());
+        self.pause_new = on("new");
+        self.pause_open = on("open");
+        self.pause_pending = on("pending");
+        self.pause_hold = on("hold");
+    }
 }
 
 fn empty_as_zero<'de, D: serde::Deserializer<'de>>(d: D) -> Result<i32, D::Error> {
@@ -1245,23 +1382,35 @@ fn validate_rule(k: &RuleKind, form: &RuleForm) -> Result<(Value, Option<Value>)
 }
 
 async fn save_rule(db: &PgPool, k: &RuleKind, id: Option<i64>, form: &RuleForm, a: Value, b: Option<Value>) -> AppResult<()> {
+    let saved = save_rule_row(db, k, id, form, a, b).await?;
+    if k.key == "sla" {
+        sqlx::query("UPDATE sla_policies SET pause_statuses = $1 WHERE id = $2")
+            .bind(sqlx::types::Json(form.pause_statuses()))
+            .bind(saved)
+            .execute(db)
+            .await?;
+    }
+    Ok(())
+}
+
+async fn save_rule_row(db: &PgPool, k: &RuleKind, id: Option<i64>, form: &RuleForm, a: Value, b: Option<Value>) -> AppResult<i64> {
     let cols = match k.b_col {
         Some(b_col) => format!("{}, {}", k.a_col, b_col),
         None => k.a_col.to_string(),
     };
     let sql = match (id, k.b_col) {
-        (None, Some(_)) => format!("INSERT INTO {} (title, description, position, active, {cols}) VALUES ($1, $2, $3, $4, $5, $6)", k.table),
-        (None, None) => format!("INSERT INTO {} (title, description, position, active, {cols}) VALUES ($1, $2, $3, $4, $5)", k.table),
+        (None, Some(_)) => format!("INSERT INTO {} (title, description, position, active, {cols}) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id", k.table),
+        (None, None) => format!("INSERT INTO {} (title, description, position, active, {cols}) VALUES ($1, $2, $3, $4, $5) RETURNING id", k.table),
         (Some(_), Some(b_col)) => format!(
-            "UPDATE {} SET title = $1, description = $2, position = $3, active = $4, {} = $5, {b_col} = $6, updated_at = now() WHERE id = $7",
+            "UPDATE {} SET title = $1, description = $2, position = $3, active = $4, {} = $5, {b_col} = $6, updated_at = now() WHERE id = $7 RETURNING id",
             k.table, k.a_col
         ),
         (Some(_), None) => format!(
-            "UPDATE {} SET title = $1, description = $2, position = $3, active = $4, {} = $5, updated_at = now() WHERE id = $6",
+            "UPDATE {} SET title = $1, description = $2, position = $3, active = $4, {} = $5, updated_at = now() WHERE id = $6 RETURNING id",
             k.table, k.a_col
         ),
     };
-    let mut q = sqlx::query(&sql)
+    let mut q = sqlx::query_scalar::<_, i64>(&sql)
         .bind(form.title.trim())
         .bind(form.description.trim())
         .bind(form.position)
@@ -1273,8 +1422,7 @@ async fn save_rule(db: &PgPool, k: &RuleKind, id: Option<i64>, form: &RuleForm, 
     if let Some(id) = id {
         q = q.bind(id);
     }
-    q.execute(db).await?;
-    Ok(())
+    Ok(q.fetch_one(db).await?)
 }
 
 async fn create_rule(
@@ -1355,6 +1503,7 @@ async fn my_macro_new(State(st): State<AppState>, WebAgent(me): WebAgent) -> Web
         active: Some("on".into()),
         a: k.a_default.into(),
         b: None,
+        ..Default::default()
     };
     page(personal_page(&me, None, form, String::new(), rule_meta(&st.db).await?)?)
 }
@@ -1374,6 +1523,7 @@ async fn my_macro_edit(State(st): State<AppState>, WebAgent(me): WebAgent, Path(
         active: row.3.then(|| "on".into()),
         a: serde_json::to_string_pretty(&row.4).unwrap_or_default(),
         b: None,
+        ..Default::default()
     };
     page(personal_page(&me, Some(id), form, String::new(), rule_meta(&st.db).await?)?)
 }

@@ -503,6 +503,8 @@ pub async fn create_ticket(db: &PgPool, actor: &User, input: NewTicket, via: &st
         cc_ids: input.cc_ids,
         sla_warn_key: None,
         sla_breach_key: None,
+        sla_paused_seconds: 0,
+        sla_paused_since: None,
     };
     validate_enums(&t)?;
     if t.status == "new" && t.assignee_id.is_some() {

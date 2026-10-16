@@ -374,7 +374,12 @@ async fn view_show(
         total_unfiltered,
         filtered: p.has_filters(),
         q: ListParams::get(&p.q).unwrap_or("").to_string(),
-        status_opts: with_special(&[("unsolved", "Ungelöst")], enum_list(&STATUSES, status_label), sel(&p.status), "Status: alle"),
+        status_opts: with_special(
+            &[("unsolved", "Ungelöst")],
+            enum_list(&crate::statuses::all().iter().map(|s| s.key).collect::<Vec<_>>(), status_label),
+            sel(&p.status),
+            "Status: alle",
+        ),
         priority_opts: with_special(&[("none", "ohne Priorität")], enum_list(&PRIORITIES, priority_label), sel(&p.priority), "Priorität: alle"),
         assignee_opts: with_special(&[("me", "Mir zugewiesen"), ("none", "Nicht zugewiesen")], agent_list.clone(), sel(&p.assignee), "Bearbeiter: alle"),
         group_opts: with_special(&[("none", "ohne Gruppe")], group_list.clone(), sel(&p.group), "Gruppe: alle"),
@@ -386,7 +391,7 @@ async fn view_show(
         cols,
         return_to: format!("{base}?{}", p.query(|_| {})),
         notice,
-        bulk_status_opts: with_special(&[], enum_list(&["open", "pending", "hold", "solved"], status_label), None, "Status …"),
+        bulk_status_opts: with_special(&[], enum_list(&crate::statuses::active_keys(Some(&["open", "pending", "hold", "solved"])), status_label), None, "Status …"),
         bulk_priority_opts: with_special(&[], enum_list(&PRIORITIES, priority_label), None, "Priorität …"),
         bulk_assignee_opts: with_special(&[("me", "Mir zuweisen"), ("none", "Zuweisung entfernen")], agent_list, None, "Bearbeiter …"),
         bulk_group_opts: with_special(&[], group_list, None, "Gruppe …"),
@@ -431,6 +436,14 @@ async fn bulk_update(
 
     let (mut ok, mut err) = (0usize, 0usize);
     for id in ids {
+        // Nicht erlaubte Statuswechsel (Verwaltung → Tickets → Status) überspringen.
+        if let Some(new_status) = &changes.status {
+            let current: Option<String> = sqlx::query_scalar("SELECT status FROM tickets WHERE id = $1").bind(id).fetch_optional(&st.db).await?;
+            if current.is_some_and(|c| crate::statuses::check_transition(&c, new_status).is_err()) {
+                err += 1;
+                continue;
+            }
+        }
         match service::update_ticket(&st.db, &me, id, changes.clone(), macro_id, "bulk").await {
             Ok(_) => ok += 1,
             Err(e) => {

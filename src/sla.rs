@@ -87,6 +87,8 @@ pub struct SlaTarget {
     pub fulfilled: bool,
     pub breached: bool,
     pub minutes_left: i64,
+    /// Die Uhr steht gerade (Ticket in einem pausierenden Status).
+    pub paused: bool,
 }
 
 pub fn metric_label(m: &str) -> &'static str {
@@ -114,6 +116,9 @@ pub fn validate_metrics(metrics: &[SlaMetric]) -> Result<(), String> {
 
 pub fn evaluate(policy: &SlaPolicy, t: &Ticket, now: DateTime<Utc>) -> Vec<SlaTarget> {
     let priority = t.priority.as_deref().unwrap_or("normal");
+    // Pausen (z. B. „Wartend“) verschieben die Fälligkeit um die angehaltene Zeit.
+    let paused_now = t.sla_paused_since.is_some();
+    let paused = Duration::seconds(t.sla_paused_seconds) + t.sla_paused_since.map(|s| now - s).unwrap_or_else(Duration::zero);
     policy
         .metrics
         .0
@@ -129,7 +134,7 @@ pub fn evaluate(policy: &SlaPolicy, t: &Ticket, now: DateTime<Utc>) -> Vec<SlaTa
             let due_at = match (&policy.schedule, m.business_hours) {
                 (Some(schedule), true) => schedule.add_business_minutes(t.created_at, m.target),
                 _ => t.created_at + Duration::minutes(m.target),
-            };
+            } + paused;
             Some(SlaTarget {
                 metric: m.metric.clone(),
                 label: metric_label(&m.metric),
@@ -137,6 +142,7 @@ pub fn evaluate(policy: &SlaPolicy, t: &Ticket, now: DateTime<Utc>) -> Vec<SlaTa
                 fulfilled: done_at.is_some(),
                 breached: done_at.unwrap_or(now) > due_at,
                 minutes_left: (due_at - now).num_minutes(),
+                paused: paused_now && done_at.is_none(),
             })
         })
         .collect()

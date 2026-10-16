@@ -4,6 +4,6 @@
   </div>
   <div class="tabs admin-pages">
     {% for (label, url, active) in crate::web::admin_pages(tab) %}<a href="{{ url }}" class="{% if active %}active{% endif %}">{{ label }}</a>{% endfor %}
-    <a class="tab-help help-q" title="Hilfe zu dieser Seite" aria-label="Hilfe zu dieser Seite" href="/hilfe#{% if tab == "settings" %}hilfe-einstellungen{% else if tab == "groups" %}hilfe-gruppen{% else if tab == "skills" %}hilfe-faehigkeiten{% else if tab == "fields" %}hilfe-felder{% else if tab == "hours" %}hilfe-zeiten{% else if tab == "email" %}hilfe-email{% else if tab == "telephony" %}hilfe-telefonie{% else if tab == "webhooks" %}hilfe-webhooks{% else if tab == "agents" %}hilfe-gruppen{% else %}hilfe-regeln{% endif %}">?</a>
+    <a class="tab-help help-q" title="Hilfe zu dieser Seite" aria-label="Hilfe zu dieser Seite" href="/hilfe#{% if tab == "settings" %}hilfe-einstellungen{% else if tab == "statuses" %}hilfe-status{% else if tab == "sla" %}hilfe-sla-pause{% else if tab == "groups" %}hilfe-gruppen{% else if tab == "skills" %}hilfe-faehigkeiten{% else if tab == "fields" %}hilfe-felder{% else if tab == "hours" %}hilfe-zeiten{% else if tab == "email" %}hilfe-email{% else if tab == "telephony" %}hilfe-telefonie{% else if tab == "webhooks" %}hilfe-webhooks{% else if tab == "agents" %}hilfe-gruppen{% else %}hilfe-regeln{% endif %}">?</a>
   </div>
 </nav>

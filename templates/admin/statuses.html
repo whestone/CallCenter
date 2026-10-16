@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Status{% endblock %}
+{% block content %}
+<div class="page">
+  <h1>Verwaltung</h1>
+  {% include "admin/tabs.html" %}
+  {% if !error.is_empty() %}<div class="alert" role="alert">{{ error }}</div>{% endif %}
+  <form method="post" action="/admin/statuses" class="statuses-form">
+    <div class="settings-grid status-grid">
+      <section class="card">
+        <h3>Status</h3>
+        <ul class="sortable status-list" aria-label="Status – Reihenfolge per Ziehen">
+          {% for s in rows %}
+          <li class="sort-item status-item" draggable="true">
+            <span class="drag-handle" aria-hidden="true">⠿</span>
+            <input type="hidden" name="key" value="{{ s.key }}">
+            <input type="color" name="color_{{ s.key }}" value="{{ s.color }}" aria-label="Farbe für {{ s.label }}" class="status-color">
+            <input type="text" name="label_{{ s.key }}" value="{{ s.label }}" aria-label="Bezeichnung" required maxlength="40">
+            <span class="muted small status-count" title="Tickets in diesem Status">{{ s.tickets }}</span>
+            <label class="switch" title="Aktiv (zur Auswahl angeboten)"><input type="checkbox" name="active" value="{{ s.key }}"{% if s.active %} checked{% endif %}><span class="switch-track" aria-hidden="true"></span><span class="sr-only">aktiv</span></label>
+          </li>
+          {% endfor %}
+        </ul>
+      </section>
+
+      <section class="card">
+        <h3>Erlaubte Übergänge</h3>
+        <div class="table-wrap transition-wrap">
+          <table class="tickets transition-matrix">
+            <thead><tr><th>von \ nach</th>{% for h in heads %}<th><span class="status-pill s-{{ h.0 }}">{{ h.1 }}</span></th>{% endfor %}</tr></thead>
+            <tbody>
+              {% for r in matrix %}
+              <tr>
+                <th scope="row"><span class="status-pill s-{{ r.from }}">{{ r.label }}</span></th>
+                {% for t in r.to %}<td>{% if t.2 %}<span class="muted" aria-hidden="true">–</span>{% else %}<input type="checkbox" name="t" value="{{ r.from }}>{{ t.0 }}"{% if t.1 %} checked{% endif %} aria-label="von {{ r.label }} nach {{ t.0 }}">{% endif %}</td>{% endfor %}
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+    <div class="form-actions"><button class="btn primary" type="submit">Speichern</button></div>
+  </form>
+</div>
+{% endblock %}

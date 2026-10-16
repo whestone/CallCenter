@@ -198,7 +198,7 @@
         </label>
         <label>Bearbeiter
           <span class="select-avatar">
-            <span class="avatar xs{% if assignee_initials.is_empty() %} empty{% endif %}{% if crate::avatars::url(assignee_id).is_some() %} has-photo{% endif %}" data-avatar aria-hidden="true">{% if let Some(src) = crate::avatars::url(assignee_id) %}<img src="{{ src }}" alt="">{% else %}{{ assignee_initials }}{% endif %}</span>
+            <span class="avatar xs{% if assignee_initials.is_empty() %} is-empty{% endif %}{% if crate::avatars::url(assignee_id).is_some() %} has-photo{% endif %}" data-avatar aria-hidden="true">{% if let Some(src) = crate::avatars::url(assignee_id) %}<img src="{{ src }}" alt="">{% else %}{{ assignee_initials }}{% endif %}</span>
             <select name="assignee_id" data-avatar-select>{% for o in assignee_opts %}<option value="{{ o.value }}" data-photo="{{ crate::avatars::url_for(o.value) }}"{% if o.selected %} selected{% endif %}>{{ o.label }}</option>{% endfor %}</select>
           </span>
         </label>

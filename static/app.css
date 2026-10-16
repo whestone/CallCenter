@@ -1053,7 +1053,7 @@ table.ticket-list tbody tr:has(input[name=ticket_id]:checked) td:first-child { b
 /* Auswahlfeld mit Avatar (Bearbeiter) */
 .select-avatar { position: relative; display: block; }
 .select-avatar > .avatar { position: absolute; left: 8px; top: 50%; transform: translateY(-50%); pointer-events: none; z-index: 1; }
-.select-avatar > .avatar.empty { background: transparent; border: 1.5px dashed var(--border); }
+.select-avatar > .avatar.is-empty { background: transparent; border: 1.5px dashed var(--border); }
 .select-avatar > select { width: 100%; padding-left: 40px; }
 
 /* Profilfotos: Bild statt Initialen, gleiche Größe und Form */

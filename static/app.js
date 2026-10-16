@@ -846,5 +846,5 @@ document.addEventListener("change", (event) => {
     avatar.textContent = chosen ? initialsOf(option.textContent.trim()) : "";
   }
   avatar.classList.toggle("has-photo", !!photo);
-  avatar.classList.toggle("empty", !chosen);
+  avatar.classList.toggle("is-empty", !chosen);
 });

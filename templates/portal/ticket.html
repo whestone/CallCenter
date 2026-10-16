@@ -18,7 +18,7 @@
       <div class="text md">{{ c.body|safe }}</div>
       {% if !c.attachments.is_empty() %}
       <ul class="attachments">
-        {% for a in c.attachments %}<li><a href="/portal/attachments/{{ a.id }}" target="_blank" rel="noopener" hx-boost="false">📎 {{ a.filename }}</a> <span class="muted small">{{ a.size }}</span></li>{% endfor %}
+        {% for a in c.attachments %}<li><a class="file-card" href="/portal/attachments/{{ a.id }}" target="_blank" rel="noopener" hx-boost="false" data-attachment data-kind="{{ a.kind }}" data-name="{{ a.filename }}" data-size="{{ a.size }}">{% if a.kind == "image" %}<img class="file-thumb" src="/portal/attachments/{{ a.id }}" alt="" loading="lazy">{% else %}<span class="file-icon file-{{ a.kind }}" aria-hidden="true">{% if a.kind == "pdf" %}PDF{% else if a.kind == "text" %}TXT{% else %}DATEI{% endif %}</span>{% endif %}<span class="file-text"><strong>{{ a.filename }}</strong><small>{{ a.size }}</small></span></a></li>{% endfor %}
       </ul>
       {% endif %}
     </div>

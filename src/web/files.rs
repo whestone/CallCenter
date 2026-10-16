@@ -171,10 +171,18 @@ pub struct AttachmentView {
     pub id: i64,
     pub filename: String,
     pub size: String,
+    /// Art der Vorschau im Popup: "image", "pdf", "text" oder "file" (nur Download).
+    pub kind: &'static str,
 }
 
 impl From<&AttachmentInfo> for AttachmentView {
     fn from(a: &AttachmentInfo) -> Self {
-        AttachmentView { id: a.id, filename: a.filename.clone(), size: fmt_size(a.size) }
+        let kind = match inline_type(&a.content_type) {
+            Some(t) if t.starts_with("image/") => "image",
+            Some("application/pdf") => "pdf",
+            Some(t) if t.starts_with("text/") => "text",
+            _ => "file",
+        };
+        AttachmentView { id: a.id, filename: a.filename.clone(), size: fmt_size(a.size), kind }
     }
 }

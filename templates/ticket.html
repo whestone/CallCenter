@@ -97,7 +97,7 @@
             <div class="text md">{{ c.html|safe }}</div>
             {% if !c.attachments.is_empty() %}
             <ul class="attachments">
-              {% for a in c.attachments %}<li><a href="/attachments/{{ a.id }}" target="_blank" rel="noopener" hx-boost="false">📎 {{ a.filename }}</a> <span class="muted small">{{ a.size }}</span></li>{% endfor %}
+              {% for a in c.attachments %}<li><a class="file-card" href="/attachments/{{ a.id }}" target="_blank" rel="noopener" hx-boost="false" data-attachment data-kind="{{ a.kind }}" data-name="{{ a.filename }}" data-size="{{ a.size }}">{% if a.kind == "image" %}<img class="file-thumb" src="/attachments/{{ a.id }}" alt="" loading="lazy">{% else %}<span class="file-icon file-{{ a.kind }}" aria-hidden="true">{% if a.kind == "pdf" %}PDF{% else if a.kind == "text" %}TXT{% else %}DATEI{% endif %}</span>{% endif %}<span class="file-text"><strong>{{ a.filename }}</strong><small>{{ a.size }}</small></span></a></li>{% endfor %}
             </ul>
             {% endif %}
           </div>
@@ -254,6 +254,14 @@
       </div>
       {% endif %}
     </div>
+    {% if has_attachments %}
+    <div class="card">
+      <h4>Anhänge</h4>
+      <ul class="attachments side-attachments">
+        {% for c in comments %}{% for a in c.attachments %}<li><a class="file-card" href="/attachments/{{ a.id }}" target="_blank" rel="noopener" hx-boost="false" data-attachment data-kind="{{ a.kind }}" data-name="{{ a.filename }}" data-size="{{ a.size }}">{% if a.kind == "image" %}<img class="file-thumb" src="/attachments/{{ a.id }}" alt="" loading="lazy">{% else %}<span class="file-icon file-{{ a.kind }}" aria-hidden="true">{% if a.kind == "pdf" %}PDF{% else if a.kind == "text" %}TXT{% else %}DATEI{% endif %}</span>{% endif %}<span class="file-text"><strong>{{ a.filename }}</strong><small>{{ a.size }}</small></span></a></li>{% endfor %}{% endfor %}
+      </ul>
+    </div>
+    {% endif %}
     {% if !time_total.is_empty() %}
     <div class="card">
       <h4>Zeiterfassung</h4>

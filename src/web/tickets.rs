@@ -157,6 +157,7 @@ struct TicketPage {
     kb_hits: Vec<KbHit>,
     calls: Vec<super::telephony::CallView>,
     links: Vec<LinkView>,
+    has_attachments: bool,
     link_kinds: Vec<Opt>,
     skills: String,
     followup_source: i64,
@@ -559,6 +560,7 @@ async fn render_ticket(st: &AppState, me: &User, id: i64, draft: Draft) -> WebRe
 
     page(TicketPage {
         nav: Nav::new(me, "views"),
+        has_attachments: attachments.values().any(|l| !l.is_empty()),
         links,
         skills: skills.join(", "),
         link_kinds: service::LINK_KINDS

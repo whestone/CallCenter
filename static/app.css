@@ -1162,7 +1162,6 @@ label.is-dirty > .chips-input .chip-item { box-shadow: 0 0 0 2px var(--tint-oran
 .ticket-customer .btn.wide { margin-top: 4px; justify-content: center; }
 
 /* --- Durchsuchbare Auswahl (select[data-searchable]) ------------------------ */
-select.combo-native { display: none !important; }
 .combo { position: relative; display: block; }
 .combo-trigger { width: 100%; min-height: 39px; display: flex; align-items: center; gap: 8px; padding: 7px 34px 7px 11px; text-align: left; cursor: pointer;
   border: 1px solid var(--border); border-radius: var(--radius); background: var(--panel); color: var(--text); font: inherit; position: relative;
@@ -1213,3 +1212,34 @@ label.is-dirty .combo-trigger { border-color: var(--tint-orange-border); backgro
 .combo-ticket-text strong { font-size: var(--fs-sm); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .combo-ticket-text small { color: var(--muted); font-size: var(--fs-xs); }
 .modal.small-modal, .modal.small-modal .modal-body { overflow: visible; }
+
+/* --- Auswahl global: Varianten je Umgebung ---------------------------------- */
+select.combo-native { position: absolute !important; width: 1px !important; height: 1px !important; padding: 0 !important; margin: 0 !important;
+  opacity: 0 !important; pointer-events: none !important; overflow: hidden; border: 0 !important; }
+.combo-inline { display: inline-block; width: auto; vertical-align: middle; }
+.combo-inline .combo-panel { right: auto; min-width: max(100%, 220px); }
+.combo-up .combo-panel { top: auto; bottom: calc(100% + 4px); }
+.combo-label { min-width: 0; }
+
+/* Filterleiste: Pillen wie bisher, gesetzter Filter hervorgehoben */
+.filter-bar .combo-trigger { min-height: 32px; padding: 5px 30px 5px 12px; border-radius: var(--radius-full); font-size: var(--fs-sm); }
+.filter-bar .combo-trigger::after { right: 12px; width: 6px; height: 6px; }
+.filter-bar .combo.has-value .combo-trigger { background: var(--tint-blue); border-color: var(--tint-blue-border); color: var(--accent-dark); font-weight: 600; }
+
+/* Massenbearbeitung */
+.bulk-bar .combo-trigger { min-height: 34px; font-size: var(--fs-sm); }
+.bulk-bar .combo.has-value .combo-trigger { border-color: var(--accent); }
+
+/* Linke Navigation (dunkel) */
+.side-user-actions .combo { flex: 1; min-width: 0; }
+.side-user-actions .combo-trigger { min-height: 32px; padding: 5px 28px 5px 9px; background: var(--side-hover); color: var(--side-text); border-color: var(--side-border); font-size: var(--fs-sm); }
+.side-user-actions .combo-trigger::after { border-color: var(--side-muted); right: 11px; }
+
+/* Status-Punkte */
+.combo-dot.st-new { background: var(--warn); }
+.combo-dot.st-open { background: var(--accent); }
+.combo-dot.st-pending { background: var(--purple); }
+.combo-dot.st-hold { background: var(--muted); }
+.combo-dot.st-solved { background: var(--success); }
+.combo-dot.st-closed { background: var(--border); }
+.combo-dot.st-none { background: transparent; border: 1.5px dashed var(--border); }

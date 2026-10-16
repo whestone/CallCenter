@@ -19,8 +19,8 @@
       {% if cols.filter("q") %}<input type="search" name="q" value="{{ q }}" placeholder="Betreff oder #Nr." aria-label="In Ansicht filtern">{% endif %}
       {% if cols.filter("status") %}<select name="status" aria-label="Status">{% for o in status_opts %}<option value="{{ o.value }}"{% if o.selected %} selected{% endif %}>{{ o.label }}</option>{% endfor %}</select>{% endif %}
       {% if cols.filter("priority") %}<select name="priority" aria-label="Priorität">{% for o in priority_opts %}<option value="{{ o.value }}"{% if o.selected %} selected{% endif %}>{{ o.label }}</option>{% endfor %}</select>{% endif %}
-      {% if cols.filter("assignee") %}<select name="assignee" aria-label="Bearbeiter">{% for o in assignee_opts %}<option value="{{ o.value }}"{% if o.selected %} selected{% endif %}>{{ o.label }}</option>{% endfor %}</select>{% endif %}
-      {% if cols.filter("group") %}<select name="group" aria-label="Gruppe">{% for o in group_opts %}<option value="{{ o.value }}"{% if o.selected %} selected{% endif %}>{{ o.label }}</option>{% endfor %}</select>{% endif %}
+      {% if cols.filter("assignee") %}<select data-searchable name="assignee" aria-label="Bearbeiter">{% for o in assignee_opts %}<option value="{{ o.value }}"{% if o.selected %} selected{% endif %}>{{ o.label }}</option>{% endfor %}</select>{% endif %}
+      {% if cols.filter("group") %}<select data-searchable name="group" aria-label="Gruppe">{% for o in group_opts %}<option value="{{ o.value }}"{% if o.selected %} selected{% endif %}>{{ o.label }}</option>{% endfor %}</select>{% endif %}
       {% if cols.filter("channel") %}<select name="channel" aria-label="Kanal">{% for o in channel_opts %}<option value="{{ o.value }}"{% if o.selected %} selected{% endif %}>{{ o.label }}</option>{% endfor %}</select>{% endif %}
       {% if !sort.is_empty() %}<input type="hidden" name="sort" value="{{ sort }}"><input type="hidden" name="dir" value="{{ dir }}">{% endif %}
       {% if filtered %}<a class="btn" href="/views/{{ current }}">Filter zurücksetzen</a>{% endif %}
@@ -32,9 +32,9 @@
       <strong class="bulk-count" data-bulk-count>0 ausgewählt</strong>
       <select name="status" aria-label="Status setzen">{% for o in bulk_status_opts %}<option value="{{ o.value }}">{{ o.label }}</option>{% endfor %}</select>
       <select name="priority" aria-label="Priorität setzen">{% for o in bulk_priority_opts %}<option value="{{ o.value }}">{{ o.label }}</option>{% endfor %}</select>
-      <select name="assignee_id" aria-label="Bearbeiter setzen">{% for o in bulk_assignee_opts %}<option value="{{ o.value }}">{{ o.label }}</option>{% endfor %}</select>
-      <select name="group_id" aria-label="Gruppe setzen">{% for o in bulk_group_opts %}<option value="{{ o.value }}">{{ o.label }}</option>{% endfor %}</select>
-      <select name="macro_id" aria-label="Makro anwenden">{% for o in bulk_macro_opts %}<option value="{{ o.value }}">{{ o.label }}</option>{% endfor %}</select>
+      <select data-searchable name="assignee_id" aria-label="Bearbeiter setzen">{% for o in bulk_assignee_opts %}<option value="{{ o.value }}">{{ o.label }}</option>{% endfor %}</select>
+      <select data-searchable name="group_id" aria-label="Gruppe setzen">{% for o in bulk_group_opts %}<option value="{{ o.value }}">{{ o.label }}</option>{% endfor %}</select>
+      <select data-searchable name="macro_id" aria-label="Makro anwenden">{% for o in bulk_macro_opts %}<option value="{{ o.value }}">{{ o.label }}</option>{% endfor %}</select>
       <button class="btn primary" type="submit">Anwenden</button>
     </form>
 

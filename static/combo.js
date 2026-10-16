@@ -1,9 +1,11 @@
 // Durchsuchbare Auswahlfelder und Ticket-Vorschläge.
 //
-// 1. <select data-searchable>: Statt der Liste des Browsers öffnet sich ein Feld mit
-//    Suche (Tippen filtert, ↑/↓ und Enter wählen, Esc schließt). Das Original-Select
-//    bleibt versteckt im Formular und wird bei jeder Auswahl aktualisiert (change-Ereignis),
-//    damit Speichern, „ungespeichert“-Markierung und Avatar unverändert funktionieren.
+// 1. Jedes <select> (außer multiple/size>1 und data-native): eigene Auswahlliste mit
+//    Symbolen (Status, Priorität, Typ, Avatare) und – ab 8 Einträgen oder mit
+//    data-searchable – Suchfeld (Tippen filtert, ↑/↓ und Enter wählen, Esc schließt).
+//    Das Original-Select bleibt unsichtbar im Formular und wird bei jeder Auswahl
+//    aktualisiert (input/change), damit Speichern, Filter, „ungespeichert“-Markierung,
+//    onchange-Handler und Avatar unverändert funktionieren.
 // 2. <input data-ticket-suggest data-exclude="ID" [data-open]>: zeigt beim Tippen passende
 //    Tickets (Nummer, Betreff, Kunde); ohne Text die übrigen Tickets desselben Kunden.
 (() => {
@@ -60,26 +62,41 @@
   }
 
   // -------------------------------------------------------------------------
-  // 1. Durchsuchbares Select
+  // 1. Auswahlfelder (global für jedes <select>)
   // -------------------------------------------------------------------------
-  // Symbole je Wert: data-icons="priority" (farbiger Punkt) oder "type" (eigenes Zeichen).
+  // Symbole je Wert: Priorität und Status als Farbpunkt, Typ als eigenes Zeichen.
+  // Ergibt sich aus dem Feldnamen oder ausdrücklich über data-icons="priority|status|type".
   const TYPE_ICONS = {
     question: '<circle cx="12" cy="12" r="9"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3M12 17h.01"/>',
     incident: '<path d="M13 3 4 14h7l-1 7 9-11h-7z"/>',
     problem: '<path d="M12 3 2 20h20zM12 10v4M12 17h.01"/>',
     task: '<rect x="4" y="4" width="16" height="16" rx="3"/><path d="m8 12 3 3 5-6"/>',
   };
+  const ICON_BY_NAME = { priority: "priority", status: "status", ticket_type: "type" };
+  const PRIORITIES = ["low", "normal", "high", "urgent"];
+  const STATUSES = ["new", "open", "pending", "hold", "solved", "closed"];
+  const TYPES = Object.keys(TYPE_ICONS);
+
+  function iconKind(select) {
+    return select.dataset.icons || ICON_BY_NAME[select.name] || "";
+  }
   function iconNode(select, opt) {
-    const kind = select.dataset.icons;
-    if (kind === "priority") {
+    const kind = iconKind(select);
+    const v = opt.value;
+    if (kind === "priority" && (!v || PRIORITIES.includes(v))) {
       const dot = document.createElement("span");
-      dot.className = `combo-dot p-${opt.value || "none"}`;
+      dot.className = `combo-dot p-${v || "none"}`;
       return dot;
     }
-    if (kind === "type") {
+    if (kind === "status" && (!v || STATUSES.includes(v))) {
+      const dot = document.createElement("span");
+      dot.className = `combo-dot st-${v || "none"}`;
+      return dot;
+    }
+    if (kind === "type" && (!v || TYPES.includes(v))) {
       const i = document.createElement("span");
-      i.className = `combo-icon t-${opt.value || "none"}`;
-      i.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true">${TYPE_ICONS[opt.value] || '<circle cx="12" cy="12" r="8" stroke-dasharray="3 3"/>'}</svg>`;
+      i.className = `combo-icon t-${v || "none"}`;
+      i.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true">${TYPE_ICONS[v] || '<circle cx="12" cy="12" r="8" stroke-dasharray="3 3"/>'}</svg>`;
       return i;
     }
     return null;
@@ -106,22 +123,43 @@
       wrap.append(av);
     }
     const label = document.createElement("span");
+    label.className = "combo-label";
     label.textContent = opt.textContent.trim();
     wrap.append(label);
     return wrap;
   }
 
+  // Suchfeld: data-searchable="plain" nie, data-searchable (sonst) immer, ohne Angabe ab 8 Einträgen.
+  function wantsSearch(select) {
+    if (!select.hasAttribute("data-searchable")) return select.options.length > 7;
+    return select.dataset.searchable !== "plain";
+  }
+
+  function skip(select) {
+    return select.multiple || select.size > 1 || select.hasAttribute("data-native") || !!select.closest("[data-native]");
+  }
+
   function enhanceSelect(select) {
-    if (select._combo) return;
-    // Reste aus einem wiederhergestellten Seitenschnappschuss entfernen.
+    if (select._combo || skip(select)) return;
+    // Reste aus einem wiederhergestellten Schnappschuss/Popup entfernen.
     if (select.nextElementSibling?.classList.contains("combo")) select.nextElementSibling.remove();
     const combo = document.createElement("span");
     combo.className = "combo";
+    // Breite wie das Original: volle Breite in Formularfeldern, sonst so breit wie der Inhalt.
+    const parent = select.parentElement;
+    const visibleWidth = select.offsetWidth;
+    const block = select.hasAttribute("data-block") ||
+      (visibleWidth ? visibleWidth >= (parent?.clientWidth || 0) - 4 : !!select.closest("label"));
+    if (!block) {
+      combo.classList.add("combo-inline");
+      if (visibleWidth) combo.style.minWidth = `${visibleWidth}px`;
+    }
     const trigger = document.createElement("button");
     trigger.type = "button";
     trigger.className = "combo-trigger";
     trigger.setAttribute("aria-haspopup", "listbox");
     trigger.setAttribute("aria-label", select.getAttribute("aria-label") || select.closest("label")?.firstChild?.textContent?.trim() || "Auswahl");
+    if (select.title) trigger.title = select.title;
     const panel = document.createElement("div");
     panel.className = "combo-panel";
     panel.hidden = true;
@@ -134,37 +172,42 @@
     const list = document.createElement("ul");
     list.className = "combo-list";
     list.setAttribute("role", "listbox");
-    // Kurze Listen (Typ, Priorität) ohne Suchfeld: data-searchable="plain".
-    const plain = select.dataset.searchable === "plain";
-    if (plain) search.classList.add("combo-search-hidden");
     panel.append(search, list);
     combo.append(trigger, panel);
     select.after(combo);
     select.classList.add("combo-native");
+    select.tabIndex = -1;
     select._combo = combo;
 
     const label = () => {
       const opt = select.selectedOptions[0];
       if (opt) trigger.replaceChildren(optionNode(select, opt, true));
       else trigger.textContent = "–";
+      combo.classList.toggle("has-value", select.value !== "");
+      trigger.disabled = select.disabled || !!select.closest("fieldset[disabled]");
     };
     const box = listbox(list, (entry) => {
+      close();
       if (select.value !== entry.opt.value) {
         select.value = entry.opt.value;
+        label();
         select.dispatchEvent(new Event("input", { bubbles: true }));
         select.dispatchEvent(new Event("change", { bubbles: true }));
       }
-      label();
-      close();
-      trigger.focus();
+      if (trigger.isConnected) trigger.focus();
     });
     function fill() {
       const q = norm(search.value.trim());
-      const opts = [...select.options].filter((o) => !q || norm(o.textContent).includes(q));
+      const opts = [...select.options].filter((o) => !o.hidden && (!q || norm(o.textContent).includes(q)));
       box.set(opts.map((opt) => ({ opt, node: optionNode(select, opt) })), Math.max(0, opts.findIndex((o) => o.selected)));
     }
     function open() {
-      if (trigger.disabled || select.disabled) return;
+      if (trigger.disabled) return;
+      label();
+      search.classList.toggle("combo-search-hidden", !wantsSearch(select));
+      // Nach oben aufklappen, wenn unten kein Platz ist (z. B. unten in der Navigation).
+      const r = trigger.getBoundingClientRect();
+      combo.classList.toggle("combo-up", r.bottom + 300 > window.innerHeight && r.top > 300);
       panel.hidden = false;
       combo.classList.add("open");
       search.value = "";
@@ -177,7 +220,7 @@
     }
     trigger.addEventListener("click", () => (panel.hidden ? open() : close()));
     trigger.addEventListener("keydown", (e) => {
-      if (e.key === "ArrowDown" || e.key === "Enter" || e.key === " ") {
+      if (e.key === "ArrowDown" || e.key === "ArrowUp" || e.key === "Enter" || e.key === " ") {
         e.preventDefault();
         open();
       } else if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
@@ -203,10 +246,13 @@
     document.addEventListener("mousedown", (e) => {
       if (!panel.hidden && !combo.contains(e.target)) close();
     });
-    // Änderungen von außen (z. B. Makro, Zurücksetzen) übernehmen.
+    // Fokus auf das (unsichtbare) Original – z. B. Klick aufs Label – geht an den Knopf.
+    select.addEventListener("focus", () => trigger.focus());
+    // Änderungen von außen (Makro, Skript, Zurücksetzen, neue Optionen) übernehmen.
     select.addEventListener("change", label);
-    // Gesperrtes Formular (geschlossenes Ticket) → Knopf ebenfalls gesperrt.
-    if (select.closest("fieldset[disabled]") || select.disabled) trigger.disabled = true;
+    select.addEventListener("input", label);
+    select.form?.addEventListener("reset", () => setTimeout(label, 0));
+    new MutationObserver(label).observe(select, { childList: true, subtree: true, attributes: true, attributeFilter: ["disabled"] });
     label();
   }
 
@@ -289,20 +335,32 @@
   }
 
   function enhanceAll() {
-    document.querySelectorAll("select[data-searchable]").forEach(enhanceSelect);
+    document.querySelectorAll("select").forEach(enhanceSelect);
     document.querySelectorAll("input[data-ticket-suggest]").forEach(enhanceTicketInput);
   }
   document.addEventListener("DOMContentLoaded", enhanceAll);
   document.addEventListener("htmx:afterSettle", enhanceAll);
   document.addEventListener("htmx:historyRestore", enhanceAll);
   if (document.readyState !== "loading") enhanceAll();
+  // Später eingefügte Felder (Regel-Editor, Popups, nachgeladene Teile) ebenfalls umstellen.
+  const relevant = (n) => n.nodeType === 1 && (n.matches("select, input[data-ticket-suggest]") || n.querySelector("select, input[data-ticket-suggest]"));
+  let pending = false;
+  new MutationObserver((records) => {
+    if (pending || !records.some((r) => [...r.addedNodes].some(relevant))) return;
+    pending = true;
+    queueMicrotask(() => {
+      pending = false;
+      enhanceAll();
+    });
+  }).observe(document.documentElement, { childList: true, subtree: true });
 
   // Vor dem Schnappschuss für „Zurück“ die Zusatzelemente entfernen.
   document.addEventListener("htmx:beforeHistorySave", () => {
-    document.querySelectorAll("select[data-searchable]").forEach((s) => {
+    document.querySelectorAll("select.combo-native").forEach((s) => {
       s._combo?.remove();
       s._combo = null;
       s.classList.remove("combo-native");
+      s.removeAttribute("tabindex");
       s.querySelectorAll("option").forEach((o) => o.toggleAttribute("selected", o.selected));
     });
     document.querySelectorAll("input[data-ticket-suggest]").forEach((i) => {

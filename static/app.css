@@ -1039,3 +1039,13 @@ table.ticket-list tbody tr:has(input[name=ticket_id]:checked) td:first-child { b
   .ticket-layout .conversation, .ticket-layout .ticket-customer, .ticket-layout .ticket-side, .ticket-layout .context { grid-column: 1; grid-row: auto; }
   .ticket-layout .ticket-customer { order: -1; }
 }
+
+/* Absenden-Knopf mit Statusauswahl: ein zusammenhängender Knopf */
+.split-submit { display: inline-flex; align-items: stretch; border-radius: var(--radius); box-shadow: var(--shadow-sm); }
+.split-submit > .btn.split-main { border-radius: var(--radius) 0 0 var(--radius); margin: 0; }
+.split-submit .split-menu { display: flex; }
+.split-submit .split-menu > summary.btn { border-radius: 0 var(--radius) var(--radius) 0; margin: 0; padding: 0 10px; height: auto;
+  border-left: 1px solid color-mix(in srgb, var(--accent-contrast) 30%, transparent); }
+.split-submit .split-menu > summary svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; transition: transform var(--ease); }
+.split-submit .split-menu[open] > summary svg { transform: rotate(180deg); }
+.split-submit .split-options { border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); padding: 6px; }

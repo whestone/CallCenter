@@ -148,7 +148,7 @@
           <div class="split-submit">
             <button class="btn primary split-main" type="submit">Absenden als <strong>{{ status_label }}</strong></button>
             <details class="split-menu">
-              <summary class="btn primary" aria-label="Mit anderem Status absenden" title="Mit anderem Status absenden">▾</summary>
+              <summary class="btn primary" aria-label="Mit anderem Status absenden" title="Mit anderem Status absenden"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary>
               <div class="split-options">
                 {% for o in status_opts %}{% if o.value != "new" %}
                 <button type="submit" name="submit_as" value="{{ o.value }}"><span class="dot s-{{ o.value }}"></span>als {{ o.label }}</button>

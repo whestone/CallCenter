@@ -303,6 +303,12 @@ pub async fn send_pending(db: &PgPool) -> AppResult<usize> {
     if pending.is_empty() {
         return Ok(0);
     }
+    if crate::config::demo_mode() {
+        sqlx::query("UPDATE email_outbox SET status = 'skipped', error = 'Demo-Modus' WHERE status = 'pending'")
+            .execute(db)
+            .await?;
+        return Ok(0);
+    }
     let settings = settings(db).await?;
     let Some(cfg) = smtp_from(&settings) else {
         sqlx::query("UPDATE email_outbox SET status = 'skipped', error = 'SMTP nicht konfiguriert' WHERE status = 'pending'")

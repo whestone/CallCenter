@@ -344,6 +344,9 @@ pub enum DialResult {
 
 /// sipgate: https://api.sipgate.com/v2/sessions/calls (Token-ID + Personal Access Token).
 fn sipgate_credentials() -> Option<(String, String)> {
+    if crate::config::demo_mode() {
+        return None;
+    }
     Some((crate::config::opt("sipgate.token_id")?, crate::config::opt("sipgate.token")?))
 }
 

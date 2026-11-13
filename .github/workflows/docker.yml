@@ -1,0 +1,23 @@
+name: Docker-Image
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Image bauen
+        run: docker build -t callcenter-demo .
+      - name: Starten und prüfen
+        run: |
+          docker run -d --name cc -p 3000:3000 -e DEMO_MODE=true -e DEMO_LOGIN=true callcenter-demo
+          for i in $(seq 1 60); do
+            if curl -fsS http://localhost:3000/login | grep -q 'Demo'; then echo "läuft"; exit 0; fi
+            sleep 2
+          done
+          docker logs cc
+          exit 1

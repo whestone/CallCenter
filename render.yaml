@@ -1,0 +1,12 @@
+# Öffentliche Demo auf Render (kostenloser Plan): Dashboard → New → Blueprint → dieses Repo.
+services:
+  - type: web
+    name: callcenter-demo
+    runtime: docker
+    plan: free
+    healthCheckPath: /login
+    envVars:
+      - key: DEMO_MODE
+        value: "true"
+      - key: DEMO_LOGIN
+        value: "true"

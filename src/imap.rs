@@ -251,6 +251,9 @@ fn tls_connector() -> anyhow::Result<TlsConnector> {
 const BATCH: usize = 25;
 
 pub async fn poll(db: &PgPool, cfg: &ImapConfig) -> anyhow::Result<usize> {
+    if crate::config::demo_mode() {
+        anyhow::bail!("Im Demo-Modus deaktiviert");
+    }
     let tcp = tokio::time::timeout(Duration::from_secs(20), TcpStream::connect((cfg.host.as_str(), cfg.port)))
         .await
         .context("Zeitüberschreitung beim Verbinden")?

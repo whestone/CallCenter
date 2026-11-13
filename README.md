@@ -42,6 +42,16 @@ PostgreSQL 17 liegt portabel unter `%USERPROFILE%\pgsql17`.
 
 Alternativ per Docker: `docker compose up -d` (siehe `docker-compose.yml`).
 
+### Öffentliche Demo
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/whestone/CallCenter)
+
+Das `Dockerfile` bringt eine eigene PostgreSQL mit und legt bei jedem Start frische Demodaten an
+(`docker build -t callcenter . && docker run -p 3000:3000 -e DEMO_MODE=true -e DEMO_LOGIN=true callcenter`).
+`DEMO_MODE=true` schaltet alles Ausgehende ab (E-Mail, Webhooks, IMAP, sipgate), `DEMO_LOGIN=true`
+zeigt die Anmeldung per Knopfdruck. Mit gesetzter `DATABASE_URL` nutzt der Container stattdessen
+eine externe Datenbank.
+
 ## Funktionsumfang
 
 ### Tickets (Zendesk-Lebenszyklus)

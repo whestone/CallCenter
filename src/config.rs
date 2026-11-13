@@ -207,6 +207,11 @@ pub async fn set(db: &PgPool, key: &str, value: Option<&str>) -> AppResult<()> {
     reload(db).await
 }
 
+/// Öffentliche Demo: nichts verlässt den Server (keine Mails, Webhooks, IMAP, sipgate).
+pub fn demo_mode() -> bool {
+    std::env::var("DEMO_MODE").is_ok_and(|v| matches!(v.trim(), "true" | "1" | "yes"))
+}
+
 /// Zufälliges Geheimnis (64 Hex-Zeichen).
 pub fn random_secret() -> String {
     format!("{}{}", uuid::Uuid::new_v4().simple(), uuid::Uuid::new_v4().simple())

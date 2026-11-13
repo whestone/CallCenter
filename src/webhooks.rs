@@ -53,6 +53,9 @@ pub fn sign(secret: &str, body: &[u8]) -> String {
 }
 
 pub async fn deliver_pending(db: &PgPool, client: &reqwest::Client) -> AppResult<usize> {
+    if crate::config::demo_mode() {
+        return Ok(0);
+    }
     let pending: Vec<(i64, String, Value, i32, String, String)> = sqlx::query_as(
         "SELECT d.id, d.event, d.payload, d.attempts, w.url, w.secret
          FROM webhook_deliveries d JOIN webhooks w ON w.id = d.webhook_id
